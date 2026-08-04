@@ -1,17 +1,19 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
-export default function SeasonMarquee({ entries }) {
-  if (!entries.length) return null
+export default function SeasonMarquee({ entries, loading, label, canGoPrevious, canGoNext, onPrevious, onNext }) {
   const loop = [...entries, ...entries]
   return (
     <section className="season-section">
-      <div className="section-heading"><div><span className="eyebrow">Descubrí</span><h2>Animes de la temporada</h2></div><Link to="/catalogo/anime">Ver catálogo</Link></div>
-      <div className="marquee-mask"><div className="season-marquee">
+      <div className="section-heading"><div><span className="eyebrow">Descubrí</span><h2>Animes de {label}</h2></div><div className="season-actions"><button disabled={!canGoPrevious || loading} onClick={onPrevious}><ChevronLeft /></button><button disabled={!canGoNext || loading} onClick={onNext}><ChevronRight /></button><Link to="/catalogo/anime">Ver catálogo</Link></div></div>
+      {loading && <div className="season-loading">Cargando temporada…</div>}
+      {!loading && !entries.length && <div className="season-loading">AniList todavía no publicó títulos para esta temporada.</div>}
+      {!loading && !!entries.length && <div className="marquee-mask"><div className="season-marquee">
         {loop.map((media, index) => <Link className="season-card" to={`/media/${media.anilistId}`} key={`${media.anilistId}-${index}`} aria-hidden={index >= entries.length}>
           <img src={media.coverImage} alt={index < entries.length ? media.title : ''} />
           <span><strong>{media.title}</strong><small>{episodeLabel(media)}</small></span>
         </Link>)}
-      </div></div>
+      </div></div>}
     </section>
   )
 }

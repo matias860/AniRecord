@@ -20,6 +20,9 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
     boolean existsByMediaAnilistId(Integer anilistId);
 
     @EntityGraph(attributePaths = "media")
+    Optional<LibraryEntry> findByMediaAnilistId(Integer anilistId);
+
+    @EntityGraph(attributePaths = "media")
     List<LibraryEntry> findByMediaMediaType(MediaType mediaType);
 
     @EntityGraph(attributePaths = "media")

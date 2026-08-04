@@ -2,16 +2,20 @@ package com.animelist.backend.service;
 
 import com.animelist.backend.dto.anilist.AiringInfoResponse;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
+import com.animelist.backend.dto.anilist.AniListLibraryExport;
+import com.animelist.backend.dto.anilist.AniListLibraryItem;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.MediaRelationResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
+import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.AniListClientException;
 import java.net.http.HttpClient;
 import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -129,6 +133,44 @@ public class AniListClient {
 
     private static final String GENRES_QUERY = """
             query CatalogGenres { GenreCollection }
+            """;
+
+    private static final String USER_LIBRARY_QUERY = """
+            query UserLibrary($userName: String!) {
+              User(name: $userName) {
+                name
+                avatar { large }
+                bannerImage
+              }
+              anime: MediaListCollection(userName: $userName, type: ANIME, forceSingleCompletedList: true) {
+                lists { entries { ...LibraryEntryFields } }
+              }
+              manga: MediaListCollection(userName: $userName, type: MANGA, forceSingleCompletedList: true) {
+                lists { entries { ...LibraryEntryFields } }
+              }
+            }
+            fragment LibraryEntryFields on MediaList {
+              status
+              score(format: POINT_10_DECIMAL)
+              progress
+              startedAt { year month day }
+              completedAt { year month day }
+              media {
+                id
+                type
+                title { romaji english native }
+                coverImage { extraLarge large }
+                bannerImage
+                description
+                episodes
+                chapters
+                status
+                season
+                seasonYear
+                startDate { year month day }
+                endDate { year month day }
+              }
+            }
             """;
 
     private static final String SEASON_QUERY = """
@@ -291,6 +333,61 @@ public class AniListClient {
                 .toList();
     }
 
+    public AniListLibraryExport getUserLibrary(String username) {
+        Map<String, Object> data = execute(USER_LIBRARY_QUERY, Map.of("userName", username));
+        Map<String, Object> user = asMap(data.get("User"));
+        if (user.isEmpty()) {
+            throw new AniListClientException("AniList no encontró el usuario solicitado");
+        }
+
+        Map<Integer, AniListLibraryItem> uniqueEntries = new LinkedHashMap<>();
+        collectLibraryEntries(data.get("anime"), uniqueEntries);
+        collectLibraryEntries(data.get("manga"), uniqueEntries);
+        return new AniListLibraryExport(
+                asString(user.get("name")),
+                asString(asMap(user.get("avatar")).get("large")),
+                asString(user.get("bannerImage")),
+                List.copyOf(uniqueEntries.values())
+        );
+    }
+
+    private void collectLibraryEntries(Object collectionValue, Map<Integer, AniListLibraryItem> target) {
+        for (Object listValue : asList(asMap(collectionValue).get("lists"))) {
+            for (Object entryValue : asList(asMap(listValue).get("entries"))) {
+                Map<String, Object> entry = asMap(entryValue);
+                AniListMediaResponse media = mapMedia(asMap(entry.get("media")));
+                BigDecimal score = decimalValue(entry.get("score"));
+                target.putIfAbsent(media.anilistId(), new AniListLibraryItem(
+                        media,
+                        integerOrZero(entry.get("progress")),
+                        score != null && score.signum() > 0 ? score : null,
+                        mapTrackingStatus(asString(entry.get("status"))),
+                        mapDate(entry.get("startedAt")),
+                        mapDate(entry.get("completedAt"))
+                ));
+            }
+        }
+    }
+
+    private TrackingStatus mapTrackingStatus(String status) {
+        return switch (status == null ? "PLANNING" : status) {
+            case "CURRENT", "REPEATING" -> TrackingStatus.IN_PROGRESS;
+            case "COMPLETED" -> TrackingStatus.COMPLETED;
+            case "PAUSED" -> TrackingStatus.PAUSED;
+            case "DROPPED" -> TrackingStatus.DROPPED;
+            default -> TrackingStatus.PLANNED;
+        };
+    }
+
+    private BigDecimal decimalValue(Object value) {
+        return value instanceof Number number ? BigDecimal.valueOf(number.doubleValue()) : null;
+    }
+
+    private int integerOrZero(Object value) {
+        Integer result = asInteger(value);
+        return result == null ? 0 : result;
+    }
+
     public List<AniListMediaResponse> getCurrentSeason(int perPage) {
         LocalDate today = LocalDate.now();
         ReleaseSeason season = switch ((today.getMonthValue() - 1) / 3) {
@@ -299,9 +396,13 @@ public class AniListClient {
             case 2 -> ReleaseSeason.SUMMER;
             default -> ReleaseSeason.FALL;
         };
+        return getSeason(season, today.getYear(), perPage);
+    }
+
+    public List<AniListMediaResponse> getSeason(ReleaseSeason season, int year, int perPage) {
         Map<String, Object> data = execute(SEASON_QUERY, Map.of(
                 "season", season.name(),
-                "year", today.getYear(),
+                "year", year,
                 "perPage", perPage
         ));
         return asList(asMap(data.get("Page")).get("media")).stream()

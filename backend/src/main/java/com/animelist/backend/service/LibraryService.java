@@ -2,17 +2,22 @@ package com.animelist.backend.service;
 
 import com.animelist.backend.dto.anilist.AiringMediaResponse;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
+import com.animelist.backend.dto.anilist.AniListLibraryExport;
+import com.animelist.backend.dto.anilist.AniListLibraryItem;
 import com.animelist.backend.dto.library.AddLibraryEntryRequest;
 import com.animelist.backend.dto.library.LibraryEntryResponse;
+import com.animelist.backend.dto.library.LibraryImportResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
+import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.exception.ResourceNotFoundException;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import com.animelist.backend.repository.MediaRepository;
+import com.animelist.backend.repository.AppUserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
@@ -29,15 +34,18 @@ public class LibraryService {
     private final LibraryEntryRepository libraryEntryRepository;
     private final MediaRepository mediaRepository;
     private final AniListClient aniListClient;
+    private final AppUserRepository appUserRepository;
 
     public LibraryService(
             LibraryEntryRepository libraryEntryRepository,
             MediaRepository mediaRepository,
-            AniListClient aniListClient
+            AniListClient aniListClient,
+            AppUserRepository appUserRepository
     ) {
         this.libraryEntryRepository = libraryEntryRepository;
         this.mediaRepository = mediaRepository;
         this.aniListClient = aniListClient;
+        this.appUserRepository = appUserRepository;
     }
 
     @Transactional(readOnly = true)
@@ -230,6 +238,46 @@ public class LibraryService {
         } else {
             entry.setCompletedAt(null);
         }
+    }
+
+    @Transactional
+    public LibraryImportResponse importFromAniList(String username) {
+        AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim());
+        int created = 0;
+        int updated = 0;
+        int anime = 0;
+        int manga = 0;
+
+        for (AniListLibraryItem item : externalLibrary.entries()) {
+            Media media = mediaRepository.findByAnilistId(item.media().anilistId()).orElseGet(Media::new);
+            copyExternalMedia(item.media(), media);
+            media = mediaRepository.save(media);
+
+            LibraryEntry entry = libraryEntryRepository.findByMediaAnilistId(item.media().anilistId()).orElse(null);
+            if (entry == null) {
+                entry = new LibraryEntry();
+                entry.setMedia(media);
+                created++;
+            } else {
+                updated++;
+            }
+            entry.setProgress(item.progress());
+            entry.setPersonalScore(item.personalScore());
+            entry.setTrackingStatus(item.trackingStatus());
+            entry.setStartedAt(item.startedAt());
+            entry.setCompletedAt(item.completedAt());
+            libraryEntryRepository.save(entry);
+
+            if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
+        }
+
+        AppUser profile = appUserRepository.findById((byte) 1).orElseGet(AppUser::new);
+        profile.setDisplayName(externalLibrary.username());
+        profile.setAvatarUrl(externalLibrary.avatarUrl());
+        profile.setBannerUrl(externalLibrary.bannerUrl());
+        appUserRepository.save(profile);
+
+        return new LibraryImportResponse(externalLibrary.username(), anime + manga, anime, manga, created, updated);
     }
 
     private boolean isTotalProgress(LibraryEntry entry) {

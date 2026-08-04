@@ -6,7 +6,7 @@ export default function MediaCard({ media, onIncrement }) {
   const progress = media.progress ?? 0
   return (
     <article className="media-card">
-      <Link to={`/media/${media.anilistId}`} className="cover-wrap">
+      <Link to={`/media/${media.anilistId}`} className={`cover-wrap ${media.episodePending ? 'episode-pending' : ''}`}>
         <img src={media.coverImage} alt={`Portada de ${media.title}`} loading="lazy" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
       </Link>

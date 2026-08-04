@@ -3,11 +3,14 @@ package com.animelist.backend.controller;
 import com.animelist.backend.dto.anilist.AiringMediaResponse;
 import com.animelist.backend.dto.library.AddLibraryEntryRequest;
 import com.animelist.backend.dto.library.LibraryEntryResponse;
+import com.animelist.backend.dto.library.LibraryImportResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.service.LibraryService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -48,6 +51,13 @@ public class LibraryController {
     @ResponseStatus(HttpStatus.CREATED)
     public LibraryEntryResponse add(@Valid @RequestBody AddLibraryEntryRequest request) {
         return libraryService.add(request);
+    }
+
+    @PostMapping("/import/anilist")
+    public LibraryImportResponse importFromAniList(
+            @RequestParam @NotBlank @Size(max = 50) String username
+    ) {
+        return libraryService.importFromAniList(username);
     }
 
     @PatchMapping("/{id}")

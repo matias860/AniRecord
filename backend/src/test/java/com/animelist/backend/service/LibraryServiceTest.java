@@ -19,6 +19,7 @@ import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import com.animelist.backend.repository.MediaRepository;
+import com.animelist.backend.repository.AppUserRepository;
 import java.time.LocalDate;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,11 +40,16 @@ class LibraryServiceTest {
     @Mock
     private AniListClient aniListClient;
 
+    @Mock
+    private AppUserRepository appUserRepository;
+
     private LibraryService libraryService;
 
     @BeforeEach
     void setUp() {
-        libraryService = new LibraryService(libraryEntryRepository, mediaRepository, aniListClient);
+        libraryService = new LibraryService(
+                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository
+        );
         lenient().when(libraryEntryRepository.save(any(LibraryEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }

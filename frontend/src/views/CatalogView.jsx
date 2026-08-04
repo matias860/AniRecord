@@ -5,6 +5,7 @@ import { Link, Navigate, useParams } from 'react-router-dom'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import MediaCard from '../components/media/MediaCard.jsx'
 import PageState from '../components/common/PageState.jsx'
+import StyledSelect from '../components/common/StyledSelect.jsx'
 import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
 
 const emptyFilters = { search: '', year: '', season: '', genre: '', status: '', sort: 'POPULARITY' }
@@ -35,19 +36,19 @@ export default function CatalogView() {
   const applyFilters = (event) => { event?.preventDefault(); dispatch(fetchCatalog({ type, page: 1, filters: requestFilters() })) }
   const resetFilters = () => { setFilters(emptyFilters); dispatch(fetchCatalog({ type, page: 1, filters: emptyFilters })) }
   const changePage = (page) => { dispatch(fetchCatalog({ type, page, filters: catalog.filters })); window.scrollTo({ top: 0, behavior: 'smooth' }) }
-  const update = (key) => (event) => setFilters((current) => ({ ...current, [key]: event.target.value }))
+  const update = (key) => (value) => setFilters((current) => ({ ...current, [key]: value }))
 
   return (
     <>
       <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explorá AniList y encontrá tu próxima historia.</p></div><button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button></div>
 
       <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={applyFilters}>
-        <label className="catalog-search"><Search /><input value={filters.search} onChange={update('search')} placeholder={`Buscar ${type === 'ANIME' ? 'anime' : 'manga'}...`} /></label>
-        <select value={filters.year} onChange={update('year')}><option value="">Todos los años</option>{years.map((year) => <option key={year}>{year}</option>)}</select>
-        <select value={filters.season} onChange={update('season')}><option value="">Todas las temporadas</option>{seasons.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
-        <select value={filters.genre} onChange={update('genre')}><option value="">Todos los géneros</option>{catalog.genres.map((genre) => <option key={genre}>{genre}</option>)}</select>
-        <select value={filters.status} onChange={update('status')}><option value="">Cualquier estado</option>{statuses.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select>
-        <select value={filters.sort} onChange={update('sort')}><option value="POPULARITY">Más populares</option><option value="SCORE">Mejor puntuados</option><option value="TRENDING">En tendencia</option><option value="NEWEST">Más recientes</option></select>
+        <label className="catalog-search"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={`Buscar ${type === 'ANIME' ? 'anime' : 'manga'}...`} /></label>
+        <StyledSelect ariaLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos los años' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
+        <StyledSelect ariaLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas las temporadas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
+        <StyledSelect ariaLabel="Género" value={filters.genre} onChange={update('genre')} options={[{ value: '', label: 'Todos los géneros' }, ...catalog.genres.map((genre) => ({ value: genre, label: genre }))]} />
+        <StyledSelect ariaLabel="Estado de emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Cualquier estado' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
+        <StyledSelect ariaLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
         <button className="primary-button" type="submit">Aplicar</button><button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 

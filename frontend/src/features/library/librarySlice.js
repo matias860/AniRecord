@@ -52,8 +52,14 @@ const replaceEntry = (state, entry) => {
 
 const librarySlice = createSlice({
   name: 'library',
-  initialState: { items: [], status: 'idle', mutationStatus: 'idle', error: null },
-  reducers: {},
+  initialState: {
+    items: [], status: 'idle', mutationStatus: 'idle', error: null,
+    filters: { mediaType: 'ANIME', trackingStatus: 'ALL' },
+  },
+  reducers: {
+    setLibraryMediaType: (state, action) => { state.filters.mediaType = action.payload },
+    setLibraryTrackingStatus: (state, action) => { state.filters.trackingStatus = action.payload },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchLibrary.pending, (state) => {
@@ -99,4 +105,5 @@ const librarySlice = createSlice({
   },
 })
 
+export const { setLibraryMediaType, setLibraryTrackingStatus } = librarySlice.actions
 export default librarySlice.reducer
