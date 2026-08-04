@@ -1,0 +1,33 @@
+# Variables de entorno y secretos
+.env
+.env.local
+application-local.properties
+
+# Backend Java
+backend/target/
+*.class
+*.jar
+*.war
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# IntelliJ
+.idea/
+*.iml
+
+# Visual Studio Code
+.vscode/
+
+# Logs
+*.log
+logs/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Archivos temporales
+*.tmp
+*.temp
