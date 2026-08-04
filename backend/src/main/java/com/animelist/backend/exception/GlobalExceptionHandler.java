@@ -1,16 +1,26 @@
 package com.animelist.backend.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleNotFound(ResourceNotFoundException exception) {
@@ -35,8 +45,25 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Hay datos inválidos en la solicitud", errors);
     }
 
+    @ExceptionHandler({
+            ConstraintViolationException.class,
+            HandlerMethodValidationException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class,
+            HttpMessageNotReadableException.class
+    })
+    public ResponseEntity<ApiErrorResponse> handleInvalidRequest(Exception exception) {
+        return build(HttpStatus.BAD_REQUEST, "La solicitud contiene parámetros o valores inválidos", Map.of());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleRouteNotFound(NoResourceFoundException exception) {
+        return build(HttpStatus.NOT_FOUND, "No se encontró el endpoint solicitado", Map.of());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleUnexpected(Exception exception) {
+        LOGGER.error("Error inesperado procesando la solicitud", exception);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrió un error inesperado", Map.of());
     }
 

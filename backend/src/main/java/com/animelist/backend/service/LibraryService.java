@@ -82,6 +82,7 @@ public class LibraryService {
         entry.setTrackingStatus(request.trackingStatus() == null
                 ? TrackingStatus.PLANNED
                 : request.trackingStatus());
+        applyAutomaticRules(entry);
 
         return toResponse(libraryEntryRepository.save(entry));
     }
@@ -93,6 +94,11 @@ public class LibraryService {
         if (request.progress() != null) {
             validateProgress(request.progress(), entry.getMedia().getTotalUnits());
             entry.setProgress(request.progress());
+            if (request.trackingStatus() == null
+                    && entry.getTrackingStatus() == TrackingStatus.COMPLETED
+                    && !isTotalProgress(entry)) {
+                entry.setTrackingStatus(TrackingStatus.IN_PROGRESS);
+            }
         }
         if (Boolean.TRUE.equals(request.clearScore())) {
             entry.setPersonalScore(null);
@@ -197,14 +203,23 @@ public class LibraryService {
     }
 
     private void applyAutomaticRules(LibraryEntry entry) {
+        Integer totalUnits = entry.getMedia().getTotalUnits();
+
+        if (entry.getTrackingStatus() == TrackingStatus.PLANNED) {
+            entry.setProgress(0);
+            entry.setStartedAt(null);
+            entry.setCompletedAt(null);
+            return;
+        }
+
+        if (entry.getTrackingStatus() == TrackingStatus.COMPLETED && totalUnits != null) {
+            entry.setProgress(totalUnits);
+        }
+
         if (entry.getProgress() > 0 && entry.getStartedAt() == null) {
             entry.setStartedAt(LocalDate.now());
         }
-        if (entry.getProgress() > 0 && entry.getTrackingStatus() == TrackingStatus.PLANNED) {
-            entry.setTrackingStatus(TrackingStatus.IN_PROGRESS);
-        }
 
-        Integer totalUnits = entry.getMedia().getTotalUnits();
         if (totalUnits != null && entry.getProgress().equals(totalUnits)) {
             entry.setTrackingStatus(TrackingStatus.COMPLETED);
             if (entry.getCompletedAt() == null) {
@@ -212,7 +227,14 @@ public class LibraryService {
             }
         } else if (entry.getTrackingStatus() == TrackingStatus.COMPLETED) {
             entry.setCompletedAt(entry.getCompletedAt() == null ? LocalDate.now() : entry.getCompletedAt());
+        } else {
+            entry.setCompletedAt(null);
         }
+    }
+
+    private boolean isTotalProgress(LibraryEntry entry) {
+        Integer totalUnits = entry.getMedia().getTotalUnits();
+        return totalUnits != null && entry.getProgress().equals(totalUnits);
     }
 
     private void copyExternalMedia(AniListMediaResponse source, Media target) {

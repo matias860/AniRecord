@@ -8,7 +8,9 @@ import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
 import com.animelist.backend.exception.AniListClientException;
+import java.net.http.HttpClient;
 import java.time.DateTimeException;
+import java.time.Duration;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,7 +18,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -101,9 +106,20 @@ public class AniListClient {
     private final RestClient restClient;
 
     public AniListClient(
-            @Value("${anilist.api.url:https://graphql.anilist.co}") String apiUrl
+            @Value("${anilist.api.url:https://graphql.anilist.co}") String apiUrl,
+            @Value("${anilist.api.connect-timeout:5s}") Duration connectTimeout,
+            @Value("${anilist.api.read-timeout:15s}") Duration readTimeout
     ) {
-        this.restClient = RestClient.builder().baseUrl(apiUrl).build();
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(connectTimeout)
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(readTimeout);
+
+        this.restClient = RestClient.builder()
+                .baseUrl(apiUrl)
+                .requestFactory(requestFactory)
+                .build();
     }
 
     public AniListSearchResponse search(
@@ -185,6 +201,22 @@ public class AniListClient {
             return asMap(response.get("data"));
         } catch (AniListClientException exception) {
             throw exception;
+        } catch (HttpStatusCodeException exception) {
+            if (exception.getStatusCode().value() == 429) {
+                throw new AniListClientException(
+                        "AniList alcanzó temporalmente su límite de solicitudes. Intenta nuevamente en un minuto.",
+                        exception
+                );
+            }
+            throw new AniListClientException(
+                    "AniList respondió con el estado HTTP " + exception.getStatusCode().value(),
+                    exception
+            );
+        } catch (ResourceAccessException exception) {
+            throw new AniListClientException(
+                    "AniList tardó demasiado en responder o no se pudo establecer la conexión",
+                    exception
+            );
         } catch (RestClientException exception) {
             throw new AniListClientException("No se pudo conectar con AniList", exception);
         }

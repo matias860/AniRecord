@@ -11,6 +11,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -50,9 +52,21 @@ public class LibraryEntry {
     @Column(name = "completed_at")
     private LocalDate completedAt;
 
-    @Column(name = "created_at", insertable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", insertable = false, updatable = false)
+    @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        createdAt = now;
+        updatedAt = now;
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
