@@ -103,6 +103,52 @@ public class AniListClient {
             }
             """;
 
+    private static final String CATALOG_QUERY = """
+            query MediaCatalog($type: MediaType!, $page: Int!, $perPage: Int!) {
+              Page(page: $page, perPage: $perPage) {
+                pageInfo { currentPage hasNextPage }
+                media(type: $type, sort: [POPULARITY_DESC, SCORE_DESC], isAdult: false) {
+                  id
+                  type
+                  title { romaji english native }
+                  coverImage { extraLarge large }
+                  bannerImage
+                  description
+                  episodes
+                  chapters
+                  status
+                  season
+                  seasonYear
+                  startDate { year month day }
+                  endDate { year month day }
+                  nextAiringEpisode { episode airingAt timeUntilAiring }
+                }
+              }
+            }
+            """;
+
+    private static final String SEASON_QUERY = """
+            query CurrentSeason($season: MediaSeason!, $year: Int!, $perPage: Int!) {
+              Page(page: 1, perPage: $perPage) {
+                media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false) {
+                  id
+                  type
+                  title { romaji english native }
+                  coverImage { extraLarge large }
+                  bannerImage
+                  description
+                  episodes
+                  status
+                  season
+                  seasonYear
+                  startDate { year month day }
+                  endDate { year month day }
+                  nextAiringEpisode { episode airingAt timeUntilAiring }
+                }
+              }
+            }
+            """;
+
     private final RestClient restClient;
 
     public AniListClient(
@@ -179,6 +225,38 @@ public class AniListClient {
                     .forEach(result::add);
         }
         return result;
+    }
+
+    public AniListSearchResponse browse(MediaType type, int page, int perPage) {
+        Map<String, Object> data = execute(CATALOG_QUERY, Map.of(
+                "type", type.name(), "page", page, "perPage", perPage
+        ));
+        Map<String, Object> pageData = asMap(data.get("Page"));
+        Map<String, Object> pageInfo = asMap(pageData.get("pageInfo"));
+        return new AniListSearchResponse(
+                asInteger(pageInfo.get("currentPage")),
+                Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
+                asList(pageData.get("media")).stream().map(this::asMap).map(this::mapMedia).toList()
+        );
+    }
+
+    public List<AniListMediaResponse> getCurrentSeason(int perPage) {
+        LocalDate today = LocalDate.now();
+        ReleaseSeason season = switch ((today.getMonthValue() - 1) / 3) {
+            case 0 -> ReleaseSeason.WINTER;
+            case 1 -> ReleaseSeason.SPRING;
+            case 2 -> ReleaseSeason.SUMMER;
+            default -> ReleaseSeason.FALL;
+        };
+        Map<String, Object> data = execute(SEASON_QUERY, Map.of(
+                "season", season.name(),
+                "year", today.getYear(),
+                "perPage", perPage
+        ));
+        return asList(asMap(data.get("Page")).get("media")).stream()
+                .map(this::asMap)
+                .map(this::mapMedia)
+                .toList();
     }
 
     @SuppressWarnings("unchecked")

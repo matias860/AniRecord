@@ -1,0 +1,39 @@
+import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
+import apiClient from '../../api/apiClient.js'
+
+const defaults = {
+  displayName: 'Mi perfil', bio: 'Coleccionando historias, un episodio a la vez.',
+  avatarUrl: '', bannerUrl: '', backgroundColor: '#0a0c14', surfaceColor: '#171b29',
+  accentColor: '#a88bff', dotsEnabled: true,
+}
+
+export const fetchProfile = createAsyncThunk('profile/fetch', async () => {
+  const { data } = await apiClient.get('/profile')
+  return data
+})
+
+export const saveProfile = createAsyncThunk('profile/save', async (_, { getState }) => {
+  const current = getState().profile
+  const profile = Object.fromEntries(Object.keys(defaults).map((key) => [key, current[key]]))
+  const { data } = await apiClient.patch('/profile', profile)
+  return data
+})
+
+const profileSlice = createSlice({
+  name: 'profile',
+  initialState: { ...defaults, status: 'idle', error: null, saved: false },
+  reducers: {
+    updateProfile: (state, action) => { Object.assign(state, action.payload); state.saved = false },
+    resetTheme: (state) => { Object.assign(state, defaults); state.saved = false },
+  },
+  extraReducers: (builder) => builder
+    .addCase(fetchProfile.pending, (state) => { state.status = 'loading' })
+    .addCase(fetchProfile.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.error = null; state.saved = true })
+    .addCase(fetchProfile.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
+    .addCase(saveProfile.pending, (state) => { state.status = 'saving'; state.error = null })
+    .addCase(saveProfile.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.saved = true })
+    .addCase(saveProfile.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message }),
+})
+
+export const { updateProfile, resetTheme } = profileSlice.actions
+export default profileSlice.reducer

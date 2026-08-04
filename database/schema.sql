@@ -11,6 +11,34 @@ USE anime_list;
 
 
 -- =====================================================
+-- APP USER
+--
+-- Perfil único de la aplicación. No requiere login.
+-- El CHECK garantiza que solamente pueda existir id = 1.
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS app_user (
+    id TINYINT NOT NULL DEFAULT 1,
+    display_name VARCHAR(40) NOT NULL DEFAULT 'Mi perfil',
+    bio VARCHAR(160) NOT NULL DEFAULT 'Coleccionando historias, un episodio a la vez.',
+    avatar_url VARCHAR(1000) DEFAULT NULL,
+    banner_url VARCHAR(1000) DEFAULT NULL,
+    background_color CHAR(7) NOT NULL DEFAULT '#0a0c14',
+    surface_color CHAR(7) NOT NULL DEFAULT '#171b29',
+    accent_color CHAR(7) NOT NULL DEFAULT '#a88bff',
+    dots_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT chk_app_user_singleton CHECK (id = 1)
+) ENGINE=InnoDB
+  DEFAULT CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO app_user (id) VALUES (1);
+
+
+-- =====================================================
 -- MEDIA
 --
 -- Información general obtenida desde AniList.
