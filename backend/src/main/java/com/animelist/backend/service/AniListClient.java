@@ -103,11 +103,11 @@ public class AniListClient {
             }
             """;
 
-    private static final String CATALOG_QUERY = """
-            query MediaCatalog($type: MediaType!, $page: Int!, $perPage: Int!) {
+    private static final String CATALOG_QUERY_TEMPLATE = """
+            query MediaCatalog(%s) {
               Page(page: $page, perPage: $perPage) {
                 pageInfo { currentPage hasNextPage }
-                media(type: $type, sort: [POPULARITY_DESC, SCORE_DESC], isAdult: false) {
+                media(%s) {
                   id
                   type
                   title { romaji english native }
@@ -125,6 +125,10 @@ public class AniListClient {
                 }
               }
             }
+            """;
+
+    private static final String GENRES_QUERY = """
+            query CatalogGenres { GenreCollection }
             """;
 
     private static final String SEASON_QUERY = """
@@ -227,10 +231,51 @@ public class AniListClient {
         return result;
     }
 
-    public AniListSearchResponse browse(MediaType type, int page, int perPage) {
-        Map<String, Object> data = execute(CATALOG_QUERY, Map.of(
-                "type", type.name(), "page", page, "perPage", perPage
-        ));
+    public AniListSearchResponse browse(
+            MediaType type, int page, int perPage, String search, Integer year,
+            ReleaseSeason season, List<String> genres, ReleaseStatus status, String sort
+    ) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        StringBuilder declarations = new StringBuilder(
+                "$type: MediaType!, $page: Int!, $perPage: Int!, $sort: [MediaSort]"
+        );
+        StringBuilder arguments = new StringBuilder("type: $type, sort: $sort, isAdult: false");
+        variables.put("type", type.name());
+        variables.put("page", page);
+        variables.put("perPage", perPage);
+        if (search != null && !search.isBlank()) {
+            declarations.append(", $search: String");
+            arguments.append(", search: $search");
+            variables.put("search", search.trim());
+        }
+        if (year != null) {
+            declarations.append(", $year: String");
+            arguments.append(", startDate_like: $year");
+            variables.put("year", year + "%");
+        }
+        if (season != null) {
+            declarations.append(", $season: MediaSeason");
+            arguments.append(", season: $season");
+            variables.put("season", season.name());
+        }
+        if (genres != null && !genres.isEmpty()) {
+            declarations.append(", $genres: [String]");
+            arguments.append(", genre_in: $genres");
+            variables.put("genres", genres);
+        }
+        if (status != null) {
+            declarations.append(", $status: MediaStatus");
+            arguments.append(", status: $status");
+            variables.put("status", status.name());
+        }
+        variables.put("sort", switch (sort) {
+            case "SCORE" -> List.of("SCORE_DESC", "POPULARITY_DESC");
+            case "TRENDING" -> List.of("TRENDING_DESC", "POPULARITY_DESC");
+            case "NEWEST" -> List.of("START_DATE_DESC", "POPULARITY_DESC");
+            default -> List.of("POPULARITY_DESC", "SCORE_DESC");
+        });
+        String query = CATALOG_QUERY_TEMPLATE.formatted(declarations, arguments);
+        Map<String, Object> data = execute(query, variables);
         Map<String, Object> pageData = asMap(data.get("Page"));
         Map<String, Object> pageInfo = asMap(pageData.get("pageInfo"));
         return new AniListSearchResponse(
@@ -238,6 +283,12 @@ public class AniListClient {
                 Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
                 asList(pageData.get("media")).stream().map(this::asMap).map(this::mapMedia).toList()
         );
+    }
+
+    public List<String> getGenres() {
+        return asList(execute(GENRES_QUERY, Map.of()).get("GenreCollection")).stream()
+                .map(String::valueOf)
+                .toList();
     }
 
     public List<AniListMediaResponse> getCurrentSeason(int perPage) {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Compass, Home, Library, Search, UserRound } from 'lucide-react'
+import { BookOpen, Compass, Home, Library, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, Outlet } from 'react-router-dom'
@@ -9,7 +9,6 @@ const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
   { to: '/biblioteca', label: 'Biblioteca', icon: Library },
   { to: '/catalogo', label: 'Catálogo', icon: Compass },
-  { to: '/buscar', label: 'Buscar', icon: Search },
   { to: '/perfil', label: 'Perfil', icon: UserRound },
 ]
 
@@ -36,7 +35,6 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
-          <NavLink className="discover-button" to="/catalogo"><Compass size={17} /> Explorar</NavLink>
         </div>
       </header>
       <main className="page"><Outlet /></main>

@@ -3,6 +3,8 @@ package com.animelist.backend.controller;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.ReleaseSeason;
+import com.animelist.backend.enums.ReleaseStatus;
 import com.animelist.backend.service.AniListClient;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -46,9 +48,21 @@ public class AniListController {
     public AniListSearchResponse catalog(
             @RequestParam MediaType type,
             @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "24") @Min(1) @Max(30) int perPage
+            @RequestParam(defaultValue = "24") @Min(1) @Max(30) int perPage,
+            @RequestParam(required = false) @Size(min = 2, max = 100) String search,
+            @RequestParam(required = false) @Min(1940) @Max(2100) Integer year,
+            @RequestParam(required = false) ReleaseSeason season,
+            @RequestParam(required = false) List<String> genre,
+            @RequestParam(required = false) ReleaseStatus status,
+            @RequestParam(defaultValue = "POPULARITY")
+            @jakarta.validation.constraints.Pattern(regexp = "POPULARITY|SCORE|TRENDING|NEWEST") String sort
     ) {
-        return aniListClient.browse(type, page, perPage);
+        return aniListClient.browse(type, page, perPage, search, year, season, genre, status, sort);
+    }
+
+    @GetMapping("/catalog/genres")
+    public List<String> catalogGenres() {
+        return aniListClient.getGenres();
     }
 
     @GetMapping("/season/current")
