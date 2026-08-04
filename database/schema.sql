@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS media (
 
     title VARCHAR(255) NOT NULL,
     cover_image VARCHAR(1000) DEFAULT NULL,
+    banner_image VARCHAR(1000) DEFAULT NULL,
     synopsis TEXT DEFAULT NULL,
 
     total_units INT DEFAULT NULL,
