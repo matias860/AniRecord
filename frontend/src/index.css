@@ -81,3 +81,28 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
 .styled-select { min-width:0; color:#e2e5ee; font-family:'Manrope Variable',Manrope,sans-serif; }.styled-select-trigger { width:100%; height:42px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 11px; border:1px solid var(--line); border-radius:10px; outline:none; color:#e2e5ee; background:color-mix(in srgb,var(--user-bg,#0a0c14) 76%,#171b29); font-family:inherit; font-size:10px; font-weight:650; transition:border-color .18s,box-shadow .18s,background .18s; }.styled-select-trigger:hover,.styled-select-trigger[data-open="true"] { border-color:color-mix(in srgb,var(--accent) 60%,var(--line)); background:color-mix(in srgb,var(--user-bg,#0a0c14) 62%,#22283a); }.styled-select-trigger[data-focus-visible="true"] { box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent); }.styled-select-popover { z-index:100; min-width:180px; max-height:290px; overflow:auto; padding:6px; border:1px solid #343a4d; border-radius:12px; color:#e8eaf2; background:#151925; box-shadow:0 20px 55px rgba(0,0,0,.48); font-family:'Manrope Variable',Manrope,sans-serif; }.styled-select-list { display:grid; gap:2px; outline:none; }.styled-select-option { min-height:34px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:7px 9px; border-radius:8px; outline:none; color:#b9bfce; font-size:10px; font-weight:650; cursor:pointer; }.styled-select-option:hover,.styled-select-option[data-hovered="true"],.styled-select-option[data-focused="true"] { color:white; background:#252a3b; }.styled-select-option[data-selected="true"] { color:white; background:color-mix(in srgb,var(--accent) 25%,#202536); }
 @media(max-width:1100px){.catalog-filters{grid-template-columns:repeat(3,1fr)}.catalog-search{grid-column:span 2}.catalog-filters .primary-button{grid-column:span 2}}
 @media(max-width:700px){.catalog-choices{grid-template-columns:1fr}.catalog-choice{min-height:190px;padding:24px}.catalog-filters{grid-template-columns:1fr 1fr}.catalog-search{grid-column:1/-1}.catalog-filters .primary-button{grid-column:auto}.catalog-choice h2{font-size:27px}.schedule-controls{align-items:flex-end;flex-direction:column}.schedule-season-preview{grid-template-columns:1fr 1fr}}
+
+/* Fluid layout for large displays */
+:root { --layout-max:1220px; }
+.topbar-wrap { padding-inline:max(18px,calc((100% - var(--layout-max))/2)); }
+.page { width:min(var(--layout-max),calc(100% - 48px)); }
+.detail-banner { margin-inline:calc((var(--layout-max) - 100vw)/2); padding-inline:max(24px,calc((100vw - var(--layout-max))/2)); }
+.marquee-mask { margin-inline:calc((100vw - var(--layout-max))/-2); }
+
+/* Profile artwork keeps the AniList banner ratio and focal area */
+.profile-banner { height:clamp(220px,18vw,270px); background-size:cover; background-position:center 38%; background-repeat:no-repeat; }
+
+@media(min-width:1600px){
+  :root { --layout-max:1500px; }
+  .topbar { height:64px; }
+  .page { padding-top:64px; }
+  .profile-banner { height:290px; }
+  .media-title { font-size:15px; }
+  .schedule-panel { padding:30px 34px 34px; }
+}
+
+@media(max-width:620px){
+  .page { width:calc(100% - 32px); }
+  .profile-banner { height:200px; background-position:center; }
+  .marquee-mask { margin-inline:-16px; }
+}

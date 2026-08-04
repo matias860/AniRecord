@@ -39,15 +39,6 @@ export default function HomeView() {
     }
   }, [dispatch, home.loadedSeason, home.loadedYear, selectedSeasonName, selectedSeasonYear])
 
-  const byRecentProgress = (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt) || b.progress - a.progress
-  const allWatching = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS' && item.mediaType === 'ANIME').sort(byRecentProgress)
-  const allReading = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS' && item.mediaType === 'MANGA').sort(byRecentProgress)
-  const watchingPage = Math.min(home.watchingPage, Math.max(0, Math.ceil(allWatching.length / pageSize) - 1))
-  const readingPage = Math.min(home.readingPage, Math.max(0, Math.ceil(allReading.length / pageSize) - 1))
-  const watching = allWatching.slice(watchingPage * pageSize, watchingPage * pageSize + pageSize)
-  const reading = allReading.slice(readingPage * pageSize, readingPage * pageSize + pageSize)
-  const inProgress = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS').length
-  const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
   const airingWithCurrentProgress = home.airing.map((entry) => ({
     ...entry,
     currentProgress: library.items.find((item) => item.anilistId === entry.anilistId)?.progress ?? entry.currentProgress,
@@ -55,6 +46,21 @@ export default function HomeView() {
   const pendingEpisodeIds = new Set(airingWithCurrentProgress
     .filter((entry) => entry.nextAiringEpisode.episode - 1 > entry.currentProgress)
     .map((entry) => entry.anilistId))
+  const byRecentProgress = (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt) || b.progress - a.progress
+  const byWatchingPriority = (a, b) => {
+    const pendingDifference = Number(pendingEpisodeIds.has(b.anilistId)) - Number(pendingEpisodeIds.has(a.anilistId))
+    if (pendingDifference) return pendingDifference
+    const releasingDifference = Number(b.releaseStatus === 'RELEASING') - Number(a.releaseStatus === 'RELEASING')
+    return releasingDifference || byRecentProgress(a, b)
+  }
+  const allWatching = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS' && item.mediaType === 'ANIME').sort(byWatchingPriority)
+  const allReading = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS' && item.mediaType === 'MANGA').sort(byRecentProgress)
+  const watchingPage = Math.min(home.watchingPage, Math.max(0, Math.ceil(allWatching.length / pageSize) - 1))
+  const readingPage = Math.min(home.readingPage, Math.max(0, Math.ceil(allReading.length / pageSize) - 1))
+  const watching = allWatching.slice(watchingPage * pageSize, watchingPage * pageSize + pageSize)
+  const reading = allReading.slice(readingPage * pageSize, readingPage * pageSize + pageSize)
+  const inProgress = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS').length
+  const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
   const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
   const scheduleOptions = [
     { value: '0', label: 'Esta semana' },

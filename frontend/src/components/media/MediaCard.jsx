@@ -4,6 +4,7 @@ import { getProgressPercent, STATUS_LABELS } from '../../lib/media.js'
 
 export default function MediaCard({ media, onIncrement }) {
   const progress = media.progress ?? 0
+  const totalLabel = media.totalUnits ?? (media.mediaType === 'MANGA' ? (progress > 0 ? `${progress}+` : 'En publicación') : '?')
   return (
     <article className="media-card">
       <Link to={`/media/${media.anilistId}`} className={`cover-wrap ${media.episodePending ? 'episode-pending' : ''}`}>
@@ -14,7 +15,7 @@ export default function MediaCard({ media, onIncrement }) {
         <Link to={`/media/${media.anilistId}`} className="media-title">{media.title}</Link>
         {media.trackingStatus && (
           <>
-            <div className="progress-copy"><span>{media.mediaType === 'MANGA' ? 'Capítulos' : 'Episodios'}</span><b>{progress} / {media.totalUnits ?? '?'}</b></div>
+            <div className="progress-copy"><span>{media.mediaType === 'MANGA' ? 'Capítulos' : 'Episodios'}</span><b>{progress} / {totalLabel}</b></div>
             <div className="progress-track"><span style={{ width: `${getProgressPercent(progress, media.totalUnits)}%` }} /></div>
             {onIncrement && media.trackingStatus !== 'COMPLETED' && (
               <button className="quick-add" onClick={() => onIncrement(media.id)}><Plus size={15} /> Marcar siguiente</button>
