@@ -4,7 +4,7 @@ Aplicación personal para registrar anime y manga con datos obtenidos desde AniL
 
 ## Producción
 
-- Frontend (Vercel): https://anime-list-matias.vercel.app
+- Frontend (Vercel): https://anime-list.vercel.app
 - Backend (Render Free): https://anime-list-matias-backend.onrender.com
 - Base de datos: PostgreSQL administrado por Neon
 

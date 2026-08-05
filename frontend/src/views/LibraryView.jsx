@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import { Library, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
+import { useSearchParams } from 'react-router-dom'
 import MediaCard from '../components/media/MediaCard.jsx'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import PageState from '../components/common/PageState.jsx'
@@ -40,6 +41,7 @@ const byPersonalScore = (a, b) => {
 
 export default function LibraryView() {
   const dispatch = useDispatch()
+  const [searchParams] = useSearchParams()
   const { items, status, error, filters = {} } = useSelector((state) => state.library)
   const mediaType = filters.mediaType === 'MANGA' ? 'MANGA' : 'ANIME'
   const trackingStatus = filters.trackingStatus ?? 'ALL'
@@ -49,6 +51,10 @@ export default function LibraryView() {
     .map((item) => item.releaseYear))].sort((a, b) => b - a), [items, mediaType])
 
   useEffect(() => { if (status === 'idle') dispatch(fetchLibrary()) }, [dispatch, status])
+  useEffect(() => {
+    const requestedType = searchParams.get('tipo')?.toUpperCase()
+    if (requestedType === 'ANIME' || requestedType === 'MANGA') dispatch(setLibraryMediaType(requestedType))
+  }, [dispatch, searchParams])
 
   const filtered = useMemo(() => {
     const search = (filters.search ?? '').trim().toLocaleLowerCase('es')

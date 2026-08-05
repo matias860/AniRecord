@@ -14,7 +14,7 @@ const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Ve
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
 const requestFilters = (filters) => Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
-  Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 2)))
+  Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 1)))
 
 export default function CatalogView() {
   const { mediaType } = useParams()
@@ -30,7 +30,7 @@ export default function CatalogView() {
   }, [catalog.genresStatus, dispatch, type])
 
   useEffect(() => {
-    if (!type || filters.search.trim().length === 1) return
+    if (!type) return
     let request
     const timer = window.setTimeout(() => {
       request = dispatch(fetchCatalog({ type, page: 1, filters: requestFilters(filters) }))

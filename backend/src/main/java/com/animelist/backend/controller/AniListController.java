@@ -31,7 +31,7 @@ public class AniListController {
 
     @GetMapping("/search")
     public AniListSearchResponse search(
-            @RequestParam @NotBlank @Size(min = 2, max = 100) String query,
+            @RequestParam @NotBlank @Size(min = 1, max = 100) String query,
             @RequestParam MediaType type,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int perPage
@@ -49,7 +49,7 @@ public class AniListController {
             @RequestParam MediaType type,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "24") @Min(1) @Max(30) int perPage,
-            @RequestParam(required = false) @Size(min = 2, max = 100) String search,
+            @RequestParam(required = false) @Size(min = 1, max = 100) String search,
             @RequestParam(required = false) @Min(1940) @Max(2100) Integer year,
             @RequestParam(required = false) ReleaseSeason season,
             @RequestParam(required = false) List<String> genre,

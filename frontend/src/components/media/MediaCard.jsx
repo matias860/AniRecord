@@ -1,4 +1,5 @@
 import { Plus, Star } from 'lucide-react'
+import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { getProgressPercent, STATUS_LABELS } from '../../lib/media.js'
 import MediaTags from './MediaTags.jsx'
@@ -18,7 +19,7 @@ export default function MediaCard({ media, onIncrement }) {
         {!media.trackingStatus && <MediaTags tags={media.tags} compact />}
         {media.trackingStatus && (
           <>
-            <div className="progress-copy"><span>{media.mediaType === 'MANGA' ? 'Capítulos' : 'Episodios'}</span><b>{progress} / {totalLabel}</b></div>
+            <div className="progress-copy"><span>{media.mediaType === 'MANGA' ? 'Capítulos' : 'Episodios'}</span><b><span className="progress-number"><AnimatePresence initial={false} mode="popLayout"><motion.span key={progress} initial={{ y: -9, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 9, opacity: 0 }} transition={{ duration: .2, ease: 'easeOut' }}>{progress}</motion.span></AnimatePresence></span> / {totalLabel}</b></div>
             <div className="progress-track"><span style={{ width: `${getProgressPercent(progress, media.totalUnits)}%` }} /></div>
             {onIncrement && media.trackingStatus !== 'COMPLETED' && (
               <button className="quick-add" onClick={() => onIncrement(media.id)}><Plus size={15} /> Marcar siguiente</button>
