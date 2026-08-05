@@ -14,9 +14,12 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class NotificationService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(NotificationService.class);
     private static final String QUERY = """
         query { Page(page: 1, perPage: 50) { notifications(type_in: [AIRING, RELATED_MEDIA_ADDITION, MEDIA_DATA_CHANGE, MEDIA_MERGE, MEDIA_DELETION]) {
           __typename
@@ -33,7 +36,15 @@ public class NotificationService {
     public NotificationService(AppNotificationRepository repository, AniListAuthService auth) { this.repository = repository; this.auth = auth; }
 
     @Scheduled(fixedDelay = 600000, initialDelay = 30000)
-    public void scheduledSync() { if (auth.validToken() != null) sync(); }
+    public void scheduledSync() { if (auth.validToken() != null) syncSafely(); }
+
+    public int syncSafely() {
+        try { return sync(); }
+        catch (RuntimeException exception) {
+            LOGGER.warn("No se pudieron sincronizar las notificaciones de AniList; se conserva el historial local", exception);
+            return 0;
+        }
+    }
 
     @Transactional
     @SuppressWarnings("unchecked")
@@ -60,7 +71,7 @@ public class NotificationService {
         for (Map<String, Object> item : items) {
             String typename = String.valueOf(item.get("__typename"));
             Integer episode = number(item.get("episode"));
-            if ("AiringNotification".equals(typename) && !Objects.equals(episode, 1)) continue;
+            if (!shouldImport(typename, episode)) continue;
             Integer externalId = number(item.get("id"));
             if (externalId == null || repository.existsByAnilistNotificationId(externalId)) continue;
             AppNotification notification = map(item, typename, episode, externalId);
@@ -72,7 +83,11 @@ public class NotificationService {
     public List<NotificationResponse> findRecent(int limit) { return repository.findAllByOrderByOccurredAtDesc(PageRequest.of(0, Math.min(limit, 100))).stream().map(this::response).toList(); }
     public long unreadCount() { return repository.countByReadFalse(); }
     @Transactional public void read(Long id) { repository.findById(id).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
-    @Transactional public void readAll() { repository.findAll().forEach(item -> item.setRead(true)); }
+    @Transactional public void readAll() { repository.markAllAsRead(); }
+
+    static boolean shouldImport(String typename, Integer episode) {
+        return !"AiringNotification".equals(typename) || Objects.equals(episode, 1);
+    }
 
     @SuppressWarnings("unchecked")
     private AppNotification map(Map<String, Object> item, String typename, Integer episode, Integer externalId) {

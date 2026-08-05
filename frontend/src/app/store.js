@@ -7,6 +7,8 @@ import profileReducer from '../features/profile/profileSlice.js'
 import catalogReducer from '../features/catalog/catalogSlice.js'
 import historyReducer from '../features/history/historySlice.js'
 import notificationReducer from '../features/notifications/notificationSlice.js'
+import toastReducer from '../features/toast/toastSlice.js'
+import { toastMiddleware } from './toastMiddleware.js'
 
 const rootReducer = combineReducers({
   library: libraryReducer,
@@ -16,6 +18,7 @@ const rootReducer = combineReducers({
   catalog: catalogReducer,
   history: historyReducer,
   notifications: notificationReducer,
+  toast: toastReducer,
 })
 
 const storage = {
@@ -32,7 +35,7 @@ const persistedReducer = persistReducer(
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({ serializableCheck: false }),
+    getDefaultMiddleware({ serializableCheck: false }).concat(toastMiddleware),
 })
 
 export const persistor = persistStore(store)

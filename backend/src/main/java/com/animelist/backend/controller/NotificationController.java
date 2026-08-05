@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 public class NotificationController {
     private final NotificationService service;
     public NotificationController(NotificationService service) { this.service = service; }
-    @GetMapping public List<NotificationResponse> recent(@RequestParam(defaultValue="30") @Min(1) @Max(100) int limit) { service.sync(); return service.findRecent(limit); }
+    @GetMapping public List<NotificationResponse> recent(@RequestParam(defaultValue="30") @Min(1) @Max(100) int limit) { service.syncSafely(); return service.findRecent(limit); }
     @GetMapping("/unread-count") public Map<String, Long> unread() { return Map.of("count", service.unreadCount()); }
     @PostMapping("/sync") public Map<String, Integer> sync() { return Map.of("added", service.sync()); }
     @PatchMapping("/{id}/read") public void read(@PathVariable Long id) { service.read(id); }

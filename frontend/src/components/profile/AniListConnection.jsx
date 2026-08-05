@@ -1,11 +1,15 @@
 import { CheckCircle2, Link2, LogOut } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import apiClient from '../../api/apiClient.js'
+import { useDispatch } from 'react-redux'
+import { fetchProfile } from '../../features/profile/profileSlice.js'
+import { addToast } from '../../features/toast/toastSlice.js'
 
 export default function AniListConnection() {
-  const [connection, setConnection] = useState(null); const [error, setError] = useState(null)
-  useEffect(() => { apiClient.get('/anilist/oauth/status').then(({ data }) => setConnection(data)).catch((reason) => setError(reason.message)) }, [])
+  const dispatch = useDispatch()
+  const [connection, setConnection] = useState(null)
+  useEffect(() => { const result = new URLSearchParams(window.location.search).get('anilist'); if (result === 'error') dispatch(addToast({ type: 'error', title: 'No se pudo conectar AniList', message: 'La autorización fue cancelada, venció o no pudo completarse.' })); apiClient.get('/anilist/oauth/status').then(({ data }) => { setConnection(data); if (result === 'connected') { dispatch(fetchProfile()); dispatch(addToast({ type: 'success', title: 'AniList conectado', message: 'Avatar, banner y notificaciones fueron sincronizados.' })) } }).catch((reason) => dispatch(addToast({ type: 'error', title: 'AniList no disponible', message: reason.message }))) }, [dispatch])
   const connect = () => { window.location.href = `${import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080'}/api/anilist/oauth/connect` }
-  const disconnect = async () => { await apiClient.delete('/anilist/oauth'); setConnection({ connected: false, username: null }) }
-  return <section className={`anilist-connection ${connection?.connected ? 'connected' : ''}`}><div className="anilist-logo">A</div><div><span className="eyebrow">Sincronización</span><h3>{connection?.connected ? `Conectado como ${connection.username}` : 'Conectar con AniList'}</h3><p>{connection?.connected ? 'Recibirás anuncios, cambios importantes y solamente el estreno del primer episodio.' : 'Necesario para consultar tus notificaciones personales de AniList.'}</p>{error && <small>{error}</small>}</div>{connection?.connected ? <button className="connection-secondary" onClick={disconnect}><LogOut /> Desconectar</button> : <button className="primary-button" disabled={!connection} onClick={connect}><Link2 /> Conectar</button>}{connection?.connected && <CheckCircle2 className="connection-check" />}</section>
+  const disconnect = async () => { try { await apiClient.delete('/anilist/oauth'); setConnection({ connected: false, configured: true, username: null }); dispatch(addToast({ type: 'success', title: 'AniList desconectado', message: 'La biblioteca local y tus imágenes se conservaron.' })) } catch (reason) { dispatch(addToast({ type: 'error', title: 'No se pudo desconectar', message: reason.message })) } }
+  return <section className={`anilist-connection ${connection?.connected ? 'connected' : ''}`}><div className="anilist-logo">A</div><div><span className="eyebrow">Sincronización</span><h3>{connection?.connected ? `Conectado como ${connection.username}` : 'Conectar con AniList'}</h3><p>{connection?.connected ? 'Avatar y banner sincronizados. Recibirás anuncios, cambios importantes y solamente el estreno del primer episodio.' : 'Conectá tu cuenta para sincronizar el perfil y consultar notificaciones personales.'}</p>{connection && !connection.configured && <small>Faltan las credenciales locales de AniList.</small>}</div>{connection?.connected ? <button className="connection-secondary" onClick={disconnect}><LogOut /> Desconectar</button> : <button className="primary-button" disabled={!connection?.configured} onClick={connect}><Link2 /> Conectar</button>}{connection?.connected && <CheckCircle2 className="connection-check" />}</section>
 }

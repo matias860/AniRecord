@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, Outlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
+import ToastViewport from '../common/ToastViewport.jsx'
 
 const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
@@ -40,6 +41,7 @@ export default function AppLayout() {
         </div>
       </header>
       <main className="page"><Outlet /></main>
+      <ToastViewport />
     </div>
   )
 }

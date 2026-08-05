@@ -92,9 +92,7 @@ function SavedTrackingEditor({ saved, mediaType, unit, total, statusOptions, loa
         clearScore: form.personalScore === '',
       } })).unwrap()
       setMessage('Cambios guardados')
-    } catch (saveError) {
-      setMessage(saveError?.message || 'No se pudieron guardar los cambios')
-    }
+    } catch { /* El middleware global muestra el error en un toast. */ }
   }
 
   return <TrackingEditor form={form} setForm={setForm} mediaType={mediaType} unit={unit} total={total} statusOptions={statusOptions} loading={loading} message={message} onSave={saveTracking} />
