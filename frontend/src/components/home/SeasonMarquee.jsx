@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -6,7 +6,6 @@ import { Link } from 'react-router-dom'
 export default function SeasonMarquee({ entries, loading, label, canGoPrevious, canGoNext, onPrevious, onNext }) {
   const featured = entries.slice(0, 3)
   const [active, setActive] = useState(0)
-  useEffect(() => setActive(0), [label])
   const move = (direction) => setActive((current) => (current + direction + featured.length) % featured.length)
   const media = featured[active]
 

@@ -6,10 +6,20 @@ export const fetchAiringSchedule = createAsyncThunk('home/airing', async () => {
   return data
 })
 
-export const fetchSeason = createAsyncThunk('home/season', async ({ season, year }) => {
-  const { data } = await apiClient.get('/anilist/season', { params: { season, year, limit: 20 } })
-  return { entries: data, season, year }
-})
+export const fetchSeason = createAsyncThunk(
+  'home/season',
+  async ({ season, year }) => {
+    const { data } = await apiClient.get('/anilist/season', { params: { season, year, limit: 20 } })
+    return { entries: data, season, year }
+  },
+  {
+    condition: ({ season, year }, { getState }) => {
+      const home = getState().home
+      const requestKey = `${season}-${year}`
+      return !home.seasonCache[requestKey] && home.seasonRequestKey !== requestKey
+    },
+  },
+)
 
 const homeSlice = createSlice({
   name: 'home',
@@ -39,7 +49,10 @@ const homeSlice = createSlice({
         state.loadedYear = action.payload.year
         state.seasonRequestKey = null
       })
-      .addCase(fetchSeason.rejected, (state) => { state.seasonStatus = 'failed'; state.seasonRequestKey = null })
+      .addCase(fetchSeason.rejected, (state, action) => {
+        state.seasonStatus = 'failed'
+        state.seasonRequestKey = `${action.meta.arg.season}-${action.meta.arg.year}`
+      })
   },
 })
 

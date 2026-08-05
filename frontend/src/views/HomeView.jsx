@@ -82,6 +82,7 @@ export default function HomeView() {
       <PageState loading={home.status === 'loading'} error={home.error} />
       {home.status === 'succeeded' && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <SeasonMarquee
+        key={selectedSeasonKey}
         entries={selectedSeasonEntries}
         loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'}
         label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`}

@@ -21,8 +21,6 @@ export default function MediaDetailView() {
   const { detail, detailStatus, error } = useSelector((state) => state.search)
   const library = useSelector((state) => state.library)
   const saved = library.items.find((item) => item.anilistId === Number(anilistId))
-  const [form, setForm] = useState({ trackingStatus: 'PLANNED', progress: 0, personalScore: '', rewatchCount: 0 })
-  const [message, setMessage] = useState('')
 
   useEffect(() => {
     dispatch(fetchMediaDetail(anilistId))
@@ -33,15 +31,6 @@ export default function MediaDetailView() {
     if (library.status === 'idle') dispatch(fetchLibrary())
   }, [dispatch, library.status])
 
-  useEffect(() => {
-    if (saved) setForm({
-      trackingStatus: saved.trackingStatus,
-      progress: saved.progress,
-      personalScore: saved.personalScore ?? '',
-      rewatchCount: saved.rewatchCount ?? 0,
-    })
-  }, [saved])
-
   if (detailStatus !== 'succeeded') return <PageState loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : 'capítulos'
   const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
@@ -50,26 +39,10 @@ export default function MediaDetailView() {
       : value === 'COMPLETED' ? (detail.mediaType === 'ANIME' ? 'Visto' : 'Leído') : label,
   }))
 
-  const saveTracking = async () => {
-    setMessage('')
-    try {
-      await dispatch(updateLibraryEntry({ id: saved.id, changes: {
-        trackingStatus: form.trackingStatus,
-        progress: Number(form.progress),
-        rewatchCount: Number(form.rewatchCount),
-        personalScore: form.personalScore === '' ? null : Number(form.personalScore),
-        clearScore: form.personalScore === '',
-      } })).unwrap()
-      setMessage('Cambios guardados')
-    } catch (saveError) {
-      setMessage(saveError?.message || 'No se pudieron guardar los cambios')
-    }
-  }
-
   return (
     <article className="detail-page">
       <div className="detail-banner" style={{ backgroundImage: `linear-gradient(90deg, rgba(10,12,20,.96), rgba(10,12,20,.48)), url(${detail.bannerImage || detail.coverImage})` }}><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
-      <div className="detail-content"><img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} /><div className={`detail-copy ${saved ? 'with-tracking-card' : ''}`}><div className="detail-primary"><span className="eyebrow">{detail.mediaType === 'ANIME' ? 'Anime' : 'Manga'} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1><div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>{!saved && <button className="primary-button" disabled={library.mutationStatus === 'loading'} onClick={() => dispatch(addToLibrary({ anilistId: detail.anilistId }))}><ListPlus /> Agregar a pendientes</button>}</div>{saved && <TrackingEditor form={form} setForm={setForm} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} message={message} onSave={saveTracking} />}</div>{!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}<div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'No hay una sinopsis disponible.'}</p></div></div>
+      <div className="detail-content"><img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} /><div className={`detail-copy ${saved ? 'with-tracking-card' : ''}`}><div className="detail-primary"><span className="eyebrow">{detail.mediaType === 'ANIME' ? 'Anime' : 'Manga'} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1><div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>{!saved && <button className="primary-button" disabled={library.mutationStatus === 'loading'} onClick={() => dispatch(addToLibrary({ anilistId: detail.anilistId }))}><ListPlus /> Agregar a pendientes</button>}</div>{saved && <SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} />}</div>{!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}<div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'No hay una sinopsis disponible.'}</p></div></div>
       {(!!detail.relations?.length || !!detail.characters?.length) && <div className="detail-extras">
         {!!detail.relations?.length && <section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations} /></section>}
         {!!detail.characters?.length && <section className="characters-section"><span className="eyebrow">Reparto principal</span><h2>Personajes</h2><CharacterCarousel key={detail.anilistId} characters={detail.characters} /></section>}
@@ -96,6 +69,35 @@ function CharacterCarousel({ characters }) {
     <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((character) => <article key={character.anilistId}><img src={character.image} alt={character.name} /><span><strong>{character.name}</strong><small>Principal</small></span></article>)}</motion.div></AnimatePresence>
     {pages > 1 && <div className="character-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Tres personajes anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Tres personajes siguientes"><ChevronRight /></button></div>}
   </div>
+}
+
+function SavedTrackingEditor({ saved, mediaType, unit, total, statusOptions, loading }) {
+  const dispatch = useDispatch()
+  const [form, setForm] = useState(() => ({
+    trackingStatus: saved.trackingStatus,
+    progress: saved.progress,
+    personalScore: saved.personalScore ?? '',
+    rewatchCount: saved.rewatchCount ?? 0,
+  }))
+  const [message, setMessage] = useState('')
+
+  const saveTracking = async () => {
+    setMessage('')
+    try {
+      await dispatch(updateLibraryEntry({ id: saved.id, changes: {
+        trackingStatus: form.trackingStatus,
+        progress: Number(form.progress),
+        rewatchCount: Number(form.rewatchCount),
+        personalScore: form.personalScore === '' ? null : Number(form.personalScore),
+        clearScore: form.personalScore === '',
+      } })).unwrap()
+      setMessage('Cambios guardados')
+    } catch (saveError) {
+      setMessage(saveError?.message || 'No se pudieron guardar los cambios')
+    }
+  }
+
+  return <TrackingEditor form={form} setForm={setForm} mediaType={mediaType} unit={unit} total={total} statusOptions={statusOptions} loading={loading} message={message} onSave={saveTracking} />
 }
 
 function TrackingEditor({ form, setForm, mediaType, unit, total, statusOptions, loading, message, onSave }) {
