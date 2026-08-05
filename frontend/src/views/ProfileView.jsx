@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BookOpen, Clapperboard, Palette, RotateCcw, Save, Sparkles, Star, UserRound } from 'lucide-react'
+import { BookOpen, Clapperboard, Palette, RotateCcw, Save, Sparkles, Star, Trophy, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
@@ -7,6 +7,7 @@ import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
 import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
 import AniListConnection from '../components/profile/AniListConnection.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
+import { selectTopRatedAnime, selectTopRatedManga } from '../features/library/librarySelectors.js'
 import { fetchHistory } from '../features/history/historySlice.js'
 import { resetTheme, saveProfile, updateProfile } from '../features/profile/profileSlice.js'
 
@@ -16,11 +17,11 @@ export default function ProfileView() {
   const libraryState = useSelector((state) => state.library)
   const historyState = useSelector((state) => state.history)
   const library = libraryState.items
-  const scored = library.filter((item) => item.personalScore != null)
-  const topFor = (mediaType) => scored.filter((item) => item.mediaType === mediaType).sort((a, b) => Number(b.personalScore) - Number(a.personalScore) || new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 4)
+  const topAnime = useSelector(selectTopRatedAnime)
+  const topManga = useSelector(selectTopRatedManga)
   const update = (changes) => dispatch(updateProfile(changes))
   useEffect(() => { if (libraryState.status === 'idle') dispatch(fetchLibrary()) }, [dispatch, libraryState.status])
-  useEffect(() => { dispatch(fetchHistory()) }, [dispatch])
+  useEffect(() => { if (historyState.status === 'idle') dispatch(fetchHistory()) }, [dispatch, historyState.status])
   return (
     <>
       <section className="profile-hero">
@@ -29,8 +30,11 @@ export default function ProfileView() {
       </section>
       <AniListConnection />
       <ProfileAnalytics library={library} history={historyState.items} />
+      <div className="profile-insights-grid">
+        <ActivityTimeline entries={historyState.items} status={historyState.status} error={historyState.error} />
+        <section className="profile-highlights"><div className="section-heading"><div><span className="eyebrow">Tu selección</span><h2><Trophy /> Tus mejores puntuados</h2></div></div><div className="top-rated-grid"><TopRated title="Top 5 anime" icon={<Clapperboard />} entries={topAnime} /><TopRated title="Top 5 manga" icon={<BookOpen />} entries={topManga} /></div></section>
+      </div>
       <div className="profile-layout">
-        <div className="profile-history-column"><ActivityTimeline entries={historyState.items} status={historyState.status} error={historyState.error} /><section className="profile-preview"><TopRated title="Anime mejor puntuado" icon={<Clapperboard />} entries={topFor('ANIME')} /><TopRated title="Manga mejor puntuado" icon={<BookOpen />} entries={topFor('MANGA')} /></section></div>
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => dispatch(resetTheme())}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
           <label className="profile-field"><span>Biografía</span><textarea value={profile.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>

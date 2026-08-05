@@ -65,23 +65,13 @@ public class AniListAuthService {
         if (token == null || token.get("access_token") == null) throw new BusinessException("AniList no devolvió un token válido");
         String accessToken = String.valueOf(token.get("access_token"));
         Number expires = (Number) token.getOrDefault("expires_in", 31536000);
-        Map<String, Object> viewerBody = restClient.post().uri("https://graphql.anilist.co")
-                .header("Authorization", "Bearer " + accessToken).contentType(MediaType.APPLICATION_JSON)
-                .body(Map.of("query", "query { Viewer { name avatar { large } bannerImage } }"))
-                .retrieve().body(Map.class);
-        Map<String, Object> data = (Map<String, Object>) viewerBody.get("data");
-        Map<String, Object> viewer = (Map<String, Object>) data.get("Viewer");
+        Map<String, Object> viewer = fetchViewer(accessToken);
         AniListConnection connection = connections.findById((byte) 1).orElseGet(AniListConnection::new);
         connection.setAccessToken(accessToken);
         connection.setTokenExpiresAt(LocalDateTime.now().plusSeconds(expires.longValue()));
         connection.setUsername(String.valueOf(viewer.get("name")));
         connections.save(connection);
-        var profile = profiles.findById((byte) 1).orElseThrow();
-        Map<String, Object> avatar = viewer.get("avatar") instanceof Map ? (Map<String, Object>) viewer.get("avatar") : Map.of();
-        profile.setDisplayName(String.valueOf(viewer.get("name")));
-        profile.setAvatarUrl(avatar.get("large") == null ? profile.getAvatarUrl() : String.valueOf(avatar.get("large")));
-        profile.setBannerUrl(viewer.get("bannerImage") == null ? profile.getBannerUrl() : String.valueOf(viewer.get("bannerImage")));
-        profiles.save(profile);
+        updateLocalProfile(viewer);
     }
 
     @Transactional
@@ -93,6 +83,35 @@ public class AniListAuthService {
         AniListConnection connection = connections.findById((byte) 1).orElse(null);
         if (connection == null || (connection.getTokenExpiresAt() != null && connection.getTokenExpiresAt().isBefore(LocalDateTime.now()))) return null;
         return connection.getAccessToken();
+    }
+
+    @Transactional
+    public void refreshProfile() {
+        String token = validToken();
+        if (token == null) throw new BusinessException("Conectá tu cuenta de AniList antes de actualizar el perfil");
+        updateLocalProfile(fetchViewer(token));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fetchViewer(String accessToken) {
+        Map<String, Object> body = restClient.post().uri("https://graphql.anilist.co")
+                .header("Authorization", "Bearer " + accessToken).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("query", "query { Viewer { name avatar { large } bannerImage } }"))
+                .retrieve().body(Map.class);
+        if (body == null || !(body.get("data") instanceof Map)) throw new BusinessException("AniList no devolvió los datos del perfil");
+        Map<String, Object> viewer = (Map<String, Object>) ((Map<String, Object>) body.get("data")).get("Viewer");
+        if (viewer == null) throw new BusinessException("AniList no devolvió los datos del usuario conectado");
+        return viewer;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void updateLocalProfile(Map<String, Object> viewer) {
+        var profile = profiles.findById((byte) 1).orElseThrow();
+        Map<String, Object> avatar = viewer.get("avatar") instanceof Map ? (Map<String, Object>) viewer.get("avatar") : Map.of();
+        profile.setDisplayName(String.valueOf(viewer.get("name")));
+        profile.setAvatarUrl(avatar.get("large") == null ? profile.getAvatarUrl() : String.valueOf(avatar.get("large")));
+        profile.setBannerUrl(viewer.get("bannerImage") == null ? profile.getBannerUrl() : String.valueOf(viewer.get("bannerImage")));
+        profiles.save(profile);
     }
 
     private String encode(String value) { return URLEncoder.encode(value, StandardCharsets.UTF_8); }

@@ -1,10 +1,19 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
 
-export const fetchHistory = createAsyncThunk('history/fetch', async (limit = 80) => {
-  const { data } = await apiClient.get('/history', { params: { limit } })
-  return data
-})
+export const fetchHistory = createAsyncThunk(
+  'history/fetch',
+  async (limit = 20) => {
+    const { data } = await apiClient.get('/history', { params: { limit } })
+    return data
+  },
+  {
+    condition: (_, { getState }) => {
+      const status = getState().history.status
+      return status === 'idle' || status === 'failed'
+    },
+  },
+)
 
 const historySlice = createSlice({
   name: 'history',

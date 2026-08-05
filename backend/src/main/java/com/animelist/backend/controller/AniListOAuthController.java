@@ -38,5 +38,6 @@ public class AniListOAuthController {
         }
     }
     @DeleteMapping public void disconnect() { auth.disconnect(); }
+    @PostMapping("/profile/sync") public void syncProfile() { auth.refreshProfile(); }
     private ResponseEntity<Void> redirect(String result) { return ResponseEntity.status(302).location(URI.create(frontendUrl + "/perfil?anilist=" + result)).build(); }
 }

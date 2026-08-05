@@ -10,6 +10,9 @@ export const fetchLibrary = createAsyncThunk(
     const { data } = await apiClient.get('/library', { params })
     return data
   },
+  {
+    condition: (_, { getState }) => getState().library.status !== 'loading',
+  },
 )
 
 export const addToLibrary = createAsyncThunk(
