@@ -51,6 +51,7 @@ export default function LibraryView() {
     .map((item) => item.releaseYear))].sort((a, b) => b - a), [items, mediaType])
 
   useEffect(() => { if (status === 'idle') dispatch(fetchLibrary()) }, [dispatch, status])
+  useEffect(() => () => { dispatch(setLibraryFilter({ key: 'search', value: '' })) }, [dispatch])
   useEffect(() => {
     const requestedType = searchParams.get('tipo')?.toUpperCase()
     if (requestedType === 'ANIME' || requestedType === 'MANGA') dispatch(setLibraryMediaType(requestedType))

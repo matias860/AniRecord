@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
 
-export const fetchNotifications = createAsyncThunk('notifications/fetch', async () => (await apiClient.get('/notifications', { params: { limit: 40 } })).data)
+export const fetchNotifications = createAsyncThunk('notifications/fetch', async () => (await apiClient.get('/notifications', { params: { limit: 10 } })).data)
 export const markNotificationRead = createAsyncThunk('notifications/read', async (id) => { await apiClient.patch(`/notifications/${id}/read`); return id })
 export const markAllNotificationsRead = createAsyncThunk('notifications/readAll', async () => { await apiClient.patch('/notifications/read-all') })
 

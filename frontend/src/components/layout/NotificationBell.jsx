@@ -18,7 +18,7 @@ export default function NotificationBell() {
   return <div className="notification-root" ref={root}><button className="notification-button" onClick={toggle} aria-label="Notificaciones" aria-expanded={open} aria-controls="notification-popover"><Bell />{unread > 0 && <span>{unread > 9 ? '9+' : unread}</span>}</button>
     <AnimatePresence>{open && <motion.div id="notification-popover" role="dialog" aria-label="Notificaciones de AniList" className="notification-popover" initial={{ opacity: 0, y: -8, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: .98 }}>
       <header><div><span className="eyebrow">AniList</span><h3>Notificaciones</h3></div>{unread > 0 && <button onClick={() => dispatch(markAllNotificationsRead())}><CheckCheck /> Leer todas</button>}</header>
-      <div className="notification-list">{status === 'loading' && !items.length ? <p>Cargando novedades…</p> : error && !items.length ? <div className="notification-error"><p>{error}</p><button onClick={() => dispatch(fetchNotifications())}>Reintentar</button></div> : items.length ? items.slice(0, 12).map((item) => <NotificationItem item={item} onSelect={() => select(item)} key={item.id} />) : <p>No hay novedades todavía.</p>}</div>
+      <div className="notification-list">{status === 'loading' && !items.length ? <p>Cargando novedades…</p> : error && !items.length ? <div className="notification-error"><p>{error}</p><button onClick={() => dispatch(fetchNotifications())}>Reintentar</button></div> : items.length ? items.slice(0, 10).map((item) => <NotificationItem item={item} onSelect={() => select(item)} key={item.id} />) : <p>No hay novedades todavía.</p>}</div>
     </motion.div>}</AnimatePresence></div>
 }
 
