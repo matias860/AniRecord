@@ -2,34 +2,23 @@
 setlocal
 cd /d "%~dp0"
 
-if not exist "backend\mvnw.cmd" (
-  echo No se encontro backend\mvnw.cmd
-  pause
-  exit /b 1
-)
-
 if not exist "frontend\package.json" (
   echo No se encontro frontend\package.json
   pause
   exit /b 1
 )
 
-powershell -NoProfile -Command "$service = Get-Service | Where-Object { $_.Name -like 'MySQL*' } | Select-Object -First 1; if (-not $service) { exit 2 }; if ($service.Status -ne 'Running') { try { Start-Service $service.Name -ErrorAction Stop } catch { exit 1 } }"
-if errorlevel 2 echo AVISO: No se encontro un servicio de MySQL instalado.
-if errorlevel 1 if not errorlevel 2 echo AVISO: No se pudo iniciar MySQL. Proba ejecutar este archivo como administrador.
-
-start "Anime List - Backend" cmd /k "cd /d ""%~dp0backend"" && call mvnw.cmd spring-boot:run"
 start "Anime List - Frontend" cmd /k "cd /d ""%~dp0frontend"" && (if not exist node_modules call npm install) && npm run dev"
 
 echo Anime List se esta iniciando.
-echo Backend:  http://localhost:8080
-echo Frontend: http://localhost:5173
-echo Esperando a que MySQL, el backend y el frontend respondan...
+echo Frontend local: http://localhost:5173
+echo Backend remoto: https://anime-list-matias-backend.onrender.com
+echo La primera carga puede tardar cerca de un minuto si Render esta dormido.
 
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$limit = (Get-Date).AddSeconds(120); while ((Get-Date) -lt $limit) { try { $backend = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8080/api/library' -TimeoutSec 3; $frontend = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5173' -TimeoutSec 3; if ($backend.StatusCode -eq 200 -and $frontend.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 1 }; exit 1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$limit = (Get-Date).AddSeconds(120); while ((Get-Date) -lt $limit) { try { $frontend = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5173' -TimeoutSec 3; if ($frontend.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 1 }; exit 1"
 if errorlevel 1 (
-  echo No se pudo abrir la pagina porque el sistema completo no inicio en 120 segundos.
-  echo Revisa las ventanas de Backend y Frontend para ver el error.
+  echo No se pudo iniciar el frontend en 120 segundos.
+  echo Revisa la ventana de Frontend para ver el error.
   pause
   exit /b 1
 )

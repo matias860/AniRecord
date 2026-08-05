@@ -1,88 +1,63 @@
 # Anime List
 
-Aplicación personal para registrar anime y manga.
+Aplicación personal para registrar anime y manga con datos obtenidos desde AniList.
+
+## Producción
+
+- Frontend (Vercel): https://anime-list-matias.vercel.app
+- Backend (Render Free): https://anime-list-matias-backend.onrender.com
+- Base de datos: PostgreSQL administrado por Neon
+
+El backend gratuito se suspende después de un período sin tráfico. La primera
+petición puede demorar cerca de un minuto; los datos permanecen guardados en
+Neon aunque el servicio esté dormido.
 
 ## Tecnologías
 
-### Frontend
+- React, Vite, Redux Toolkit, HeroUI, Tailwind y Axios.
+- Java 17, Spring Boot, JPA/Hibernate y Flyway.
+- PostgreSQL en Neon.
+- AniList GraphQL API y OAuth.
 
-- React
-- Vite
-- Redux Toolkit
-- Tailwind CSS
-- Axios
+## Desarrollo del frontend
 
-### Backend
+Ejecutar `iniciar.bat`, o desde `frontend`:
 
-- Java
-- Spring Boot
-- JWT
-- JPA/Hibernate
-- MySQL
-
-## Funciones principales
-
-- Buscar anime y manga mediante AniList.
-- Añadir obras a una biblioteca personal.
-- Registrar episodios vistos o capítulos leídos.
-- Puntuar obras.
-- Clasificar obras según su estado.
-- Consultar precuelas, secuelas y material original.
-- Consultar el próximo episodio de los animes en emisión.
-- Mostrar portadas y banners obtenidos desde AniList.
-
-## Configuración local del backend
-
-1. Ejecutar `database/schema.sql` en MySQL.
-2. Copiar `backend/src/main/resources/application-local.properties.example` como
-   `application-local.properties`.
-3. Completar el usuario y la contraseña local de MySQL.
-4. Desde `backend`, ejecutar `./mvnw spring-boot:run` o, en Windows,
-   `.\mvnw.cmd spring-boot:run`.
-
-El backend se inicia en `http://localhost:8080` y el frontend en
-`http://localhost:5173`.
-
-## Endpoints principales
-
-### AniList
-
-- `GET /api/anilist/search?query=Frieren&type=ANIME&page=1&perPage=20`
-- `GET /api/anilist/media/{anilistId}`
-
-El tipo de búsqueda puede ser `ANIME` o `MANGA`.
-
-### Biblioteca
-
-- `GET /api/library`
-- `GET /api/library?type=ANIME&status=IN_PROGRESS`
-- `GET /api/library/{id}`
-- `POST /api/library`
-- `PATCH /api/library/{id}`
-- `POST /api/library/{id}/progress/increment`
-- `POST /api/library/{id}/progress/decrement`
-- `POST /api/library/{id}/sync`
-- `GET /api/library/airing`
-- `DELETE /api/library/{id}`
-
-Ejemplo para añadir una obra:
-
-```json
-{
-  "anilistId": 154587,
-  "trackingStatus": "PLANNED"
-}
+```powershell
+npm install
+npm run dev
 ```
 
-Ejemplo para actualizar el seguimiento:
+El entorno de desarrollo utiliza el backend publicado. Esto permite trabajar
+desde cualquier PC sin instalar ni iniciar MySQL.
 
-```json
-{
-  "progress": 5,
-  "personalScore": 9.0,
-  "trackingStatus": "IN_PROGRESS"
-}
+## Desarrollo del backend
+
+Configurar estas variables de entorno antes de ejecutar Spring Boot:
+
+```text
+JDBC_DATABASE_URL=jdbc:postgresql://HOST/anime_list?sslmode=require
+DATABASE_USERNAME=USUARIO_NEON
+DATABASE_PASSWORD=CONTRASEÑA_NEON
+ANILIST_CLIENT_ID=ID_DE_ANILIST
+ANILIST_CLIENT_SECRET=SECRETO_DE_ANILIST
+ANILIST_REDIRECT_URI=http://localhost:8080/api/anilist/oauth/callback
 ```
 
-Estados disponibles: `PLANNED`, `IN_PROGRESS`, `PAUSED`, `COMPLETED` y
-`DROPPED`.
+Después, desde `backend`:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+Las modificaciones de la base se agregan como nuevas migraciones en
+`backend/src/main/resources/db/migration` (`V2__...sql`, `V3__...sql`, etc.).
+Flyway las aplica automáticamente sin borrar los datos existentes.
+
+## Despliegue continuo
+
+Los cambios enviados a `main` se despliegan automáticamente:
+
+- Vercel reconstruye el frontend.
+- Render reconstruye el backend cuando cambia la carpeta `backend`.
+- Flyway aplica las nuevas migraciones en Neon al iniciar el backend.
