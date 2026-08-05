@@ -6,6 +6,7 @@ import homeReducer from '../features/home/homeSlice.js'
 import profileReducer from '../features/profile/profileSlice.js'
 import catalogReducer from '../features/catalog/catalogSlice.js'
 import historyReducer from '../features/history/historySlice.js'
+import notificationReducer from '../features/notifications/notificationSlice.js'
 
 const rootReducer = combineReducers({
   library: libraryReducer,
@@ -14,6 +15,7 @@ const rootReducer = combineReducers({
   profile: profileReducer,
   catalog: catalogReducer,
   history: historyReducer,
+  notifications: notificationReducer,
 })
 
 const storage = {

@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
 import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
 import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
+import AniListConnection from '../components/profile/AniListConnection.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
 import { fetchHistory } from '../features/history/historySlice.js'
 import { resetTheme, saveProfile, updateProfile } from '../features/profile/profileSlice.js'
@@ -26,6 +27,7 @@ export default function ProfileView() {
         <div className="profile-banner" style={profile.bannerUrl ? { backgroundImage: `linear-gradient(90deg,rgba(12,14,23,.35),rgba(12,14,23,.75)),url(${profile.bannerUrl})` } : undefined}><Sparkles /></div>
         <div className="profile-summary"><div className="profile-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar del perfil" /> : <UserRound />}</div><div><span className="eyebrow">Perfil personal</span><h1>{profile.displayName}</h1><p>{profile.bio}</p></div></div>
       </section>
+      <AniListConnection />
       <ProfileAnalytics library={library} history={historyState.items} />
       <div className="profile-layout">
         <div className="profile-history-column"><ActivityTimeline entries={historyState.items} status={historyState.status} error={historyState.error} /><section className="profile-preview"><TopRated title="Anime mejor puntuado" icon={<Clapperboard />} entries={topFor('ANIME')} /><TopRated title="Manga mejor puntuado" icon={<BookOpen />} entries={topFor('MANGA')} /></section></div>

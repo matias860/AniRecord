@@ -3,3 +3,8 @@
 spring.datasource.url=jdbc:mysql://localhost:3306/anime_list
 spring.datasource.username=YOUR_DATABASE_USER
 spring.datasource.password=YOUR_DATABASE_PASSWORD
+
+# Credenciales de https://anilist.co/settings/developer
+# Redirect URL exacta: http://localhost:8080/api/anilist/oauth/callback
+anilist.oauth.client-id=YOUR_ANILIST_CLIENT_ID
+anilist.oauth.client-secret=YOUR_ANILIST_CLIENT_SECRET

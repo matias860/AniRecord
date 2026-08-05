@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, Outlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
+import NotificationBell from './NotificationBell.jsx'
 
 const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
@@ -35,6 +36,7 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
+          <NotificationBell />
         </div>
       </header>
       <main className="page"><Outlet /></main>
