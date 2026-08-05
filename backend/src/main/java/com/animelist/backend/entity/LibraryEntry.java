@@ -42,6 +42,9 @@ public class LibraryEntry {
     @Column(name = "personal_score", precision = 3, scale = 1)
     private BigDecimal personalScore;
 
+    @Column(name = "rewatch_count", nullable = false)
+    private Integer rewatchCount = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "tracking_status", nullable = false)
     private TrackingStatus trackingStatus = TrackingStatus.PLANNED;

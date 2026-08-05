@@ -14,7 +14,7 @@ export const fetchSeason = createAsyncThunk('home/season', async ({ season, year
 const homeSlice = createSlice({
   name: 'home',
   initialState: {
-    airing: [], season: [], status: 'idle', seasonStatus: 'idle', error: null,
+    airing: [], season: [], seasonCache: {}, status: 'idle', seasonStatus: 'idle', error: null,
     seasonOffset: 0, loadedSeason: null, loadedYear: null, watchingPage: 0, readingPage: 0,
   },
   reducers: {
@@ -27,14 +27,19 @@ const homeSlice = createSlice({
       .addCase(fetchAiringSchedule.pending, (state) => { state.status = 'loading'; state.error = null })
       .addCase(fetchAiringSchedule.fulfilled, (state, action) => { state.status = 'succeeded'; state.airing = action.payload })
       .addCase(fetchAiringSchedule.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
-      .addCase(fetchSeason.pending, (state) => { state.seasonStatus = 'loading' })
+      .addCase(fetchSeason.pending, (state, action) => {
+        state.seasonStatus = 'loading'
+        state.seasonRequestKey = `${action.meta.arg.season}-${action.meta.arg.year}`
+      })
       .addCase(fetchSeason.fulfilled, (state, action) => {
         state.seasonStatus = 'succeeded'
         state.season = action.payload.entries
+        state.seasonCache[`${action.payload.season}-${action.payload.year}`] = action.payload.entries
         state.loadedSeason = action.payload.season
         state.loadedYear = action.payload.year
+        state.seasonRequestKey = null
       })
-      .addCase(fetchSeason.rejected, (state) => { state.seasonStatus = 'failed' })
+      .addCase(fetchSeason.rejected, (state) => { state.seasonStatus = 'failed'; state.seasonRequestKey = null })
   },
 })
 

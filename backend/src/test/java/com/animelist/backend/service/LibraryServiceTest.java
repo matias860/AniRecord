@@ -43,12 +43,15 @@ class LibraryServiceTest {
     @Mock
     private AppUserRepository appUserRepository;
 
+    @Mock
+    private ActivityHistoryService activityHistoryService;
+
     private LibraryService libraryService;
 
     @BeforeEach
     void setUp() {
         libraryService = new LibraryService(
-                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository
+                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService
         );
         lenient().when(libraryEntryRepository.save(any(LibraryEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
@@ -73,6 +76,7 @@ class LibraryServiceTest {
         UpdateLibraryEntryRequest request = new UpdateLibraryEntryRequest(
                 null,
                 null,
+                null,
                 TrackingStatus.COMPLETED,
                 null,
                 null,
@@ -93,6 +97,7 @@ class LibraryServiceTest {
         mockEntry(1L, entry);
         UpdateLibraryEntryRequest request = new UpdateLibraryEntryRequest(
                 8,
+                null,
                 null,
                 TrackingStatus.IN_PROGRESS,
                 null,
@@ -118,6 +123,7 @@ class LibraryServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
 
@@ -134,6 +140,7 @@ class LibraryServiceTest {
         entry.setStartedAt(LocalDate.now().minusDays(10));
         mockEntry(1L, entry);
         UpdateLibraryEntryRequest request = new UpdateLibraryEntryRequest(
+                null,
                 null,
                 null,
                 TrackingStatus.PLANNED,

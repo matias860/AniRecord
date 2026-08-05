@@ -11,6 +11,7 @@ import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
 import com.animelist.backend.entity.AppUser;
+import com.animelist.backend.enums.ActivityType;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
@@ -20,6 +21,7 @@ import com.animelist.backend.repository.MediaRepository;
 import com.animelist.backend.repository.AppUserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -35,17 +37,20 @@ public class LibraryService {
     private final MediaRepository mediaRepository;
     private final AniListClient aniListClient;
     private final AppUserRepository appUserRepository;
+    private final ActivityHistoryService activityHistoryService;
 
     public LibraryService(
             LibraryEntryRepository libraryEntryRepository,
             MediaRepository mediaRepository,
             AniListClient aniListClient,
-            AppUserRepository appUserRepository
+            AppUserRepository appUserRepository,
+            ActivityHistoryService activityHistoryService
     ) {
         this.libraryEntryRepository = libraryEntryRepository;
         this.mediaRepository = mediaRepository;
         this.aniListClient = aniListClient;
         this.appUserRepository = appUserRepository;
+        this.activityHistoryService = activityHistoryService;
     }
 
     @Transactional(readOnly = true)
@@ -92,12 +97,18 @@ public class LibraryService {
                 : request.trackingStatus());
         applyAutomaticRules(entry);
 
-        return toResponse(libraryEntryRepository.save(entry));
+        entry = libraryEntryRepository.save(entry);
+        activityHistoryService.record(ActivityType.ADDED, entry, null, null, null, null);
+        return toResponse(entry);
     }
 
     @Transactional
     public LibraryEntryResponse update(Long id, UpdateLibraryEntryRequest request) {
         LibraryEntry entry = findEntry(id);
+        int previousProgress = entry.getProgress();
+        TrackingStatus previousStatus = entry.getTrackingStatus();
+        BigDecimal previousScore = entry.getPersonalScore();
+        int previousRewatchCount = entry.getRewatchCount();
 
         if (request.progress() != null) {
             validateProgress(request.progress(), entry.getMedia().getTotalUnits());
@@ -113,6 +124,9 @@ public class LibraryService {
         } else if (request.personalScore() != null) {
             entry.setPersonalScore(request.personalScore());
         }
+        if (request.rewatchCount() != null) {
+            entry.setRewatchCount(request.rewatchCount());
+        }
         if (request.trackingStatus() != null) {
             entry.setTrackingStatus(request.trackingStatus());
         }
@@ -124,22 +138,36 @@ public class LibraryService {
         }
 
         applyAutomaticRules(entry);
-        return toResponse(libraryEntryRepository.save(entry));
+        entry = libraryEntryRepository.save(entry);
+        activityHistoryService.record(ActivityType.UPDATED, entry, previousProgress,
+                previousStatus, previousScore, previousRewatchCount);
+        return toResponse(entry);
     }
 
     @Transactional
     public LibraryEntryResponse incrementProgress(Long id) {
         LibraryEntry entry = findEntry(id);
+        int previousProgress = entry.getProgress();
+        TrackingStatus previousStatus = entry.getTrackingStatus();
+        BigDecimal previousScore = entry.getPersonalScore();
+        int previousRewatchCount = entry.getRewatchCount();
         int nextProgress = entry.getProgress() + 1;
         validateProgress(nextProgress, entry.getMedia().getTotalUnits());
         entry.setProgress(nextProgress);
         applyAutomaticRules(entry);
-        return toResponse(libraryEntryRepository.save(entry));
+        entry = libraryEntryRepository.save(entry);
+        activityHistoryService.record(ActivityType.PROGRESS, entry, previousProgress,
+                previousStatus, previousScore, previousRewatchCount);
+        return toResponse(entry);
     }
 
     @Transactional
     public LibraryEntryResponse decrementProgress(Long id) {
         LibraryEntry entry = findEntry(id);
+        int previousProgress = entry.getProgress();
+        TrackingStatus previousStatus = entry.getTrackingStatus();
+        BigDecimal previousScore = entry.getPersonalScore();
+        int previousRewatchCount = entry.getRewatchCount();
         if (entry.getProgress() == 0) {
             throw new BusinessException("El progreso ya está en cero");
         }
@@ -148,7 +176,10 @@ public class LibraryService {
             entry.setTrackingStatus(TrackingStatus.IN_PROGRESS);
             entry.setCompletedAt(null);
         }
-        return toResponse(libraryEntryRepository.save(entry));
+        entry = libraryEntryRepository.save(entry);
+        activityHistoryService.record(ActivityType.PROGRESS, entry, previousProgress,
+                previousStatus, previousScore, previousRewatchCount);
+        return toResponse(entry);
     }
 
     @Transactional
@@ -164,6 +195,7 @@ public class LibraryService {
     @Transactional
     public void delete(Long id) {
         LibraryEntry entry = findEntry(id);
+        activityHistoryService.recordRemoval(entry);
         libraryEntryRepository.delete(entry);
     }
 
@@ -263,6 +295,7 @@ public class LibraryService {
             }
             entry.setProgress(item.progress());
             entry.setPersonalScore(item.personalScore());
+            entry.setRewatchCount(item.rewatchCount());
             entry.setTrackingStatus(item.trackingStatus());
             entry.setStartedAt(item.startedAt());
             entry.setCompletedAt(item.completedAt());
@@ -319,6 +352,7 @@ public class LibraryService {
                 media.getReleaseYear(),
                 entry.getProgress(),
                 entry.getPersonalScore(),
+                entry.getRewatchCount(),
                 entry.getTrackingStatus(),
                 entry.getStartedAt(),
                 entry.getCompletedAt(),

@@ -54,11 +54,19 @@ const librarySlice = createSlice({
   name: 'library',
   initialState: {
     items: [], status: 'idle', mutationStatus: 'idle', error: null,
-    filters: { mediaType: 'ANIME', trackingStatus: 'ALL' },
+    filters: { mediaType: 'ANIME', trackingStatus: 'ALL', search: '', year: '', season: '', releaseStatus: '', score: '' },
   },
   reducers: {
-    setLibraryMediaType: (state, action) => { state.filters.mediaType = action.payload },
+    setLibraryMediaType: (state, action) => {
+      state.filters.mediaType = action.payload
+      if (action.payload === 'MANGA') state.filters.season = ''
+    },
     setLibraryTrackingStatus: (state, action) => { state.filters.trackingStatus = action.payload },
+    setLibraryFilter: (state, action) => { state.filters[action.payload.key] = action.payload.value },
+    resetLibraryFilters: (state) => {
+      state.filters.search = ''; state.filters.year = ''; state.filters.season = ''
+      state.filters.releaseStatus = ''; state.filters.score = ''
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -105,5 +113,5 @@ const librarySlice = createSlice({
   },
 })
 
-export const { setLibraryMediaType, setLibraryTrackingStatus } = librarySlice.actions
+export const { resetLibraryFilters, setLibraryFilter, setLibraryMediaType, setLibraryTrackingStatus } = librarySlice.actions
 export default librarySlice.reducer

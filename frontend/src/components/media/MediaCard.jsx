@@ -1,6 +1,7 @@
-import { Plus } from 'lucide-react'
+import { Plus, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { getProgressPercent, STATUS_LABELS } from '../../lib/media.js'
+import MediaTags from './MediaTags.jsx'
 
 export default function MediaCard({ media, onIncrement }) {
   const progress = media.progress ?? 0
@@ -10,9 +11,11 @@ export default function MediaCard({ media, onIncrement }) {
       <Link to={`/media/${media.anilistId}`} className={`cover-wrap ${media.episodePending ? 'episode-pending' : ''}`}>
         <img src={media.coverImage} alt={`Portada de ${media.title}`} loading="lazy" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
+        {media.personalScore != null && <span className="score-badge"><Star /> {media.personalScore}</span>}
       </Link>
       <div className="media-card-body">
         <Link to={`/media/${media.anilistId}`} className="media-title">{media.title}</Link>
+        {!media.trackingStatus && <MediaTags tags={media.tags} compact />}
         {media.trackingStatus && (
           <>
             <div className="progress-copy"><span>{media.mediaType === 'MANGA' ? 'Capítulos' : 'Episodios'}</span><b>{progress} / {totalLabel}</b></div>

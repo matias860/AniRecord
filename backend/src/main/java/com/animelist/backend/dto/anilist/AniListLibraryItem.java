@@ -8,6 +8,7 @@ public record AniListLibraryItem(
         AniListMediaResponse media,
         Integer progress,
         BigDecimal personalScore,
+        Integer rewatchCount,
         TrackingStatus trackingStatus,
         LocalDate startedAt,
         LocalDate completedAt

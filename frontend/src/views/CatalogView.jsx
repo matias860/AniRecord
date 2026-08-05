@@ -6,12 +6,15 @@ import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import MediaCard from '../components/media/MediaCard.jsx'
 import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
+import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
 
-const emptyFilters = { search: '', year: '', season: '', genre: '', status: '', sort: 'POPULARITY' }
+const emptyFilters = { search: '', year: '', season: '', genre: [], status: '', sort: 'POPULARITY' }
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
+const requestFilters = (filters) => Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
+  Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 2)))
 
 export default function CatalogView() {
   const { mediaType } = useParams()
@@ -24,17 +27,21 @@ export default function CatalogView() {
   useEffect(() => {
     if (!type) return
     if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres())
-    if (catalog.status === 'idle' || (catalog.status !== 'loading' && catalog.type !== type)) {
-      dispatch(fetchCatalog({ type, filters: emptyFilters }))
-    }
-  }, [catalog.genresStatus, catalog.status, catalog.type, dispatch, type])
+  }, [catalog.genresStatus, dispatch, type])
+
+  useEffect(() => {
+    if (!type || filters.search.trim().length === 1) return
+    let request
+    const timer = window.setTimeout(() => {
+      request = dispatch(fetchCatalog({ type, page: 1, filters: requestFilters(filters) }))
+    }, filters.search.trim() ? 400 : 0)
+    return () => { window.clearTimeout(timer); request?.abort() }
+  }, [dispatch, filters, type])
 
   if (mediaType && !type) return <Navigate to="/catalogo" replace />
   if (!type) return <CatalogLanding />
 
-  const requestFilters = () => Object.fromEntries(Object.entries(filters).filter(([key, value]) => value && (key !== 'search' || value.trim().length >= 2)))
-  const applyFilters = (event) => { event?.preventDefault(); dispatch(fetchCatalog({ type, page: 1, filters: requestFilters() })) }
-  const resetFilters = () => { setFilters(emptyFilters); dispatch(fetchCatalog({ type, page: 1, filters: emptyFilters })) }
+  const resetFilters = () => setFilters({ ...emptyFilters, genre: [] })
   const changePage = (page) => { dispatch(fetchCatalog({ type, page, filters: catalog.filters })); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const update = (key) => (value) => setFilters((current) => ({ ...current, [key]: value }))
 
@@ -42,14 +49,14 @@ export default function CatalogView() {
     <>
       <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explorá AniList y encontrá tu próxima historia.</p></div><button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button></div>
 
-      <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={applyFilters}>
+      <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={(event) => event.preventDefault()}>
         <label className="catalog-search"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={`Buscar ${type === 'ANIME' ? 'anime' : 'manga'}...`} /></label>
-        <StyledSelect ariaLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos los años' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
-        <StyledSelect ariaLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas las temporadas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
-        <StyledSelect ariaLabel="Género" value={filters.genre} onChange={update('genre')} options={[{ value: '', label: 'Todos los géneros' }, ...catalog.genres.map((genre) => ({ value: genre, label: genre }))]} />
-        <StyledSelect ariaLabel="Estado de emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Cualquier estado' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
+        <StyledSelect ariaLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Año' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
+        <StyledSelect ariaLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
+        <GenreMultiSelect genres={catalog.genres} value={filters.genre} onChange={update('genre')} />
+        <StyledSelect ariaLabel="Estado de emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Estado' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
         <StyledSelect ariaLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
-        <button className="primary-button" type="submit">Aplicar</button><button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
+        <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 
       <PageState loading={catalog.status === 'loading'} error={catalog.error} />

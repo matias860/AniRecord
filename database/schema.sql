@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS app_user (
   DEFAULT CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
 
+
 INSERT IGNORE INTO app_user (id) VALUES (1);
 
 
@@ -128,6 +129,8 @@ CREATE TABLE IF NOT EXISTS library_entries (
 
     personal_score DECIMAL(3,1) DEFAULT NULL,
 
+    rewatch_count INT NOT NULL DEFAULT 0,
+
     tracking_status ENUM(
         'PLANNED',
         'IN_PROGRESS',
@@ -162,8 +165,35 @@ CREATE TABLE IF NOT EXISTS library_entries (
         CHECK (
             personal_score IS NULL
             OR personal_score BETWEEN 0 AND 10
-        )
+        ),
+
+    CONSTRAINT chk_library_rewatch_count
+        CHECK (rewatch_count >= 0)
 
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET utf8mb4
   COLLATE utf8mb4_unicode_ci;
+
+
+-- =====================================================
+-- ACTIVITY HISTORY
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS activity_history (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    media_id BIGINT NOT NULL,
+    activity_type ENUM('ADDED','UPDATED','PROGRESS','REMOVED') NOT NULL,
+    previous_progress INT DEFAULT NULL,
+    new_progress INT DEFAULT NULL,
+    previous_status ENUM('PLANNED','IN_PROGRESS','PAUSED','COMPLETED','DROPPED') DEFAULT NULL,
+    new_status ENUM('PLANNED','IN_PROGRESS','PAUSED','COMPLETED','DROPPED') DEFAULT NULL,
+    previous_score DECIMAL(3,1) DEFAULT NULL,
+    new_score DECIMAL(3,1) DEFAULT NULL,
+    previous_rewatch_count INT DEFAULT NULL,
+    new_rewatch_count INT DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_activity_created_at (created_at),
+    KEY idx_activity_media (media_id),
+    CONSTRAINT fk_activity_media FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -27,6 +27,8 @@ export default function HomeView() {
   const library = useSelector((state) => state.library)
   const home = useSelector((state) => state.home)
   const { season: selectedSeasonName, year: selectedSeasonYear } = seasonAtOffset(home.seasonOffset)
+  const selectedSeasonKey = `${selectedSeasonName}-${selectedSeasonYear}`
+  const selectedSeasonEntries = home.seasonCache[selectedSeasonKey] ?? []
 
   useEffect(() => {
     if (library.status === 'idle') dispatch(fetchLibrary())
@@ -34,10 +36,10 @@ export default function HomeView() {
   }, [dispatch, library.status, home.status])
 
   useEffect(() => {
-    if (home.loadedSeason !== selectedSeasonName || home.loadedYear !== selectedSeasonYear) {
+    if (!home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
       dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear }))
     }
-  }, [dispatch, home.loadedSeason, home.loadedYear, selectedSeasonName, selectedSeasonYear])
+  }, [dispatch, home.seasonCache, home.seasonRequestKey, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
   const airingWithCurrentProgress = home.airing.map((entry) => ({
     ...entry,
@@ -62,13 +64,13 @@ export default function HomeView() {
   const inProgress = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS').length
   const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
   const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
-  const scheduleOptions = [
-    { value: '0', label: 'Esta semana' },
-    ...[1, 2, 3].map((offset) => {
+  const scheduleOptions = [0, 1, 2, 3].map((offset) => {
       const item = seasonAtOffset(offset)
       return { value: String(offset), label: `${seasonLabels[item.season]} ${item.year}` }
-    }),
-  ]
+    })
+  const calendarEntries = library.items.filter((item) => item.mediaType === 'ANIME'
+    && ['PLANNED', 'IN_PROGRESS'].includes(item.trackingStatus)
+    && item.releaseSeason === selectedSeasonName && item.releaseYear === selectedSeasonYear)
 
   return (
     <>
@@ -78,10 +80,10 @@ export default function HomeView() {
       </section>
 
       <PageState loading={home.status === 'loading'} error={home.error} />
-      {home.status === 'succeeded' && <WeeklySchedule entries={airingWithCurrentProgress} seasonEntries={home.season} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} seasonLoading={home.seasonStatus === 'loading'} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
+      {home.status === 'succeeded' && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <SeasonMarquee
-        entries={home.season}
-        loading={home.seasonStatus === 'loading'}
+        entries={selectedSeasonEntries}
+        loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'}
         label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`}
         canGoPrevious={home.seasonOffset > 0}
         canGoNext={home.seasonOffset < 3}

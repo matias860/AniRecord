@@ -10,6 +10,7 @@ import java.time.LocalDate;
 public record UpdateLibraryEntryRequest(
         @PositiveOrZero Integer progress,
         @DecimalMin("0.0") @DecimalMax("10.0") BigDecimal personalScore,
+        @PositiveOrZero Integer rewatchCount,
         TrackingStatus trackingStatus,
         LocalDate startedAt,
         LocalDate completedAt,

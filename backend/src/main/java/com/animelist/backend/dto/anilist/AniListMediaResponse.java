@@ -19,7 +19,10 @@ public record AniListMediaResponse(
         ReleaseStatus releaseStatus,
         ReleaseSeason releaseSeason,
         Integer releaseYear,
+        Integer favourites,
         AiringInfoResponse nextAiringEpisode,
-        List<MediaRelationResponse> relations
+        List<MediaRelationResponse> relations,
+        List<MediaCharacterResponse> characters,
+        List<MediaTagResponse> tags
 ) {
 }

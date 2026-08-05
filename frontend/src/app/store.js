@@ -5,6 +5,7 @@ import searchReducer from '../features/search/searchSlice.js'
 import homeReducer from '../features/home/homeSlice.js'
 import profileReducer from '../features/profile/profileSlice.js'
 import catalogReducer from '../features/catalog/catalogSlice.js'
+import historyReducer from '../features/history/historySlice.js'
 
 const rootReducer = combineReducers({
   library: libraryReducer,
@@ -12,6 +13,7 @@ const rootReducer = combineReducers({
   home: homeReducer,
   profile: profileReducer,
   catalog: catalogReducer,
+  history: historyReducer,
 })
 
 const storage = {

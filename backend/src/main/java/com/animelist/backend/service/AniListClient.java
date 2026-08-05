@@ -6,6 +6,8 @@ import com.animelist.backend.dto.anilist.AniListLibraryExport;
 import com.animelist.backend.dto.anilist.AniListLibraryItem;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.MediaRelationResponse;
+import com.animelist.backend.dto.anilist.MediaCharacterResponse;
+import com.animelist.backend.dto.anilist.MediaTagResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
@@ -54,6 +56,7 @@ public class AniListClient {
                   startDate { year month day }
                   endDate { year month day }
                   nextAiringEpisode { episode airingAt timeUntilAiring }
+                  tags { name rank description category isMediaSpoiler }
                 }
               }
             }
@@ -77,6 +80,7 @@ public class AniListClient {
                 startDate { year month day }
                 endDate { year month day }
                 nextAiringEpisode { episode airingAt timeUntilAiring }
+                tags { name rank description category isMediaSpoiler }
                 relations {
                   edges {
                     relationType(version: 2)
@@ -86,6 +90,17 @@ public class AniListClient {
                       format
                       title { romaji english native }
                       coverImage { large }
+                    }
+                  }
+                }
+                characters(page: 1, perPage: 50, sort: [ROLE, RELEVANCE, ID]) {
+                  pageInfo { currentPage hasNextPage }
+                  edges {
+                    role
+                    node {
+                      id
+                      name { full }
+                      image { large }
                     }
                   }
                 }
@@ -126,6 +141,7 @@ public class AniListClient {
                   startDate { year month day }
                   endDate { year month day }
                   nextAiringEpisode { episode airingAt timeUntilAiring }
+                  tags { name rank description category isMediaSpoiler }
                 }
               }
             }
@@ -153,6 +169,7 @@ public class AniListClient {
               status
               score(format: POINT_10_DECIMAL)
               progress
+              repeat
               startedAt { year month day }
               completedAt { year month day }
               media {
@@ -173,10 +190,28 @@ public class AniListClient {
             }
             """;
 
+    private static final String CHARACTER_PAGE_QUERY = """
+            query MediaCharacters($id: Int!, $page: Int!) {
+              Media(id: $id) {
+                characters(page: $page, perPage: 25, sort: [ROLE, RELEVANCE, ID]) {
+                  pageInfo { currentPage hasNextPage }
+                  edges {
+                    role
+                    node {
+                      id
+                      name { full }
+                      image { large }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
     private static final String SEASON_QUERY = """
             query CurrentSeason($season: MediaSeason!, $year: Int!, $perPage: Int!) {
               Page(page: 1, perPage: $perPage) {
-                media(type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC, isAdult: false) {
+                media(type: ANIME, season: $season, seasonYear: $year, sort: FAVOURITES_DESC, isAdult: false) {
                   id
                   type
                   title { romaji english native }
@@ -187,6 +222,7 @@ public class AniListClient {
                   status
                   season
                   seasonYear
+                  favourites
                   startDate { year month day }
                   endDate { year month day }
                   nextAiringEpisode { episode airingAt timeUntilAiring }
@@ -247,7 +283,24 @@ public class AniListClient {
         if (mediaData == null) {
             throw new AniListClientException("AniList no encontró la obra solicitada");
         }
-        return mapMedia(asMap(mediaData));
+        Map<String, Object> media = new LinkedHashMap<>(asMap(mediaData));
+        Map<String, Object> characters = new LinkedHashMap<>(asMap(media.get("characters")));
+        List<Object> characterEdges = new ArrayList<>(asList(characters.get("edges")));
+        Map<String, Object> pageInfo = asMap(characters.get("pageInfo"));
+        int page = asInteger(pageInfo.get("currentPage")) == null ? 1 : asInteger(pageInfo.get("currentPage"));
+
+        while (Boolean.TRUE.equals(pageInfo.get("hasNextPage"))) {
+            page++;
+            Map<String, Object> pageData = execute(CHARACTER_PAGE_QUERY, Map.of("id", anilistId, "page", page));
+            Map<String, Object> pageMedia = asMap(pageData.get("Media"));
+            Map<String, Object> pageCharacters = asMap(pageMedia.get("characters"));
+            characterEdges.addAll(asList(pageCharacters.get("edges")));
+            pageInfo = asMap(pageCharacters.get("pageInfo"));
+        }
+
+        characters.put("edges", characterEdges);
+        media.put("characters", characters);
+        return mapMedia(media);
     }
 
     public List<AniListMediaResponse> getAiringMedia(List<Integer> anilistIds) {
@@ -361,6 +414,7 @@ public class AniListClient {
                         media,
                         integerOrZero(entry.get("progress")),
                         score != null && score.signum() > 0 ? score : null,
+                        integerOrZero(entry.get("repeat")),
                         mapTrackingStatus(asString(entry.get("status"))),
                         mapDate(entry.get("startedAt")),
                         mapDate(entry.get("completedAt"))
@@ -476,9 +530,44 @@ public class AniListClient {
                 enumValue(ReleaseStatus.class, asString(media.get("status"))),
                 enumValue(ReleaseSeason.class, asString(media.get("season"))),
                 asInteger(media.get("seasonYear")),
+                asInteger(media.get("favourites")),
                 mapAiring(media.get("nextAiringEpisode")),
-                mapRelations(media.get("relations"))
+                mapRelations(media.get("relations")),
+                mapCharacters(media.get("characters")),
+                mapTags(media.get("tags"))
         );
+    }
+
+    private List<MediaTagResponse> mapTags(Object tagsValue) {
+        return asList(tagsValue).stream()
+                .map(this::asMap)
+                .filter(tag -> !Boolean.TRUE.equals(tag.get("isMediaSpoiler")))
+                .sorted((first, second) -> Integer.compare(
+                        asInteger(second.get("rank")) == null ? 0 : asInteger(second.get("rank")),
+                        asInteger(first.get("rank")) == null ? 0 : asInteger(first.get("rank"))))
+                .limit(5)
+                .map(tag -> new MediaTagResponse(
+                        asString(tag.get("name")),
+                        asInteger(tag.get("rank")),
+                        asString(tag.get("description")),
+                        asString(tag.get("category"))))
+                .toList();
+    }
+
+    private List<MediaCharacterResponse> mapCharacters(Object charactersValue) {
+        return asList(asMap(charactersValue).get("edges")).stream()
+                .map(this::asMap)
+                .filter(edge -> "MAIN".equals(asString(edge.get("role"))))
+                .map(edge -> {
+                    Map<String, Object> node = asMap(edge.get("node"));
+                    return new MediaCharacterResponse(
+                            asInteger(node.get("id")),
+                            asString(asMap(node.get("name")).get("full")),
+                            asString(asMap(node.get("image")).get("large")),
+                            asString(edge.get("role"))
+                    );
+                })
+                .toList();
     }
 
     private List<MediaRelationResponse> mapRelations(Object relationsValue) {

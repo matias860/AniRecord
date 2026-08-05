@@ -1,25 +1,34 @@
 import { useEffect } from 'react'
-import { Palette, RotateCcw, Save, Sparkles, UserRound } from 'lucide-react'
+import { BookOpen, Clapperboard, Palette, RotateCcw, Save, Sparkles, Star, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
+import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
+import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
+import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
+import { fetchHistory } from '../features/history/historySlice.js'
 import { resetTheme, saveProfile, updateProfile } from '../features/profile/profileSlice.js'
 
 export default function ProfileView() {
   const dispatch = useDispatch()
   const profile = useSelector((state) => state.profile)
   const libraryState = useSelector((state) => state.library)
+  const historyState = useSelector((state) => state.history)
   const library = libraryState.items
+  const scored = library.filter((item) => item.personalScore != null)
+  const topFor = (mediaType) => scored.filter((item) => item.mediaType === mediaType).sort((a, b) => Number(b.personalScore) - Number(a.personalScore) || new Date(b.updatedAt) - new Date(a.updatedAt)).slice(0, 4)
   const update = (changes) => dispatch(updateProfile(changes))
   useEffect(() => { if (libraryState.status === 'idle') dispatch(fetchLibrary()) }, [dispatch, libraryState.status])
+  useEffect(() => { dispatch(fetchHistory()) }, [dispatch])
   return (
     <>
       <section className="profile-hero">
         <div className="profile-banner" style={profile.bannerUrl ? { backgroundImage: `linear-gradient(90deg,rgba(12,14,23,.35),rgba(12,14,23,.75)),url(${profile.bannerUrl})` } : undefined}><Sparkles /></div>
         <div className="profile-summary"><div className="profile-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar del perfil" /> : <UserRound />}</div><div><span className="eyebrow">Perfil personal</span><h1>{profile.displayName}</h1><p>{profile.bio}</p></div></div>
       </section>
+      <ProfileAnalytics library={library} history={historyState.items} />
       <div className="profile-layout">
-        <section className="profile-preview"><h2>Resumen</h2><div className="profile-stats"><div><strong>{library.length}</strong><span>En biblioteca</span></div><div><strong>{library.filter((m) => m.trackingStatus === 'COMPLETED').length}</strong><span>Completados</span></div><div><strong>{library.filter((m) => m.trackingStatus === 'IN_PROGRESS').length}</strong><span>En curso</span></div></div></section>
+        <div className="profile-history-column"><ActivityTimeline entries={historyState.items} status={historyState.status} error={historyState.error} /><section className="profile-preview"><TopRated title="Anime mejor puntuado" icon={<Clapperboard />} entries={topFor('ANIME')} /><TopRated title="Manga mejor puntuado" icon={<BookOpen />} entries={topFor('MANGA')} /></section></div>
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => dispatch(resetTheme())}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
           <label className="profile-field"><span>Biografía</span><textarea value={profile.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>
@@ -31,4 +40,8 @@ export default function ProfileView() {
       </div>
     </>
   )
+}
+
+function TopRated({ title, icon, entries }) {
+  return <div className="top-rated"><h3>{icon} {title}</h3>{entries.length ? <div>{entries.map((entry, index) => <Link to={`/media/${entry.anilistId}`} key={entry.id}><span className="top-rated-rank">#{index + 1}</span><img src={entry.coverImage} alt="" /><strong>{entry.title}</strong><span><Star /> {entry.personalScore}</span></Link>)}</div> : <p>Todavía no puntuaste títulos de este tipo.</p>}</div>
 }

@@ -24,14 +24,17 @@ start "Anime List - Frontend" cmd /k "cd /d ""%~dp0frontend"" && (if not exist n
 echo Anime List se esta iniciando.
 echo Backend:  http://localhost:8080
 echo Frontend: http://localhost:5173
+echo Esperando a que MySQL, el backend y el frontend respondan...
 
-powershell -NoProfile -Command "$limit = (Get-Date).AddSeconds(90); while ((Get-Date) -lt $limit) { try { $client = [Net.Sockets.TcpClient]::new(); $client.Connect('localhost', 5173); $client.Dispose(); exit 0 } catch { Start-Sleep -Seconds 1 } }; exit 1"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$limit = (Get-Date).AddSeconds(120); while ((Get-Date) -lt $limit) { try { $backend = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:8080/api/library' -TimeoutSec 3; $frontend = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5173' -TimeoutSec 3; if ($backend.StatusCode -eq 200 -and $frontend.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 1 }; exit 1"
 if errorlevel 1 (
-  echo No se pudo abrir la pagina porque el frontend no inicio en 90 segundos.
+  echo No se pudo abrir la pagina porque el sistema completo no inicio en 120 segundos.
+  echo Revisa las ventanas de Backend y Frontend para ver el error.
   pause
   exit /b 1
 )
 
+echo Sistema listo. Abriendo Anime List...
 if exist "%LOCALAPPDATA%\Programs\Opera GX\opera.exe" (
   start "" "%LOCALAPPDATA%\Programs\Opera GX\opera.exe" "http://localhost:5173"
 ) else if exist "%LOCALAPPDATA%\Programs\Opera\opera.exe" (

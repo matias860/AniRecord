@@ -24,6 +24,7 @@ public record LibraryEntryResponse(
         Integer releaseYear,
         Integer progress,
         BigDecimal personalScore,
+        Integer rewatchCount,
         TrackingStatus trackingStatus,
         LocalDate startedAt,
         LocalDate completedAt,
