@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: anime-list-backend
+    runtime: docker
+    plan: free
+    rootDir: backend
+    healthCheckPath: /api/profile
+    autoDeployTrigger: commit
+    envVars:
+      - key: JDBC_DATABASE_URL
+        sync: false
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      - key: FRONTEND_URL
+        value: https://anime-list-matias.vercel.app
+      - key: ANILIST_CLIENT_ID
+        sync: false
+      - key: ANILIST_CLIENT_SECRET
+        sync: false
+      - key: ANILIST_REDIRECT_URI
+        sync: false
+      - key: JAVA_TOOL_OPTIONS
+        value: -XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC

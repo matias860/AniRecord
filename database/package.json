@@ -1,0 +1,13 @@
+{
+  "name": "anime-list-database-tools",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "migrate:mysql": "node migrate-mysql-to-postgres.mjs"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
+    "mysql2": "^3.14.3",
+    "pg": "^8.16.3"
+  }
+}

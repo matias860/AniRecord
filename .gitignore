@@ -2,6 +2,7 @@
 .env
 .env.local
 application-local.properties
+.neon
 
 # Backend Java
 backend/target/
@@ -11,6 +12,7 @@ backend/target/
 
 # Frontend
 frontend/node_modules/
+database/node_modules/
 frontend/dist/
 
 # IntelliJ

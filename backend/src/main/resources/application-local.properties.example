@@ -1,10 +1,10 @@
-# Copia este archivo como application-local.properties en cada computadora.
-# El archivo real está ignorado por Git porque contiene la contraseña local.
-spring.datasource.url=jdbc:mysql://localhost:3306/anime_list
-spring.datasource.username=YOUR_DATABASE_USER
-spring.datasource.password=YOUR_DATABASE_PASSWORD
+# Copia estas variables a un archivo .env o configuralas en la terminal.
+# En Neon, cambia postgresql:// por jdbc:postgresql:// al copiar la URL.
+JDBC_DATABASE_URL=jdbc:postgresql://YOUR_NEON_HOST/anime_list?sslmode=require
+DATABASE_USERNAME=YOUR_NEON_USER
+DATABASE_PASSWORD=YOUR_NEON_PASSWORD
 
 # Credenciales de https://anilist.co/settings/developer
-# Redirect URL exacta: http://localhost:8080/api/anilist/oauth/callback
-anilist.oauth.client-id=YOUR_ANILIST_CLIENT_ID
-anilist.oauth.client-secret=YOUR_ANILIST_CLIENT_SECRET
+ANILIST_CLIENT_ID=YOUR_ANILIST_CLIENT_ID
+ANILIST_CLIENT_SECRET=YOUR_ANILIST_CLIENT_SECRET
+ANILIST_REDIRECT_URI=http://localhost:8080/api/anilist/oauth/callback
