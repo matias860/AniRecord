@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Clapperboard, Search, SlidersHorizontal, Sparkles, X } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, Navigate, useParams } from 'react-router-dom'
@@ -8,6 +8,7 @@ import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
+import { fetchLibrary } from '../features/library/librarySlice.js'
 
 const emptyFilters = { search: '', year: '', season: '', genre: [], status: '', sort: 'POPULARITY' }
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
@@ -20,6 +21,7 @@ export default function CatalogView() {
   const { mediaType } = useParams()
   const dispatch = useDispatch()
   const catalog = useSelector((state) => state.catalog)
+  const library = useSelector((state) => state.library)
   const [filters, setFilters] = useState(emptyFilters)
   const [filtersOpen, setFiltersOpen] = useState(true)
   const type = mediaType?.toLowerCase() === 'anime' ? 'ANIME' : mediaType?.toLowerCase() === 'manga' ? 'MANGA' : null
@@ -27,7 +29,8 @@ export default function CatalogView() {
   useEffect(() => {
     if (!type) return
     if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres())
-  }, [catalog.genresStatus, dispatch, type])
+    if (library.status === 'idle') dispatch(fetchLibrary())
+  }, [catalog.genresStatus, dispatch, library.status, type])
 
   useEffect(() => {
     if (!type) return
@@ -37,6 +40,19 @@ export default function CatalogView() {
     }, filters.search.trim() ? 400 : 0)
     return () => { window.clearTimeout(timer); request?.abort() }
   }, [dispatch, filters, type])
+
+  const displayedItems = useMemo(() => {
+    const query = filters.search.trim().toLocaleLowerCase('es')
+    if (!query) return catalog.items
+    const localMatches = library.items.filter((item) => item.mediaType === type
+      && item.title.toLocaleLowerCase('es').includes(query)
+      && (!filters.year || String(item.releaseYear) === filters.year)
+      && (!filters.season || item.releaseSeason === filters.season)
+      && (!filters.status || item.releaseStatus === filters.status)
+      && !filters.genre.length)
+    const localIds = new Set(localMatches.map((item) => item.anilistId))
+    return [...localMatches, ...catalog.items.filter((item) => !localIds.has(item.anilistId))]
+  }, [catalog.items, filters.genre.length, filters.search, filters.season, filters.status, filters.year, library.items, type])
 
   if (mediaType && !type) return <Navigate to="/catalogo" replace />
   if (!type) return <CatalogLanding />
@@ -60,7 +76,7 @@ export default function CatalogView() {
       </form>
 
       <PageState loading={catalog.status === 'loading'} error={catalog.error} />
-      {catalog.status === 'succeeded' && <>{!catalog.items.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{catalog.items.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={catalog.currentPage === 1} onClick={() => changePage(catalog.currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{catalog.currentPage}</b></span><button disabled={!catalog.hasNextPage} onClick={() => changePage(catalog.currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
+      {catalog.status === 'succeeded' && <>{!displayedItems.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={catalog.currentPage === 1} onClick={() => changePage(catalog.currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{catalog.currentPage}</b></span><button disabled={!catalog.hasNextPage} onClick={() => changePage(catalog.currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
     </>
   )
 }
