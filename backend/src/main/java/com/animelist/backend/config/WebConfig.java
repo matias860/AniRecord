@@ -15,7 +15,7 @@ public class WebConfig implements WebMvcConfigurer {
     public WebConfig(@Value("${app.frontend-url:http://localhost:5173}") String frontendUrl) {
         this.frontendUrls = Stream.concat(
                         Arrays.stream(frontendUrl.split(",")),
-                        Stream.of("http://localhost:5173", "https://anime-list.vercel.app"))
+                        Stream.of("http://localhost:5173"))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .distinct()
