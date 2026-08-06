@@ -509,6 +509,7 @@ public class AniListClient {
     private AniListMediaResponse mapMedia(Map<String, Object> media) {
         MediaType mediaType = enumValue(MediaType.class, asString(media.get("type")));
         Map<String, Object> coverImage = asMap(media.get("coverImage"));
+        Map<String, Object> titles = asMap(media.get("title"));
         String cover = firstNonBlank(
                 asString(coverImage.get("extraLarge")),
                 asString(coverImage.get("large"))
@@ -520,7 +521,8 @@ public class AniListClient {
         return new AniListMediaResponse(
                 asInteger(media.get("id")),
                 mediaType,
-                selectTitle(asMap(media.get("title"))),
+                selectTitle(titles),
+                asString(titles.get("romaji")),
                 cover,
                 asString(media.get("bannerImage")),
                 asString(media.get("description")),

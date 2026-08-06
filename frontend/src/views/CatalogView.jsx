@@ -45,7 +45,7 @@ export default function CatalogView() {
     const query = filters.search.trim().toLocaleLowerCase('es')
     if (!query) return catalog.items
     const localMatches = library.items.filter((item) => item.mediaType === type
-      && item.title.toLocaleLowerCase('es').includes(query)
+      && [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(query))
       && (!filters.year || String(item.releaseYear) === filters.year)
       && (!filters.season || item.releaseSeason === filters.season)
       && (!filters.status || item.releaseStatus === filters.status)

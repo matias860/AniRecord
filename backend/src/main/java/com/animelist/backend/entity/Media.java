@@ -40,6 +40,9 @@ public class Media {
     @Column(nullable = false)
     private String title;
 
+    @Column(name = "romaji_title")
+    private String romajiTitle;
+
     @Column(name = "cover_image", length = 1000)
     private String coverImage;
 

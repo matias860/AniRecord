@@ -3,6 +3,7 @@ package com.animelist.backend.controller;
 import com.animelist.backend.dto.anilist.AiringMediaResponse;
 import com.animelist.backend.dto.library.AddLibraryEntryRequest;
 import com.animelist.backend.dto.library.LibraryEntryResponse;
+import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.dto.library.LibraryImportResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.enums.MediaType;
@@ -35,7 +36,7 @@ public class LibraryController {
     }
 
     @GetMapping
-    public List<LibraryEntryResponse> findAll(
+    public List<LibraryEntrySummaryResponse> findAll(
             @RequestParam(required = false) MediaType type,
             @RequestParam(required = false) TrackingStatus status
     ) {

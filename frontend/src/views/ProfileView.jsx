@@ -28,7 +28,6 @@ export default function ProfileView() {
         <div className="profile-banner" style={profile.bannerUrl ? { backgroundImage: `linear-gradient(90deg,rgba(12,14,23,.35),rgba(12,14,23,.75)),url(${profile.bannerUrl})` } : undefined}><Sparkles /></div>
         <div className="profile-summary"><div className="profile-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar del perfil" /> : <UserRound />}</div><div><span className="eyebrow">Perfil personal</span><h1>{profile.displayName}</h1><p>{profile.bio}</p></div></div>
       </section>
-      <AniListConnection />
       <ProfileAnalytics library={library} history={historyState.items} />
       <div className="profile-insights-grid">
         <ActivityTimeline entries={historyState.items} status={historyState.status} error={historyState.error} />
@@ -39,6 +38,7 @@ export default function ProfileView() {
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
           <label className="profile-field"><span>Biografía</span><textarea value={profile.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>
           <div className="profile-url-grid"><label className="profile-field"><span>URL del avatar</span><input value={profile.avatarUrl || ''} onChange={(e) => update({ avatarUrl: e.target.value })} placeholder="https://..." /></label><label className="profile-field"><span>URL del banner</span><input value={profile.bannerUrl || ''} onChange={(e) => update({ bannerUrl: e.target.value })} placeholder="https://..." /></label></div>
+          <AniListConnection />
           <div className="color-options"><ThemeColorPicker label="Color de fondo" value={profile.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={profile.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={profile.accentColor} onChange={(accentColor) => update({ accentColor })} /></div>
           <label className="dot-toggle"><input type="checkbox" checked={profile.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
           <div className="profile-actions"><span>{profile.saved ? 'Cambios guardados' : 'Hay cambios sin guardar'}</span><button className="primary-button" disabled={profile.status === 'saving'} onClick={() => dispatch(saveProfile())}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>

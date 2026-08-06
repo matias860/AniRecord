@@ -69,7 +69,7 @@ export default function LibraryView() {
         || (filters.score === '8' && score >= 8)
       return item.mediaType === mediaType
         && (trackingStatus === 'ALL' || item.trackingStatus === trackingStatus)
-        && (!search || item.title.toLocaleLowerCase('es').includes(search))
+        && (!search || [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(search)))
         && (!filters.year || String(item.releaseYear) === filters.year)
         && (!filters.season || item.releaseSeason === filters.season)
         && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)

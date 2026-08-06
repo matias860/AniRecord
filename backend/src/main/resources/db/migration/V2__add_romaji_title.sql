@@ -1,0 +1,1 @@
+ALTER TABLE media ADD COLUMN romaji_title VARCHAR(255);

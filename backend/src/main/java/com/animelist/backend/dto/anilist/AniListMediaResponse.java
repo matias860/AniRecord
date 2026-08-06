@@ -10,6 +10,7 @@ public record AniListMediaResponse(
         Integer anilistId,
         MediaType mediaType,
         String title,
+        String romajiTitle,
         String coverImage,
         String bannerImage,
         String synopsis,

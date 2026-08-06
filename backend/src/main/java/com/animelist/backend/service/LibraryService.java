@@ -6,6 +6,7 @@ import com.animelist.backend.dto.anilist.AniListLibraryExport;
 import com.animelist.backend.dto.anilist.AniListLibraryItem;
 import com.animelist.backend.dto.library.AddLibraryEntryRequest;
 import com.animelist.backend.dto.library.LibraryEntryResponse;
+import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.dto.library.LibraryImportResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.entity.LibraryEntry;
@@ -54,23 +55,8 @@ public class LibraryService {
     }
 
     @Transactional(readOnly = true)
-    public List<LibraryEntryResponse> findAll(MediaType mediaType, TrackingStatus status) {
-        List<LibraryEntry> entries;
-        if (mediaType != null && status != null) {
-            entries = libraryEntryRepository.findByMediaMediaTypeAndTrackingStatus(mediaType, status);
-        } else if (mediaType != null) {
-            entries = libraryEntryRepository.findByMediaMediaType(mediaType);
-        } else if (status != null) {
-            entries = libraryEntryRepository.findByTrackingStatus(status);
-        } else {
-            entries = libraryEntryRepository.findAll();
-        }
-
-        return entries.stream()
-                .sorted(Comparator.comparing(LibraryEntry::getUpdatedAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .map(this::toResponse)
-                .toList();
+    public List<LibraryEntrySummaryResponse> findAll(MediaType mediaType, TrackingStatus status) {
+        return libraryEntryRepository.findSummaries(mediaType, status);
     }
 
     @Transactional(readOnly = true)
@@ -322,6 +308,7 @@ public class LibraryService {
         target.setAnilistId(source.anilistId());
         target.setMediaType(source.mediaType());
         target.setTitle(source.title());
+        target.setRomajiTitle(source.romajiTitle());
         target.setCoverImage(source.coverImage());
         target.setBannerImage(source.bannerImage());
         target.setSynopsis(source.synopsis());
@@ -341,6 +328,7 @@ public class LibraryService {
                 media.getAnilistId(),
                 media.getMediaType(),
                 media.getTitle(),
+                media.getRomajiTitle(),
                 media.getCoverImage(),
                 media.getBannerImage(),
                 media.getSynopsis(),
