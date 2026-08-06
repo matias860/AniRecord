@@ -2,7 +2,9 @@ import axios from 'axios'
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 12000,
+  // Render Free suspends the backend after inactivity and a cold start can
+  // take well over a minute. Keep the first request alive while it wakes up.
+  timeout: 180000,
   headers: { 'Content-Type': 'application/json' },
 })
 
