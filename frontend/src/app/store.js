@@ -9,6 +9,7 @@ import historyReducer from '../features/history/historySlice.js'
 import notificationReducer from '../features/notifications/notificationSlice.js'
 import toastReducer from '../features/toast/toastSlice.js'
 import { toastMiddleware } from './toastMiddleware.js'
+import authReducer from '../features/auth/authSlice.js'
 
 const rootReducer = combineReducers({
   library: libraryReducer,
@@ -19,6 +20,7 @@ const rootReducer = combineReducers({
   history: historyReducer,
   notifications: notificationReducer,
   toast: toastReducer,
+  auth: authReducer,
 })
 
 const storage = {
@@ -28,7 +30,7 @@ const storage = {
 }
 
 const persistedReducer = persistReducer(
-  { key: 'anime-list', storage, whitelist: ['search', 'profile'] },
+  { key: 'anime-list-v2', storage, whitelist: ['search'] },
   rootReducer,
 )
 

@@ -17,14 +17,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class ActivityHistoryService {
 
     private final ActivityHistoryRepository repository;
+    private final CurrentUserService currentUser;
 
-    public ActivityHistoryService(ActivityHistoryRepository repository) {
+    public ActivityHistoryService(ActivityHistoryRepository repository, CurrentUserService currentUser) {
         this.repository = repository;
+        this.currentUser = currentUser;
     }
 
     @Transactional(readOnly = true)
     public List<ActivityHistoryResponse> findRecent(int limit) {
-        return repository.findAllByOrderByCreatedAtDesc(PageRequest.of(0, Math.min(limit, 100)))
+        return repository.findByUserIdOrderByCreatedAtDesc(currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100)))
                 .stream().map(this::toResponse).toList();
     }
 
@@ -62,6 +64,7 @@ public class ActivityHistoryService {
     private ActivityHistory base(ActivityType type, LibraryEntry entry) {
         ActivityHistory activity = new ActivityHistory();
         activity.setMedia(entry.getMedia());
+        activity.setUser(entry.getUser());
         activity.setActivityType(type);
         return activity;
     }

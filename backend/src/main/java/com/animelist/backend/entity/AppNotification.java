@@ -13,8 +13,10 @@ import lombok.Setter;
 public class AppNotification {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "anilist_notification_id", nullable = false, unique = true)
+    @Column(name = "anilist_notification_id", nullable = false)
     private Integer anilistNotificationId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false) @JoinColumn(name="user_id", nullable=false)
+    private AppUser user;
     @Enumerated(EnumType.STRING) @Column(name = "notification_type", nullable = false)
     private NotificationType notificationType;
     @Column(name = "anilist_media_id")

@@ -1,13 +1,32 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout.jsx'
 import HomeView from './views/HomeView.jsx'
 import LibraryView from './views/LibraryView.jsx'
 import MediaDetailView from './views/MediaDetailView.jsx'
 import CatalogView from './views/CatalogView.jsx'
+import { BookOpen } from 'lucide-react'
 const ProfileView = lazy(() => import('./views/ProfileView.jsx'))
+import LoginView from './views/LoginView.jsx'
+import { fetchAuth } from './features/auth/authSlice.js'
+import apiClient from './api/apiClient.js'
+import ImportView from './views/ImportView.jsx'
 
 export default function App() {
+  const dispatch = useDispatch()
+  const auth = useSelector((state) => state.auth)
+  useEffect(() => {
+    if (auth.status !== 'idle') return
+    const hash = new URLSearchParams(window.location.hash.slice(1))
+    const ticket = hash.get('ticket')
+    if (ticket) {
+      apiClient.post('/auth/claim', { ticket }).finally(() => { window.history.replaceState({}, '', '/'); dispatch(fetchAuth()) })
+    } else dispatch(fetchAuth())
+  }, [auth.status, dispatch])
+  if (auth.status === 'idle' || auth.status === 'loading') return <div className="auth-loading"><BookOpen /> Despertando tu biblioteca…</div>
+  if (!auth.authenticated) return <LoginView />
+  if (auth.needsImport) return <ImportView />
   return (
     <Routes>
       <Route element={<AppLayout />}>

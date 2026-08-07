@@ -35,6 +35,10 @@ public class ActivityHistory {
     @JoinColumn(name = "media_id", nullable = false)
     private Media media;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private AppUser user;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "activity_type", nullable = false)
     private ActivityType activityType;

@@ -32,14 +32,12 @@ public class NotificationService {
         """;
     private final AppNotificationRepository repository;
     private final AniListAuthService auth;
+    private final CurrentUserService currentUser;
     private final RestClient client = RestClient.create();
-    public NotificationService(AppNotificationRepository repository, AniListAuthService auth) { this.repository = repository; this.auth = auth; }
-
-    @Scheduled(fixedDelay = 600000, initialDelay = 30000)
-    public void scheduledSync() { if (auth.validToken() != null) syncSafely(); }
+    public NotificationService(AppNotificationRepository repository, AniListAuthService auth, CurrentUserService currentUser) { this.repository = repository; this.auth = auth; this.currentUser=currentUser; }
 
     public int syncSafely() {
-        try { return sync(); }
+        try { return repository.countByUserId(currentUser.require().getId()) == 0 ? initialSync() : sync(); }
         catch (RuntimeException exception) {
             LOGGER.warn("No se pudieron sincronizar las notificaciones de AniList; se conserva el historial local", exception);
             return 0;
@@ -61,6 +59,7 @@ public class NotificationService {
     @Transactional
     @SuppressWarnings("unchecked")
     private int sync(boolean markImportedAsRead) {
+        var user=currentUser.require();
         String token = auth.validToken(); if (token == null) return 0;
         Map<String, Object> body = client.post().uri("https://graphql.anilist.co").header("Authorization", "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON).body(Map.of("query", QUERY)).retrieve().body(Map.class);
@@ -73,17 +72,17 @@ public class NotificationService {
             Integer episode = number(item.get("episode"));
             if (!shouldImport(typename, episode)) continue;
             Integer externalId = number(item.get("id"));
-            if (externalId == null || repository.existsByAnilistNotificationId(externalId)) continue;
+            if (externalId == null || repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) continue;
             AppNotification notification = map(item, typename, episode, externalId);
-            if (notification != null) { notification.setRead(markImportedAsRead); repository.save(notification); added++; }
+            if (notification != null) { notification.setUser(user); notification.setRead(markImportedAsRead); repository.save(notification); added++; }
         }
         return added;
     }
 
-    public List<NotificationResponse> findRecent(int limit) { return repository.findAllByOrderByOccurredAtDesc(PageRequest.of(0, Math.min(limit, 100))).stream().map(this::response).toList(); }
-    public long unreadCount() { return repository.countByReadFalse(); }
-    @Transactional public void read(Long id) { repository.findById(id).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
-    @Transactional public void readAll() { repository.markAllAsRead(); }
+    public List<NotificationResponse> findRecent(int limit) { return repository.findByUserIdOrderByOccurredAtDesc(currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100))).stream().map(this::response).toList(); }
+    public long unreadCount() { return repository.countByUserIdAndReadFalse(currentUser.require().getId()); }
+    @Transactional public void read(Long id) { Long uid=currentUser.require().getId(); repository.findById(id).filter(n->n.getUser().getId().equals(uid)).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
+    @Transactional public void readAll() { repository.markAllAsRead(currentUser.require().getId()); }
 
     static boolean shouldImport(String typename, Integer episode) {
         return !"AiringNotification".equals(typename) || Objects.equals(episode, 1);

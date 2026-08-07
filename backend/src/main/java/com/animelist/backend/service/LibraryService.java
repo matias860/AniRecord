@@ -39,24 +39,27 @@ public class LibraryService {
     private final AniListClient aniListClient;
     private final AppUserRepository appUserRepository;
     private final ActivityHistoryService activityHistoryService;
+    private final CurrentUserService currentUser;
 
     public LibraryService(
             LibraryEntryRepository libraryEntryRepository,
             MediaRepository mediaRepository,
             AniListClient aniListClient,
             AppUserRepository appUserRepository,
-            ActivityHistoryService activityHistoryService
+            ActivityHistoryService activityHistoryService,
+            CurrentUserService currentUser
     ) {
         this.libraryEntryRepository = libraryEntryRepository;
         this.mediaRepository = mediaRepository;
         this.aniListClient = aniListClient;
         this.appUserRepository = appUserRepository;
         this.activityHistoryService = activityHistoryService;
+        this.currentUser = currentUser;
     }
 
     @Transactional(readOnly = true)
     public List<LibraryEntrySummaryResponse> findAll(MediaType mediaType, TrackingStatus status) {
-        return libraryEntryRepository.findSummaries(mediaType, status);
+        return libraryEntryRepository.findSummaries(currentUser.require().getId(), mediaType, status);
     }
 
     @Transactional(readOnly = true)
@@ -66,7 +69,8 @@ public class LibraryService {
 
     @Transactional
     public LibraryEntryResponse add(AddLibraryEntryRequest request) {
-        if (libraryEntryRepository.existsByMediaAnilistId(request.anilistId())) {
+        AppUser user=currentUser.require();
+        if (libraryEntryRepository.existsByUserIdAndMediaAnilistId(user.getId(), request.anilistId())) {
             throw new BusinessException("La obra ya está en tu biblioteca");
         }
 
@@ -77,6 +81,7 @@ public class LibraryService {
         media = mediaRepository.save(media);
 
         LibraryEntry entry = new LibraryEntry();
+        entry.setUser(user);
         entry.setMedia(media);
         entry.setTrackingStatus(request.trackingStatus() == null
                 ? TrackingStatus.PLANNED
@@ -188,7 +193,7 @@ public class LibraryService {
     @Transactional(readOnly = true)
     public List<AiringMediaResponse> findUpcomingEpisodes() {
         List<LibraryEntry> entries = libraryEntryRepository
-                .findByMediaMediaTypeAndTrackingStatus(MediaType.ANIME, TrackingStatus.IN_PROGRESS);
+                .findByUserIdAndMediaMediaTypeAndTrackingStatus(currentUser.require().getId(), MediaType.ANIME, TrackingStatus.IN_PROGRESS);
         List<Integer> ids = entries.stream()
                 .map(entry -> entry.getMedia().getAnilistId())
                 .toList();
@@ -215,7 +220,7 @@ public class LibraryService {
     }
 
     private LibraryEntry findEntry(Long id) {
-        return libraryEntryRepository.findWithMediaById(id)
+        return libraryEntryRepository.findWithMediaByIdAndUserId(id, currentUser.require().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la entrada de biblioteca"));
     }
 
@@ -259,7 +264,14 @@ public class LibraryService {
     }
 
     @Transactional
-    public LibraryImportResponse importFromAniList(String username) {
+    public LibraryImportResponse importFromAniList() {
+        AppUser user=currentUser.require();
+        return importForUser(user.getId(), user.getAnilistUsername());
+    }
+
+    @Transactional
+    public synchronized LibraryImportResponse importForUser(Long userId, String username) {
+        AppUser profile=appUserRepository.findById(userId).orElseThrow();
         AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim());
         int created = 0;
         int updated = 0;
@@ -271,10 +283,11 @@ public class LibraryService {
             copyExternalMedia(item.media(), media);
             media = mediaRepository.save(media);
 
-            LibraryEntry entry = libraryEntryRepository.findByMediaAnilistId(item.media().anilistId()).orElse(null);
+            LibraryEntry entry = libraryEntryRepository.findByUserIdAndMediaAnilistId(userId, item.media().anilistId()).orElse(null);
             if (entry == null) {
                 entry = new LibraryEntry();
                 entry.setMedia(media);
+                entry.setUser(profile);
                 created++;
             } else {
                 updated++;
@@ -290,10 +303,10 @@ public class LibraryService {
             if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
         }
 
-        AppUser profile = appUserRepository.findById((byte) 1).orElseGet(AppUser::new);
         profile.setDisplayName(externalLibrary.username());
         profile.setAvatarUrl(externalLibrary.avatarUrl());
         profile.setBannerUrl(externalLibrary.bannerUrl());
+        profile.setLastAniListSyncAt(LocalDateTime.now());
         appUserRepository.save(profile);
 
         return new LibraryImportResponse(externalLibrary.username(), anime + manga, anime, manga, created, updated);

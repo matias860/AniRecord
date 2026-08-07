@@ -20,36 +20,28 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
                 media.releaseYear, entry.progress, entry.personalScore, entry.rewatchCount,
                 entry.trackingStatus, entry.startedAt, entry.completedAt, entry.createdAt, entry.updatedAt)
             from LibraryEntry entry join entry.media media
-            where (:mediaType is null or media.mediaType = :mediaType)
+            where entry.user.id = :userId
+              and (:mediaType is null or media.mediaType = :mediaType)
               and (:status is null or entry.trackingStatus = :status)
             order by entry.updatedAt desc
             """)
     List<LibraryEntrySummaryResponse> findSummaries(
+            @Param("userId") Long userId,
             @Param("mediaType") MediaType mediaType,
             @Param("status") TrackingStatus status
     );
 
-    @Override
     @EntityGraph(attributePaths = "media")
-    List<LibraryEntry> findAll();
+    Optional<LibraryEntry> findWithMediaByIdAndUserId(Long id, Long userId);
+
+    boolean existsByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 
     @EntityGraph(attributePaths = "media")
-    Optional<LibraryEntry> findWithMediaById(Long id);
-
-    boolean existsByMediaAnilistId(Integer anilistId);
+    Optional<LibraryEntry> findByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 
     @EntityGraph(attributePaths = "media")
-    Optional<LibraryEntry> findByMediaAnilistId(Integer anilistId);
-
-    @EntityGraph(attributePaths = "media")
-    List<LibraryEntry> findByMediaMediaType(MediaType mediaType);
-
-    @EntityGraph(attributePaths = "media")
-    List<LibraryEntry> findByTrackingStatus(TrackingStatus trackingStatus);
-
-    @EntityGraph(attributePaths = "media")
-    List<LibraryEntry> findByMediaMediaTypeAndTrackingStatus(
-            MediaType mediaType,
+    List<LibraryEntry> findByUserIdAndMediaMediaTypeAndTrackingStatus(
+            Long userId, MediaType mediaType,
             TrackingStatus trackingStatus
     );
 }

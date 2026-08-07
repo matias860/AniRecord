@@ -3,6 +3,8 @@ package com.animelist.backend.entity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -18,7 +20,12 @@ import lombok.Setter;
 @NoArgsConstructor
 public class AppUser {
     @Id
-    private Byte id = 1;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(name = "anilist_user_id", nullable = false, unique = true)
+    private Integer anilistUserId;
+    @Column(name = "anilist_username", nullable = false, unique = true, length = 100)
+    private String anilistUsername;
     @Column(name = "display_name", nullable = false, length = 40)
     private String displayName = "Mi perfil";
     @Column(nullable = false, length = 160)
@@ -35,6 +42,8 @@ public class AppUser {
     private String accentColor = "#a88bff";
     @Column(name = "dots_enabled", nullable = false)
     private Boolean dotsEnabled = true;
+    @Column(name = "last_anilist_sync_at")
+    private LocalDateTime lastAniListSyncAt;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     @Column(name = "updated_at", nullable = false)

@@ -8,10 +8,11 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface AppNotificationRepository extends JpaRepository<AppNotification, Long> {
-    boolean existsByAnilistNotificationId(Integer id);
-    List<AppNotification> findAllByOrderByOccurredAtDesc(Pageable pageable);
-    long countByReadFalse();
+    boolean existsByUserIdAndAnilistNotificationId(Long userId, Integer id);
+    List<AppNotification> findByUserIdOrderByOccurredAtDesc(Long userId, Pageable pageable);
+    long countByUserIdAndReadFalse(Long userId);
+    long countByUserId(Long userId);
     @Modifying
-    @Query("update AppNotification notification set notification.read = true where notification.read = false")
-    int markAllAsRead();
+    @Query("update AppNotification notification set notification.read = true where notification.user.id = :userId and notification.read = false")
+    int markAllAsRead(@org.springframework.data.repository.query.Param("userId") Long userId);
 }

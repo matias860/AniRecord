@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Compass, Home, Library, UserRound } from 'lucide-react'
+import { BookOpen, Compass, Home, Library, LogOut, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, Outlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
+import { logout } from '../../features/auth/authSlice.js'
 
 const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
@@ -18,6 +19,7 @@ export default function AppLayout() {
   const [hovered, setHovered] = useState(null)
   const dispatch = useDispatch()
   const profile = useSelector((state) => state.profile)
+  const signOut = async () => { await dispatch(logout()); window.localStorage.removeItem('persist:anime-list'); window.localStorage.removeItem('persist:anime-list-v2'); window.location.replace('/') }
   useEffect(() => { if (profile.status === 'idle') dispatch(fetchProfile()) }, [dispatch, profile.status])
   const themeStyle = {
     '--user-bg': profile.backgroundColor,
@@ -38,6 +40,7 @@ export default function AppLayout() {
             ))}
           </nav>
           <NotificationBell />
+          <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
         </div>
       </header>
       <main className="page"><Outlet /></main>

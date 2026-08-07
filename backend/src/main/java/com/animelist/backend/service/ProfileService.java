@@ -9,21 +9,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ProfileService {
-    private static final byte PROFILE_ID = 1;
     private final AppUserRepository repository;
+    private final CurrentUserService currentUser;
 
-    public ProfileService(AppUserRepository repository) {
+    public ProfileService(AppUserRepository repository, CurrentUserService currentUser) {
         this.repository = repository;
+        this.currentUser = currentUser;
     }
 
     @Transactional
     public ProfileResponse get() {
-        return toResponse(repository.findById(PROFILE_ID).orElseGet(() -> repository.save(new AppUser())));
+        return toResponse(currentUser.require());
     }
 
     @Transactional
     public ProfileResponse update(UpdateProfileRequest request) {
-        AppUser user = repository.findById(PROFILE_ID).orElseGet(AppUser::new);
+        AppUser user = currentUser.require();
         user.setDisplayName(request.displayName().trim());
         user.setBio(request.bio().trim());
         user.setAvatarUrl(normalize(request.avatarUrl()));

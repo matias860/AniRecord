@@ -9,5 +9,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface ActivityHistoryRepository extends JpaRepository<ActivityHistory, Long> {
 
     @EntityGraph(attributePaths = "media")
-    List<ActivityHistory> findAllByOrderByCreatedAtDesc(Pageable pageable);
+    List<ActivityHistory> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 }

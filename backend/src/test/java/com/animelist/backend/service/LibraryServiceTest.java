@@ -14,6 +14,7 @@ import com.animelist.backend.dto.library.LibraryEntryResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
+import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
@@ -45,14 +46,18 @@ class LibraryServiceTest {
 
     @Mock
     private ActivityHistoryService activityHistoryService;
+    @Mock private CurrentUserService currentUserService;
+    private AppUser user;
 
     private LibraryService libraryService;
 
     @BeforeEach
     void setUp() {
         libraryService = new LibraryService(
-                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService
+                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService, currentUserService
         );
+        user = new AppUser(); user.setId(1L); user.setAnilistUserId(1); user.setAnilistUsername("test");
+        lenient().when(currentUserService.require()).thenReturn(user);
         lenient().when(libraryEntryRepository.save(any(LibraryEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
@@ -159,7 +164,7 @@ class LibraryServiceTest {
 
     @Test
     void duplicateAniListIdIsRejectedBeforeCallingAniList() {
-        when(libraryEntryRepository.existsByMediaAnilistId(21)).thenReturn(true);
+        when(libraryEntryRepository.existsByUserIdAndMediaAnilistId(1L, 21)).thenReturn(true);
 
         assertThrows(
                 BusinessException.class,
@@ -170,7 +175,7 @@ class LibraryServiceTest {
 
     private void mockEntry(Long id, LibraryEntry entry) {
         entry.setId(id);
-        when(libraryEntryRepository.findWithMediaById(id)).thenReturn(Optional.of(entry));
+        when(libraryEntryRepository.findWithMediaByIdAndUserId(id, 1L)).thenReturn(Optional.of(entry));
     }
 
     private LibraryEntry entry(int progress, Integer totalUnits, TrackingStatus status) {
@@ -182,6 +187,7 @@ class LibraryServiceTest {
 
         LibraryEntry entry = new LibraryEntry();
         entry.setMedia(media);
+        entry.setUser(user);
         entry.setProgress(progress);
         entry.setTrackingStatus(status);
         return entry;
