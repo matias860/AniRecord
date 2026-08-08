@@ -2,6 +2,7 @@ import { addToast } from '../features/toast/toastSlice.js'
 
 const successMessages = {
   'profile/save/fulfilled': 'Perfil guardado correctamente.',
+  'library/synchronizeAniList/fulfilled': 'Biblioteca sincronizada con AniList.',
   'library/add/fulfilled': 'Título agregado a tu biblioteca.',
   'library/remove/fulfilled': 'Título eliminado de tu biblioteca.',
 }

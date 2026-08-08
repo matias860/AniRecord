@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -9,11 +9,12 @@ import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import SeasonMarquee from '../components/home/SeasonMarquee.jsx'
 import PageState from '../components/common/PageState.jsx'
 import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setWatchingPage } from '../features/home/homeSlice.js'
-import { fetchLibrary, incrementProgress } from '../features/library/librarySlice.js'
+import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
 
 const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
 const pageSize = 5
+const appCommit = import.meta.env.VITE_APP_COMMIT || 'development'
 
 function seasonAtOffset(offset) {
   const now = new Date()
@@ -24,8 +25,12 @@ function seasonAtOffset(offset) {
 
 export default function HomeView() {
   const dispatch = useDispatch()
+  const auth = useSelector((state) => state.auth)
   const library = useSelector((state) => state.library)
   const home = useSelector((state) => state.home)
+  const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
+  const [dismissedCommit, setDismissedCommit] = useState(() => window.localStorage.getItem(syncPromptKey))
+  const showSyncPrompt = auth.accountType === 'ANILIST' && dismissedCommit !== appCommit
   const { season: selectedSeasonName, year: selectedSeasonYear } = seasonAtOffset(home.seasonOffset)
   const selectedSeasonKey = `${selectedSeasonName}-${selectedSeasonYear}`
   const selectedSeasonEntries = home.seasonCache[selectedSeasonKey] ?? []
@@ -77,8 +82,41 @@ export default function HomeView() {
       return currentMedia ? { ...item, releaseStartDate: currentMedia.releaseStartDate ?? item.releaseStartDate } : item
     })
 
+  const closeSyncPrompt = () => {
+    window.localStorage.setItem(syncPromptKey, appCommit)
+    setDismissedCommit(appCommit)
+  }
+
+  const synchronize = async () => {
+    try {
+      await dispatch(synchronizeAniListLibrary()).unwrap()
+      closeSyncPrompt()
+    } catch {
+      // The global toast keeps the error visible and the modal open for retrying.
+    }
+  }
+
   return (
     <>
+      <AnimatePresence>
+        {showSyncPrompt && <motion.div className="commit-sync-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+          <motion.section className="commit-sync-modal" role="dialog" aria-modal="true" aria-labelledby="commit-sync-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
+            <button className="commit-sync-close" type="button" onClick={closeSyncPrompt} aria-label="Cerrar"><X /></button>
+            <div className="commit-sync-icon"><RefreshCw /></div>
+            <span className="eyebrow">Nueva actualización</span>
+            <h2 id="commit-sync-title">¿Actualizamos tu biblioteca?</h2>
+            <p>Hay una versión nueva de Anime List. Podés traer títulos y metadatos recientes de AniList sin modificar tu progreso, estados ni puntajes.</p>
+            <small>Versión {appCommit.slice(0, 7)}</small>
+            <div className="commit-sync-actions">
+              <button type="button" className="secondary-button" onClick={closeSyncPrompt}>Ahora no</button>
+              <button type="button" className="primary-button" disabled={library.syncStatus === 'loading'} onClick={synchronize}>
+                <RefreshCw className={library.syncStatus === 'loading' ? 'spin' : ''} />
+                {library.syncStatus === 'loading' ? 'Sincronizando...' : 'Sincronizar ahora'}
+              </button>
+            </div>
+          </motion.section>
+        </motion.div>}
+      </AnimatePresence>
       <section className="welcome-row">
         <div><span className="eyebrow">Biblioteca personal</span><h1>¿Qué seguimos hoy?</h1><p>Todo tu anime y manga, ordenado en un solo lugar.</p></div>
         <div className="stats"><div><strong>{inProgress}</strong><span>En curso</span></div><div><strong>{completed}</strong><span>Completados</span></div><div><strong>{library.items.length}</strong><span>Total</span></div></div>
