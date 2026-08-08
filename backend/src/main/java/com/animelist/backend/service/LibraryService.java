@@ -290,6 +290,9 @@ public class LibraryService {
                     .findByUserIdAndMediaAnilistId(userId, item.media().anilistId())
                     .orElse(null);
             if (existingEntry != null) {
+                copyExternalMedia(item.media(), existingEntry.getMedia());
+                mediaRepository.save(existingEntry.getMedia());
+                updated++;
                 if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
                 continue;
             }
