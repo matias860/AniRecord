@@ -9,7 +9,7 @@ export const fetchAiringSchedule = createAsyncThunk('home/airing', async () => {
 export const fetchSeason = createAsyncThunk(
   'home/season',
   async ({ season, year }) => {
-    const { data } = await apiClient.get('/anilist/season', { params: { season, year, limit: 20 } })
+    const { data } = await apiClient.get('/anilist/season', { params: { season, year, limit: 50 } })
     return { entries: data, season, year }
   },
   {

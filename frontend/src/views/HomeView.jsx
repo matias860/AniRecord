@@ -68,9 +68,14 @@ export default function HomeView() {
       const item = seasonAtOffset(offset)
       return { value: String(offset), label: `${seasonLabels[item.season]} ${item.year}` }
     })
+  const seasonMediaById = new Map(selectedSeasonEntries.map((item) => [item.anilistId, item]))
   const calendarEntries = library.items.filter((item) => item.mediaType === 'ANIME'
     && ['PLANNED', 'IN_PROGRESS'].includes(item.trackingStatus)
     && item.releaseSeason === selectedSeasonName && item.releaseYear === selectedSeasonYear)
+    .map((item) => {
+      const currentMedia = seasonMediaById.get(item.anilistId)
+      return currentMedia ? { ...item, releaseStartDate: currentMedia.releaseStartDate ?? item.releaseStartDate } : item
+    })
 
   return (
     <>
