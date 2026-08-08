@@ -22,6 +22,7 @@ import com.animelist.backend.repository.LibraryEntryRepository;
 import com.animelist.backend.repository.MediaRepository;
 import com.animelist.backend.repository.AppUserRepository;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,6 +62,15 @@ class LibraryServiceTest {
         lenient().when(currentUserService.require()).thenReturn(user);
         lenient().when(libraryEntryRepository.save(any(LibraryEntry.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void loadingLibraryOnlyReadsLocalData() {
+        when(libraryEntryRepository.findSummaries(1L, null, null)).thenReturn(List.of());
+
+        assertEquals(List.of(), libraryService.findAll(null, null));
+
+        verifyNoInteractions(aniListClient, aniListAuthService);
     }
 
     @Test

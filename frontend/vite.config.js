@@ -13,9 +13,7 @@ const synchronizationPaths = [
   'backend/src/main/java/com/animelist/backend/entity/Media.java',
   'backend/src/main/java/com/animelist/backend/dto/anilist/',
   'backend/src/main/java/com/animelist/backend/dto/library/',
-  'backend/src/main/java/com/animelist/backend/repository/LibraryEntryRepository.java',
   'backend/src/main/java/com/animelist/backend/service/AniListClient.java',
-  'backend/src/main/java/com/animelist/backend/service/LibraryService.java',
 ]
 
 function synchronizationRequired(sha) {

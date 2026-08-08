@@ -82,6 +82,7 @@ export default function HomeView() {
   const reading = allReading.slice(readingPage * pageSize, readingPage * pageSize + pageSize)
   const inProgress = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS').length
   const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
+  const libraryReady = library.status === 'succeeded'
   const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
   const scheduleOptions = [0, 1, 2, 3].map((offset) => {
       const item = seasonAtOffset(offset)
@@ -135,7 +136,7 @@ export default function HomeView() {
       </AnimatePresence>
       <section className="welcome-row">
         <div><span className="eyebrow">Biblioteca personal</span><h1>¿Qué seguimos hoy?</h1><p>Todo tu anime y manga, ordenado en un solo lugar.</p></div>
-        <div className="stats"><div><strong>{inProgress}</strong><span>En curso</span></div><div><strong>{completed}</strong><span>Completados</span></div><div><strong>{library.items.length}</strong><span>Total</span></div></div>
+        <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div>
       </section>
 
       <PageState loading={home.status === 'loading'} error={home.error} />
