@@ -9,6 +9,9 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import com.animelist.backend.enums.AccountType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -22,10 +25,17 @@ public class AppUser {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Column(name = "anilist_user_id", nullable = false, unique = true)
+    @Column(name = "anilist_user_id", unique = true)
     private Integer anilistUserId;
-    @Column(name = "anilist_username", nullable = false, unique = true, length = 100)
+    @Column(name = "anilist_username", unique = true, length = 100)
     private String anilistUsername;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "account_type", nullable = false, length = 16)
+    private AccountType accountType = AccountType.ANILIST;
+    @Column(name = "local_username", length = 30)
+    private String localUsername;
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
     @Column(name = "display_name", nullable = false, length = 40)
     private String displayName = "Mi perfil";
     @Column(nullable = false, length = 160)

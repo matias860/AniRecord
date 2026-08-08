@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BookOpen, Clapperboard, Palette, RotateCcw, Save, Sparkles, Star, Trophy, UserRound } from 'lucide-react'
+import { BookOpen, Clapperboard, FileImage, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
@@ -8,7 +8,7 @@ import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
 import { selectTopRatedAnime, selectTopRatedManga } from '../features/library/librarySelectors.js'
 import { fetchHistory } from '../features/history/historySlice.js'
-import { resetTheme, saveProfile, updateProfile } from '../features/profile/profileSlice.js'
+import { deleteProfileAsset, resetTheme, saveProfile, updateProfile, uploadProfileAsset } from '../features/profile/profileSlice.js'
 
 export default function ProfileView() {
   const dispatch = useDispatch()
@@ -36,7 +36,9 @@ export default function ProfileView() {
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => dispatch(resetTheme())}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
           <label className="profile-field"><span>Biografía</span><textarea value={profile.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>
-          <div className="profile-url-grid"><label className="profile-field"><span>URL del avatar</span><input value={profile.avatarUrl || ''} onChange={(e) => update({ avatarUrl: e.target.value })} placeholder="https://..." /></label><label className="profile-field"><span>URL del banner</span><input value={profile.bannerUrl || ''} onChange={(e) => update({ bannerUrl: e.target.value })} placeholder="https://..." /></label></div>
+          {profile.accountType === 'LOCAL'
+            ? <div className="profile-file-grid"><ProfileFileField type="avatar" label="Avatar" hint="JPG, PNG o WebP · máximo 2 MB" value={profile.avatarUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /><ProfileFileField type="banner" label="Banner" hint="JPG, PNG o WebP · máximo 6 MB" value={profile.bannerUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /></div>
+            : <div className="profile-url-grid"><label className="profile-field"><span>URL del avatar</span><input value={profile.avatarUrl || ''} onChange={(e) => update({ avatarUrl: e.target.value })} placeholder="https://..." /></label><label className="profile-field"><span>URL del banner</span><input value={profile.bannerUrl || ''} onChange={(e) => update({ bannerUrl: e.target.value })} placeholder="https://..." /></label></div>}
           <div className="color-options"><ThemeColorPicker label="Color de fondo" value={profile.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={profile.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={profile.accentColor} onChange={(accentColor) => update({ accentColor })} /></div>
           <label className="dot-toggle"><input type="checkbox" checked={profile.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
           <div className="profile-actions"><span>{profile.saved ? 'Cambios guardados' : 'Hay cambios sin guardar'}</span><button className="primary-button" disabled={profile.status === 'saving'} onClick={() => dispatch(saveProfile())}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>
@@ -44,6 +46,20 @@ export default function ProfileView() {
       </div>
     </>
   )
+}
+
+function ProfileFileField({ type, label, hint, value, busy, dispatch }) {
+  const inputId = `profile-${type}-file`
+  const choose = (event) => {
+    const file = event.target.files?.[0]
+    if (file) dispatch(uploadProfileAsset({ type, file }))
+    event.target.value = ''
+  }
+  return <article className="profile-file-field">
+    <div className="profile-file-icon">{value ? <img src={value} alt="" /> : <FileImage />}</div>
+    <div><strong>{label}</strong><small>{hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy ? 'disabled' : ''}><Upload /> {value ? 'Cambiar' : 'Subir'}</label>{value && <button type="button" disabled={busy} onClick={() => dispatch(deleteProfileAsset(type))}><Trash2 /> Quitar</button>}</div></div>
+    <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} disabled={busy} />
+  </article>
 }
 
 function TopRated({ title, icon, entries }) {

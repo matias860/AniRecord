@@ -19,6 +19,7 @@ export default function AppLayout() {
   const [hovered, setHovered] = useState(null)
   const dispatch = useDispatch()
   const profile = useSelector((state) => state.profile)
+  const accountType = useSelector((state) => state.auth.accountType)
   const signOut = async () => { await dispatch(logout()); window.localStorage.removeItem('persist:anime-list'); window.localStorage.removeItem('persist:anime-list-v2'); window.location.replace('/') }
   useEffect(() => { if (profile.status === 'idle') dispatch(fetchProfile()) }, [dispatch, profile.status])
   const themeStyle = {
@@ -39,7 +40,7 @@ export default function AppLayout() {
               </NavLink>
             ))}
           </nav>
-          <NotificationBell />
+          {accountType === 'ANILIST' && <NotificationBell />}
           <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
         </div>
       </header>

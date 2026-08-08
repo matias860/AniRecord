@@ -3,6 +3,7 @@ package com.animelist.backend.service;
 import com.animelist.backend.dto.auth.AuthStatusResponse;
 import com.animelist.backend.entity.*;
 import com.animelist.backend.exception.BusinessException;
+import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.repository.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -36,8 +37,9 @@ public class AniListAuthService {
     }
 
     public AuthStatusResponse status() { return currentUser.optional()
-            .map(u -> new AuthStatusResponse(true, u.getId(), u.getAnilistUsername(), u.getAvatarUrl(), u.getLastAniListSyncAt()==null))
-            .orElseGet(() -> new AuthStatusResponse(false, null, null, null, false)); }
+            .map(u -> new AuthStatusResponse(true, u.getId(), u.getAccountType() == AccountType.ANILIST ? u.getAnilistUsername() : u.getLocalUsername(),
+                    u.getAvatarUrl(), u.getAccountType().name(), u.getAccountType() == AccountType.ANILIST && u.getLastAniListSyncAt()==null))
+            .orElseGet(() -> new AuthStatusResponse(false, null, null, null, null, false)); }
 
     public String authorizationUrl() {
         if (clientId.isBlank() || clientSecret.isBlank()) throw new BusinessException("Faltan las credenciales OAuth de AniList");
@@ -58,7 +60,7 @@ public class AniListAuthService {
         Map<String,Object> viewer=fetchViewer(accessToken);
         Integer externalId=((Number)viewer.get("id")).intValue(); String name=String.valueOf(viewer.get("name"));
         AppUser user=users.findByAnilistUserId(externalId).orElseGet(AppUser::new);
-        user.setAnilistUserId(externalId); user.setAnilistUsername(name); user.setDisplayName(name); updateImages(user, viewer); user=users.save(user);
+        user.setAccountType(AccountType.ANILIST); user.setAnilistUserId(externalId); user.setAnilistUsername(name); user.setDisplayName(name); updateImages(user, viewer); user=users.save(user);
         AniListConnection connection=connections.findById(user.getId()).orElseGet(AniListConnection::new);
         connection.setUser(user); connection.setAccessToken(accessToken);
         Number seconds=(Number)token.getOrDefault("expires_in",31536000); connection.setTokenExpiresAt(LocalDateTime.now().plusSeconds(seconds.longValue())); connections.save(connection);
