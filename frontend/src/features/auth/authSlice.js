@@ -10,7 +10,7 @@ export const localLogin = createAsyncThunk('auth/localLogin', async (credentials
 export const registerLocal = createAsyncThunk('auth/registerLocal', async (profile, { rejectWithValue }) => {
   try { return (await apiClient.post('/auth/register', profile)).data }
   catch (error) {
-    const validation = error.response?.data?.errors
+    const validation = error.response?.data?.validationErrors
     return rejectWithValue(validation ? Object.values(validation)[0] : error.response?.data?.message || 'No se pudo crear la cuenta')
   }
 })
