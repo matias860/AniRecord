@@ -152,16 +152,13 @@ public class AniListClient {
             """;
 
     private static final String USER_LIBRARY_QUERY = """
-            query UserLibrary($userName: String!) {
+            query UserLibrary($userName: String!, $type: MediaType!, $chunk: Int!, $perChunk: Int!) {
               User(name: $userName) {
                 name
                 avatar { large }
                 bannerImage
               }
-              anime: MediaListCollection(userName: $userName, type: ANIME, forceSingleCompletedList: true) {
-                lists { entries { ...LibraryEntryFields } }
-              }
-              manga: MediaListCollection(userName: $userName, type: MANGA, forceSingleCompletedList: true) {
+              collection: MediaListCollection(userName: $userName, type: $type, chunk: $chunk, perChunk: $perChunk, forceSingleCompletedList: true) {
                 lists { entries { ...LibraryEntryFields } }
               }
             }
@@ -386,22 +383,41 @@ public class AniListClient {
                 .toList();
     }
 
-    public AniListLibraryExport getUserLibrary(String username) {
-        Map<String, Object> data = execute(USER_LIBRARY_QUERY, Map.of("userName", username));
-        Map<String, Object> user = asMap(data.get("User"));
+    public AniListLibraryExport getUserLibrary(String username, String accessToken) {
+        Map<String, Object> user = new LinkedHashMap<>();
+        Map<Integer, AniListLibraryItem> uniqueEntries = new LinkedHashMap<>();
+        collectLibraryChunks(username, MediaType.ANIME, accessToken, uniqueEntries, user);
+        collectLibraryChunks(username, MediaType.MANGA, accessToken, uniqueEntries, user);
         if (user.isEmpty()) {
             throw new AniListClientException("AniList no encontró el usuario solicitado");
         }
-
-        Map<Integer, AniListLibraryItem> uniqueEntries = new LinkedHashMap<>();
-        collectLibraryEntries(data.get("anime"), uniqueEntries);
-        collectLibraryEntries(data.get("manga"), uniqueEntries);
         return new AniListLibraryExport(
                 asString(user.get("name")),
                 asString(asMap(user.get("avatar")).get("large")),
                 asString(user.get("bannerImage")),
                 List.copyOf(uniqueEntries.values())
         );
+    }
+
+    private void collectLibraryChunks(String username, MediaType type, String accessToken,
+            Map<Integer, AniListLibraryItem> target, Map<String, Object> userTarget) {
+        final int perChunk = 500;
+        for (int chunk = 1; ; chunk++) {
+            Map<String, Object> data = execute(USER_LIBRARY_QUERY, Map.of(
+                    "userName", username,
+                    "type", type.name(),
+                    "chunk", chunk,
+                    "perChunk", perChunk
+            ), accessToken);
+            if (userTarget.isEmpty()) {
+                userTarget.putAll(asMap(data.get("User")));
+            }
+            int sizeBefore = target.size();
+            collectLibraryEntries(data.get("collection"), target);
+            if (target.size() - sizeBefore < perChunk) {
+                return;
+            }
+        }
     }
 
     private void collectLibraryEntries(Object collectionValue, Map<Integer, AniListLibraryItem> target) {
@@ -467,9 +483,17 @@ public class AniListClient {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> execute(String query, Map<String, Object> variables) {
+        return execute(query, variables, null);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> execute(String query, Map<String, Object> variables, String accessToken) {
         try {
-            Map<String, Object> response = restClient.post()
-                    .body(Map.of("query", query, "variables", variables))
+            RestClient.RequestBodySpec request = restClient.post();
+            if (accessToken != null && !accessToken.isBlank()) {
+                request.header("Authorization", "Bearer " + accessToken);
+            }
+            Map<String, Object> response = request.body(Map.of("query", query, "variables", variables))
                     .retrieve()
                     .body(Map.class);
 

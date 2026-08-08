@@ -40,6 +40,7 @@ public class LibraryService {
     private final AppUserRepository appUserRepository;
     private final ActivityHistoryService activityHistoryService;
     private final CurrentUserService currentUser;
+    private final AniListAuthService aniListAuthService;
 
     public LibraryService(
             LibraryEntryRepository libraryEntryRepository,
@@ -47,7 +48,8 @@ public class LibraryService {
             AniListClient aniListClient,
             AppUserRepository appUserRepository,
             ActivityHistoryService activityHistoryService,
-            CurrentUserService currentUser
+            CurrentUserService currentUser,
+            AniListAuthService aniListAuthService
     ) {
         this.libraryEntryRepository = libraryEntryRepository;
         this.mediaRepository = mediaRepository;
@@ -55,6 +57,7 @@ public class LibraryService {
         this.appUserRepository = appUserRepository;
         this.activityHistoryService = activityHistoryService;
         this.currentUser = currentUser;
+        this.aniListAuthService = aniListAuthService;
     }
 
     @Transactional(readOnly = true)
@@ -272,7 +275,11 @@ public class LibraryService {
     @Transactional
     public synchronized LibraryImportResponse importForUser(Long userId, String username) {
         AppUser profile=appUserRepository.findById(userId).orElseThrow();
-        AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim());
+        String accessToken = aniListAuthService.validToken(profile);
+        if (accessToken == null || accessToken.isBlank()) {
+            throw new BusinessException("La conexión con AniList venció. Volvé a iniciar sesión.");
+        }
+        AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim(), accessToken);
         int created = 0;
         int updated = 0;
         int anime = 0;

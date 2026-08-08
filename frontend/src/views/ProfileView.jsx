@@ -1,11 +1,11 @@
 import { useEffect } from 'react'
-import { BookOpen, Clapperboard, FileImage, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
+import { BookOpen, Clapperboard, FileImage, Palette, RefreshCw, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
 import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
 import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
-import { fetchLibrary } from '../features/library/librarySlice.js'
+import { fetchLibrary, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
 import { selectTopRatedAnime, selectTopRatedManga } from '../features/library/librarySelectors.js'
 import { fetchHistory } from '../features/history/historySlice.js'
 import { deleteProfileAsset, resetTheme, saveProfile, updateProfile, uploadProfileAsset } from '../features/profile/profileSlice.js'
@@ -38,7 +38,7 @@ export default function ProfileView() {
           <label className="profile-field"><span>Biografía</span><textarea value={profile.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>
           {profile.accountType === 'LOCAL'
             ? <div className="profile-file-grid"><ProfileFileField type="avatar" label="Avatar" hint="JPG, PNG o WebP · máximo 2 MB" value={profile.avatarUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /><ProfileFileField type="banner" label="Banner" hint="JPG, PNG o WebP · máximo 6 MB" value={profile.bannerUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /></div>
-            : <div className="profile-url-grid"><label className="profile-field"><span>URL del avatar</span><input value={profile.avatarUrl || ''} onChange={(e) => update({ avatarUrl: e.target.value })} placeholder="https://..." /></label><label className="profile-field"><span>URL del banner</span><input value={profile.bannerUrl || ''} onChange={(e) => update({ bannerUrl: e.target.value })} placeholder="https://..." /></label></div>}
+            : <><div className="profile-url-grid"><label className="profile-field"><span>URL del avatar</span><input value={profile.avatarUrl || ''} onChange={(e) => update({ avatarUrl: e.target.value })} placeholder="https://..." /></label><label className="profile-field"><span>URL del banner</span><input value={profile.bannerUrl || ''} onChange={(e) => update({ bannerUrl: e.target.value })} placeholder="https://..." /></label></div><div className="profile-actions"><span>{libraryState.syncResult ? `${libraryState.syncResult.total} títulos sincronizados` : 'Actualizá progreso, puntajes y nuevas obras desde AniList'}</span><button className="primary-button" disabled={libraryState.syncStatus === 'loading'} onClick={() => dispatch(synchronizeAniListLibrary())}><RefreshCw className={libraryState.syncStatus === 'loading' ? 'spin' : ''} /> {libraryState.syncStatus === 'loading' ? 'Sincronizando...' : 'Sincronizar AniList'}</button></div></>}
           <div className="color-options"><ThemeColorPicker label="Color de fondo" value={profile.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={profile.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={profile.accentColor} onChange={(accentColor) => update({ accentColor })} /></div>
           <label className="dot-toggle"><input type="checkbox" checked={profile.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
           <div className="profile-actions"><span>{profile.saved ? 'Cambios guardados' : 'Hay cambios sin guardar'}</span><button className="primary-button" disabled={profile.status === 'saving'} onClick={() => dispatch(saveProfile())}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>

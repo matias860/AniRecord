@@ -47,6 +47,7 @@ class LibraryServiceTest {
     @Mock
     private ActivityHistoryService activityHistoryService;
     @Mock private CurrentUserService currentUserService;
+    @Mock private AniListAuthService aniListAuthService;
     private AppUser user;
 
     private LibraryService libraryService;
@@ -54,7 +55,7 @@ class LibraryServiceTest {
     @BeforeEach
     void setUp() {
         libraryService = new LibraryService(
-                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService, currentUserService
+                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService, currentUserService, aniListAuthService
         );
         user = new AppUser(); user.setId(1L); user.setAnilistUserId(1); user.setAnilistUsername("test");
         lenient().when(currentUserService.require()).thenReturn(user);

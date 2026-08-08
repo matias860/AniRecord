@@ -47,6 +47,15 @@ export const removeFromLibrary = createAsyncThunk(
   },
 )
 
+export const synchronizeAniListLibrary = createAsyncThunk(
+  'library/synchronizeAniList',
+  async (_, { dispatch }) => {
+    const { data } = await apiClient.post('/library/import/anilist')
+    await dispatch(fetchLibrary()).unwrap()
+    return data
+  },
+)
+
 const replaceEntry = (state, entry) => {
   const index = state.items.findIndex((item) => item.id === entry.id)
   if (index >= 0) state.items[index] = entry
@@ -56,7 +65,7 @@ const replaceEntry = (state, entry) => {
 const librarySlice = createSlice({
   name: 'library',
   initialState: {
-    items: [], status: 'idle', mutationStatus: 'idle', error: null,
+    items: [], status: 'idle', mutationStatus: 'idle', syncStatus: 'idle', syncResult: null, error: null,
     filters: { mediaType: 'ANIME', trackingStatus: 'ALL', search: '', year: '', season: '', releaseStatus: '', score: '' },
   },
   reducers: {
@@ -88,6 +97,19 @@ const librarySlice = createSlice({
       .addCase(removeFromLibrary.fulfilled, (state, action) => {
         state.mutationStatus = 'succeeded'
         state.items = state.items.filter((item) => item.id !== action.payload)
+      })
+      .addCase(synchronizeAniListLibrary.pending, (state) => {
+        state.syncStatus = 'loading'
+        state.syncResult = null
+        state.error = null
+      })
+      .addCase(synchronizeAniListLibrary.fulfilled, (state, action) => {
+        state.syncStatus = 'succeeded'
+        state.syncResult = action.payload
+      })
+      .addCase(synchronizeAniListLibrary.rejected, (state, action) => {
+        state.syncStatus = 'failed'
+        state.error = action.error.message
       })
       .addMatcher(
         (action) =>
