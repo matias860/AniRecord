@@ -286,19 +286,22 @@ public class LibraryService {
         int manga = 0;
 
         for (AniListLibraryItem item : externalLibrary.entries()) {
+            LibraryEntry existingEntry = libraryEntryRepository
+                    .findByUserIdAndMediaAnilistId(userId, item.media().anilistId())
+                    .orElse(null);
+            if (existingEntry != null) {
+                if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
+                continue;
+            }
+
             Media media = mediaRepository.findByAnilistId(item.media().anilistId()).orElseGet(Media::new);
             copyExternalMedia(item.media(), media);
             media = mediaRepository.save(media);
 
-            LibraryEntry entry = libraryEntryRepository.findByUserIdAndMediaAnilistId(userId, item.media().anilistId()).orElse(null);
-            if (entry == null) {
-                entry = new LibraryEntry();
-                entry.setMedia(media);
-                entry.setUser(profile);
-                created++;
-            } else {
-                updated++;
-            }
+            LibraryEntry entry = new LibraryEntry();
+            entry.setMedia(media);
+            entry.setUser(profile);
+            created++;
             entry.setProgress(item.progress());
             entry.setPersonalScore(item.personalScore());
             entry.setRewatchCount(item.rewatchCount());
@@ -310,9 +313,11 @@ public class LibraryService {
             if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
         }
 
-        profile.setDisplayName(externalLibrary.username());
-        profile.setAvatarUrl(externalLibrary.avatarUrl());
-        profile.setBannerUrl(externalLibrary.bannerUrl());
+        if (profile.getLastAniListSyncAt() == null) {
+            profile.setDisplayName(externalLibrary.username());
+            profile.setAvatarUrl(externalLibrary.avatarUrl());
+            profile.setBannerUrl(externalLibrary.bannerUrl());
+        }
         profile.setLastAniListSyncAt(LocalDateTime.now());
         appUserRepository.save(profile);
 
