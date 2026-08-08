@@ -15,7 +15,16 @@ const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
 const pageSize = 5
 const appCommit = import.meta.env.VITE_APP_COMMIT || 'development'
-const synchronizationRecommended = import.meta.env.VITE_SYNC_RECOMMENDED === true
+const synchronizationHistory = import.meta.env.VITE_SYNC_HISTORY || [{ commit: appCommit, recommended: false }]
+
+function commitsSince(lastSeenCommit) {
+  if (!lastSeenCommit) return synchronizationHistory.slice(0, 1)
+  const previousIndex = synchronizationHistory.findIndex((entry) => entry.commit === lastSeenCommit)
+  if (previousIndex === 0) return []
+  return previousIndex > 0
+    ? synchronizationHistory.slice(0, previousIndex)
+    : synchronizationHistory.slice(0, 1)
+}
 
 function seasonAtOffset(offset) {
   const now = new Date()
@@ -31,6 +40,10 @@ export default function HomeView() {
   const home = useSelector((state) => state.home)
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
   const [dismissedCommit, setDismissedCommit] = useState(() => window.localStorage.getItem(syncPromptKey))
+  const pendingCommits = commitsSince(dismissedCommit)
+  const synchronizationRecommended = pendingCommits.some((entry) => entry.recommended)
+  const visibleCommits = pendingCommits.slice(0, 6).map((entry) => entry.commit.slice(0, 7))
+  const commitSummary = `${visibleCommits.join(' · ')}${pendingCommits.length > visibleCommits.length ? ` · +${pendingCommits.length - visibleCommits.length}` : ''}`
   const showSyncPrompt = auth.accountType === 'ANILIST' && dismissedCommit !== appCommit
   const { season: selectedSeasonName, year: selectedSeasonYear } = seasonAtOffset(home.seasonOffset)
   const selectedSeasonKey = `${selectedSeasonName}-${selectedSeasonYear}`
@@ -109,7 +122,7 @@ export default function HomeView() {
             <p>{synchronizationRecommended
               ? 'Esta versión modifica la base o los metadatos. Conviene traer la información reciente de AniList; tu progreso, estados y puntajes no se modificarán.'
               : 'Esta versión contiene cambios de interfaz o funcionamiento que no afectan los datos de tu biblioteca. Podés continuar sin sincronizar.'}</p>
-            <div className="commit-sync-version"><small>Versión {appCommit.slice(0, 7)}</small><span className={synchronizationRecommended ? 'recommended' : 'optional'}>{synchronizationRecommended ? 'Conviene sincronizar' : 'No hace falta sincronizar'}</span></div>
+            <div className="commit-sync-version"><small>{pendingCommits.length > 1 ? 'Commits' : 'Versión'} {commitSummary}</small><span className={synchronizationRecommended ? 'recommended' : 'optional'}>{synchronizationRecommended ? 'Conviene sincronizar' : 'No hace falta sincronizar'}</span></div>
             <div className="commit-sync-actions">
               <button type="button" className="secondary-button" onClick={closeSyncPrompt}>Ahora no</button>
               <button type="button" className="primary-button" disabled={library.syncStatus === 'loading'} onClick={synchronize}>
