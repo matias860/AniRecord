@@ -67,7 +67,7 @@ public class AniListController {
 
     @GetMapping("/season/current")
     public List<AniListMediaResponse> currentSeason(
-            @RequestParam(defaultValue = "20") @Min(1) @Max(30) int limit
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit
     ) {
         return aniListClient.getCurrentSeason(limit);
     }
@@ -76,7 +76,7 @@ public class AniListController {
     public List<AniListMediaResponse> season(
             @RequestParam ReleaseSeason season,
             @RequestParam @Min(1940) @Max(2100) int year,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(30) int limit
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int limit
     ) {
         return aniListClient.getSeason(season, year, limit);
     }
