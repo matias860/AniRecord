@@ -48,6 +48,7 @@ public class AniListClient {
                   coverImage { large }
                   bannerImage
                   description
+                  genres
                   episodes
                   chapters
                   status
@@ -72,6 +73,7 @@ public class AniListClient {
                 coverImage { extraLarge large }
                 bannerImage
                 description
+                genres
                 episodes
                 chapters
                 status
@@ -133,6 +135,7 @@ public class AniListClient {
                   coverImage { extraLarge large }
                   bannerImage
                   description
+                  genres
                   episodes
                   chapters
                   status
@@ -176,6 +179,7 @@ public class AniListClient {
                 coverImage { extraLarge large }
                 bannerImage
                 description
+                genres
                 episodes
                 chapters
                 status
@@ -215,6 +219,7 @@ public class AniListClient {
                   coverImage { extraLarge large }
                   bannerImage
                   description
+                  genres
                   episodes
                   status
                   season
@@ -560,6 +565,7 @@ public class AniListClient {
                 mapAiring(media.get("nextAiringEpisode")),
                 mapRelations(media.get("relations")),
                 mapCharacters(media.get("characters")),
+                asList(media.get("genres")).stream().map(String::valueOf).toList(),
                 mapTags(media.get("tags"))
         );
     }

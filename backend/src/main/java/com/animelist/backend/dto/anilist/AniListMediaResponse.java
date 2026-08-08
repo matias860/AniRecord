@@ -24,6 +24,7 @@ public record AniListMediaResponse(
         AiringInfoResponse nextAiringEpisode,
         List<MediaRelationResponse> relations,
         List<MediaCharacterResponse> characters,
+        List<String> genres,
         List<MediaTagResponse> tags
 ) {
 }

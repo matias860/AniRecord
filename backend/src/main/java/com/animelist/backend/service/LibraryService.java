@@ -340,6 +340,7 @@ public class LibraryService {
         target.setCoverImage(source.coverImage());
         target.setBannerImage(source.bannerImage());
         target.setSynopsis(source.synopsis());
+        target.setGenres(source.genres() == null ? null : String.join("|", source.genres()));
         target.setTotalUnits(source.totalUnits());
         target.setReleaseStartDate(source.releaseStartDate());
         target.setReleaseEndDate(source.releaseEndDate());
@@ -360,6 +361,7 @@ public class LibraryService {
                 media.getCoverImage(),
                 media.getBannerImage(),
                 media.getSynopsis(),
+                media.getGenres(),
                 media.getTotalUnits(),
                 media.getReleaseStartDate(),
                 media.getReleaseEndDate(),

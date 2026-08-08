@@ -7,6 +7,7 @@ import MediaCard from '../components/media/MediaCard.jsx'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
+import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import {
   fetchLibrary,
   incrementProgress,
@@ -15,6 +16,7 @@ import {
   setLibraryMediaType,
   setLibraryTrackingStatus,
 } from '../features/library/librarySlice.js'
+import { fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
 
 const statuses = [['ALL', 'Todos'], ['IN_PROGRESS', 'En curso'], ['PLANNED', 'Pendientes'], ['COMPLETED', 'Completados'], ['PAUSED', 'Pausados'], ['DROPPED', 'Abandonados']]
 const sectionOrder = ['IN_PROGRESS', 'COMPLETED', 'PLANNED', 'PAUSED', 'DROPPED']
@@ -43,6 +45,7 @@ export default function LibraryView() {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
   const { items, status, error, filters = {} } = useSelector((state) => state.library)
+  const catalog = useSelector((state) => state.catalog)
   const mediaType = filters.mediaType === 'MANGA' ? 'MANGA' : 'ANIME'
   const trackingStatus = filters.trackingStatus ?? 'ALL'
   const updateFilter = (key) => (value) => dispatch(setLibraryFilter({ key, value }))
@@ -51,6 +54,7 @@ export default function LibraryView() {
     .map((item) => item.releaseYear))].sort((a, b) => b - a), [items, mediaType])
 
   useEffect(() => { if (status === 'idle') dispatch(fetchLibrary()) }, [dispatch, status])
+  useEffect(() => { if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres()) }, [catalog.genresStatus, dispatch])
   useEffect(() => () => { dispatch(setLibraryFilter({ key: 'search', value: '' })) }, [dispatch])
   useEffect(() => {
     const requestedType = searchParams.get('tipo')?.toUpperCase()
@@ -67,11 +71,14 @@ export default function LibraryView() {
         || (filters.score === '10' && score === 10)
         || (filters.score === '9' && score >= 9)
         || (filters.score === '8' && score >= 8)
+      const selectedGenres = Array.isArray(filters.genre) ? filters.genre : []
+      const itemGenres = item.genres ? item.genres.split('|') : []
       return item.mediaType === mediaType
         && (trackingStatus === 'ALL' || item.trackingStatus === trackingStatus)
         && (!search || [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(search)))
         && (!filters.year || String(item.releaseYear) === filters.year)
         && (!filters.season || item.releaseSeason === filters.season)
+        && (!selectedGenres.length || selectedGenres.every((genre) => itemGenres.includes(genre)))
         && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)
         && scoreMatches
     })
@@ -99,6 +106,7 @@ export default function LibraryView() {
         <label className="library-search"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Buscar en tu biblioteca..." /></label>
         <StyledSelect ariaLabel="Año de la biblioteca" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Año' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
+        <GenreMultiSelect genres={catalog.genres} value={filters.genre ?? []} onChange={updateFilter('genre')} />
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Emisión' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
         <StyledSelect ariaLabel="Puntaje de la biblioteca" value={filters.score ?? ''} onChange={updateFilter('score')} options={[{ value: '', label: 'Puntaje' }, { value: 'SCORED', label: 'Con puntaje' }, { value: 'UNSCORED', label: 'Sin puntaje' }, { value: '10', label: '10 puntos' }, { value: '9', label: '9 o más' }, { value: '8', label: '8 o más' }]} />
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>
