@@ -36,6 +36,13 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
 
     boolean existsByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 
+    @Query("""
+            select case when count(entry) > 0 then true else false end
+            from LibraryEntry entry join entry.media media
+            where entry.user.id = :userId and media.genres is null
+            """)
+    boolean hasMissingGenres(@Param("userId") Long userId);
+
     @EntityGraph(attributePaths = "media")
     Optional<LibraryEntry> findByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 

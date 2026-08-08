@@ -13,6 +13,7 @@ import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.ActivityType;
+import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
@@ -30,9 +31,13 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class LibraryService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LibraryService.class);
 
     private final LibraryEntryRepository libraryEntryRepository;
     private final MediaRepository mediaRepository;
@@ -60,9 +65,28 @@ public class LibraryService {
         this.aniListAuthService = aniListAuthService;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<LibraryEntrySummaryResponse> findAll(MediaType mediaType, TrackingStatus status) {
-        return libraryEntryRepository.findSummaries(currentUser.require().getId(), mediaType, status);
+        AppUser user = currentUser.require();
+        synchronizeMissingMetadata(user);
+        return libraryEntryRepository.findSummaries(user.getId(), mediaType, status);
+    }
+
+    /**
+     * Backfills metadata introduced after a title was first imported. The database
+     * check keeps normal library reads local and prevents an AniList request after
+     * the missing data has been populated.
+     */
+    private synchronized void synchronizeMissingMetadata(AppUser user) {
+        if (user.getAccountType() != AccountType.ANILIST
+                || !libraryEntryRepository.hasMissingGenres(user.getId())) {
+            return;
+        }
+        try {
+            importForUser(user.getId(), user.getAnilistUsername());
+        } catch (RuntimeException exception) {
+            LOGGER.warn("No se pudieron completar los géneros faltantes; se devuelve la biblioteca local", exception);
+        }
     }
 
     @Transactional(readOnly = true)
