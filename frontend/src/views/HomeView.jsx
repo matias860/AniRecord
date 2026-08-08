@@ -15,6 +15,7 @@ const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
 const pageSize = 5
 const appCommit = import.meta.env.VITE_APP_COMMIT || 'development'
+const synchronizationRecommended = import.meta.env.VITE_SYNC_RECOMMENDED === true
 
 function seasonAtOffset(offset) {
   const now = new Date()
@@ -105,13 +106,15 @@ export default function HomeView() {
             <div className="commit-sync-icon"><RefreshCw /></div>
             <span className="eyebrow">Nueva actualización</span>
             <h2 id="commit-sync-title">¿Actualizamos tu biblioteca?</h2>
-            <p>Hay una versión nueva de Anime List. Podés traer títulos y metadatos recientes de AniList sin modificar tu progreso, estados ni puntajes.</p>
-            <small>Versión {appCommit.slice(0, 7)}</small>
+            <p>{synchronizationRecommended
+              ? 'Esta versión modifica la base o los metadatos. Conviene traer la información reciente de AniList; tu progreso, estados y puntajes no se modificarán.'
+              : 'Esta versión contiene cambios de interfaz o funcionamiento que no afectan los datos de tu biblioteca. Podés continuar sin sincronizar.'}</p>
+            <div className="commit-sync-version"><small>Versión {appCommit.slice(0, 7)}</small><span className={synchronizationRecommended ? 'recommended' : 'optional'}>{synchronizationRecommended ? 'Conviene sincronizar' : 'No hace falta sincronizar'}</span></div>
             <div className="commit-sync-actions">
               <button type="button" className="secondary-button" onClick={closeSyncPrompt}>Ahora no</button>
               <button type="button" className="primary-button" disabled={library.syncStatus === 'loading'} onClick={synchronize}>
                 <RefreshCw className={library.syncStatus === 'loading' ? 'spin' : ''} />
-                {library.syncStatus === 'loading' ? 'Sincronizando...' : 'Sincronizar ahora'}
+                {library.syncStatus === 'loading' ? 'Sincronizando...' : synchronizationRecommended ? 'Sincronizar ahora' : 'Sincronizar igual'}
               </button>
             </div>
           </motion.section>
