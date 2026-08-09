@@ -32,10 +32,6 @@ public class ProfileService {
         AppUser user = currentUser.require();
         user.setDisplayName(request.displayName().trim());
         user.setBio(request.bio().trim());
-        if (user.getAccountType() == AccountType.ANILIST) {
-            user.setAvatarUrl(normalize(request.avatarUrl()));
-            user.setBannerUrl(normalize(request.bannerUrl()));
-        }
         user.setBackgroundColor(request.backgroundColor());
         user.setSurfaceColor(request.surfaceColor());
         user.setAccentColor(request.accentColor());
@@ -44,15 +40,16 @@ public class ProfileService {
     }
 
     private ProfileResponse toResponse(AppUser user) {
-        String avatar = user.getAvatarUrl();
-        String banner = user.getBannerUrl();
-        if (user.getAccountType() == AccountType.LOCAL) {
-            avatar = assetUrl(user.getId(), ProfileAssetType.AVATAR);
-            banner = assetUrl(user.getId(), ProfileAssetType.BANNER);
-        }
+        String customAvatar = assetUrl(user.getId(), ProfileAssetType.AVATAR);
+        String customBanner = assetUrl(user.getId(), ProfileAssetType.BANNER);
+        String avatar = customAvatar == null ? user.getAvatarUrl() : customAvatar;
+        String banner = customBanner == null ? user.getBannerUrl() : customBanner;
         return new ProfileResponse(user.getDisplayName(), user.getBio(), avatar, banner,
                 user.getBackgroundColor(), user.getSurfaceColor(), user.getAccentColor(), user.getDotsEnabled(),
-                user.getAccountType().name());
+                user.getAccountType().name(),
+                user.getAccountType() == AccountType.ANILIST ? user.getAvatarUrl() : null,
+                user.getAccountType() == AccountType.ANILIST ? user.getBannerUrl() : null,
+                customAvatar != null, customBanner != null);
     }
 
     private String assetUrl(Long userId, ProfileAssetType type) {
@@ -61,7 +58,4 @@ public class ProfileService {
                 .orElse(null);
     }
 
-    private String normalize(String value) {
-        return value == null || value.isBlank() ? null : value.trim();
-    }
 }

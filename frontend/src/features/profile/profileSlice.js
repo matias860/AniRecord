@@ -5,7 +5,7 @@ const defaults = {
   displayName: 'Mi perfil', bio: 'Coleccionando historias, un episodio a la vez.',
   avatarUrl: '', bannerUrl: '', backgroundColor: '#0a0c14', surfaceColor: '#171b29',
   accentColor: '#a88bff', dotsEnabled: true,
-  accountType: null,
+  accountType: null, anilistAvatarUrl: '', anilistBannerUrl: '', customAvatar: false, customBanner: false,
 }
 const editableKeys = ['displayName', 'bio', 'avatarUrl', 'bannerUrl', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled']
 

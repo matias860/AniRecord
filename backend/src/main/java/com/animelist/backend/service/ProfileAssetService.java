@@ -2,7 +2,6 @@ package com.animelist.backend.service;
 
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.entity.UserProfileAsset;
-import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.enums.ProfileAssetType;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.exception.ResourceNotFoundException;
@@ -26,7 +25,7 @@ public class ProfileAssetService {
 
     @Transactional
     public void save(ProfileAssetType type, MultipartFile file) {
-        AppUser user = localUser();
+        AppUser user = currentUser.require();
         long max = type == ProfileAssetType.AVATAR ? 2L * 1024 * 1024 : 6L * 1024 * 1024;
         String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
         if (file.isEmpty()) throw new BusinessException("Selecciona una imagen");
@@ -57,16 +56,8 @@ public class ProfileAssetService {
 
     @Transactional
     public void delete(ProfileAssetType type) {
-        AppUser user = localUser();
-        repository.deleteByUserIdAndAssetType(user.getId(), type);
-    }
-
-    private AppUser localUser() {
         AppUser user = currentUser.require();
-        if (user.getAccountType() != AccountType.LOCAL) {
-            throw new BusinessException("Las cuentas de AniList utilizan las imágenes de AniList");
-        }
-        return user;
+        repository.deleteByUserIdAndAssetType(user.getId(), type);
     }
 
     private boolean matchesSignature(byte[] bytes, String type) {

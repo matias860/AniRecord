@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
+import { BookOpen, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
+import ImageCropModal from '../components/profile/ImageCropModal.jsx'
 import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
 import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
@@ -41,9 +42,7 @@ export default function ProfileView() {
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => dispatch(resetTheme())}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
           <label className="profile-field"><span>Biografía</span><textarea value={profile.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>
-          {profile.accountType === 'LOCAL'
-            ? <div className="profile-file-grid"><ProfileFileField type="avatar" label="Avatar" hint="JPG, PNG o WebP · máximo 2 MB" value={profile.avatarUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /><ProfileFileField type="banner" label="Banner" hint="JPG, PNG o WebP · máximo 6 MB" value={profile.bannerUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /></div>
-            : <div className="profile-url-grid"><label className="profile-field"><span>URL del avatar</span><input value={profile.avatarUrl || ''} onChange={(e) => update({ avatarUrl: e.target.value })} placeholder="https://..." /></label><label className="profile-field"><span>URL del banner</span><input value={profile.bannerUrl || ''} onChange={(e) => update({ bannerUrl: e.target.value })} placeholder="https://..." /></label></div>}
+          <div className="profile-file-grid"><ProfileFileField type="avatar" label="Avatar" hint="Recorte cuadrado · WebP 512 × 512" value={profile.avatarUrl} custom={profile.customAvatar} aniListFallback={profile.anilistAvatarUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /><ProfileFileField type="banner" label="Banner" hint="Recorte panorámico · WebP 1600 × 500" value={profile.bannerUrl} custom={profile.customBanner} aniListFallback={profile.anilistBannerUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /></div>
           <div className="color-options"><ThemeColorPicker label="Color de fondo" value={profile.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={profile.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={profile.accentColor} onChange={(accentColor) => update({ accentColor })} /></div>
           <label className="dot-toggle"><input type="checkbox" checked={profile.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
           <div className="profile-actions"><span>{profile.saved ? 'Cambios guardados' : 'Hay cambios sin guardar'}</span><button className="primary-button" disabled={profile.status === 'saving'} onClick={() => dispatch(saveProfile())}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>
@@ -62,22 +61,24 @@ function FavoritePeople({ entries }) {
 function FavoritePeopleList({ title, entries, path }) {
   const [page, setPage] = useState(0)
   const pageCount = Math.max(1, Math.ceil(entries.length / 8))
-  const visibleEntries = entries.slice(page * 8, page * 8 + 8)
-  useEffect(() => { if (page >= pageCount) setPage(pageCount - 1) }, [page, pageCount])
-  return <div className="favorite-people-list"><div className="favorite-people-heading"><h3>{title}</h3>{entries.length > 0 && <span>{entries.length} favoritos</span>}</div>{entries.length ? <><AnimatePresence mode="wait" initial={false}><motion.div className="favorite-people-grid" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .2, ease: 'easeOut' }}>{visibleEntries.map((item) => <Link key={item.id} to={`/${path}/${item.anilistId}`}><img src={item.imageUrl} alt={item.name} /><span><strong>{item.name}</strong>{item.nativeName && <small>{item.nativeName}</small>}</span></Link>)}</motion.div></AnimatePresence>{pageCount > 1 && <div className="favorite-people-controls"><button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label={`Ocho ${title.toLowerCase()} anteriores`}><ChevronLeft /></button><span>{page + 1} / {pageCount}</span><button type="button" disabled={page === pageCount - 1} onClick={() => setPage((current) => current + 1)} aria-label={`Ocho ${title.toLowerCase()} siguientes`}><ChevronRight /></button></div>}</> : <p>Aún no has agregado favoritos de este tipo.</p>}</div>
+  const currentPage = Math.min(page, pageCount - 1)
+  const visibleEntries = entries.slice(currentPage * 8, currentPage * 8 + 8)
+  return <div className="favorite-people-list"><div className="favorite-people-heading"><h3>{title}</h3>{entries.length > 0 && <span>{entries.length} favoritos</span>}</div>{entries.length ? <><AnimatePresence mode="wait" initial={false}><motion.div className="favorite-people-grid" key={currentPage} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .2, ease: 'easeOut' }}>{visibleEntries.map((item) => <Link key={item.id} to={`/${path}/${item.anilistId}`}><img src={item.imageUrl} alt={item.name} /><span><strong>{item.name}</strong>{item.nativeName && <small>{item.nativeName}</small>}</span></Link>)}</motion.div></AnimatePresence>{pageCount > 1 && <div className="favorite-people-controls"><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} aria-label={`Ocho ${title.toLowerCase()} anteriores`}><ChevronLeft /></button><span>{currentPage + 1} / {pageCount}</span><button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} aria-label={`Ocho ${title.toLowerCase()} siguientes`}><ChevronRight /></button></div>}</> : <p>Aún no has agregado favoritos de este tipo.</p>}</div>
 }
 
-function ProfileFileField({ type, label, hint, value, busy, dispatch }) {
+function ProfileFileField({ type, label, hint, value, custom, aniListFallback, busy, dispatch }) {
   const inputId = `profile-${type}-file`
+  const [selectedFile, setSelectedFile] = useState(null)
   const choose = (event) => {
     const file = event.target.files?.[0]
-    if (file) dispatch(uploadProfileAsset({ type, file }))
+    if (file) setSelectedFile(file)
     event.target.value = ''
   }
   return <article className="profile-file-field">
     <div className="profile-file-icon">{value ? <img src={value} alt="" /> : <FileImage />}</div>
-    <div><strong>{label}</strong><small>{hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy ? 'disabled' : ''}><Upload /> {value ? 'Cambiar' : 'Subir'}</label>{value && <button type="button" disabled={busy} onClick={() => dispatch(deleteProfileAsset(type))}><Trash2 /> Quitar</button>}</div></div>
+    <div><strong>{label}</strong><small>{hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy ? 'disabled' : ''}><Upload /> {custom ? 'Cambiar' : 'Subir'}</label>{custom && <button type="button" disabled={busy} onClick={() => dispatch(deleteProfileAsset(type))}><RotateCcw /> {aniListFallback ? 'Usar AniList' : 'Quitar'}</button>}</div></div>
     <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} disabled={busy} />
+    <AnimatePresence>{selectedFile && <ImageCropModal file={selectedFile} type={type} onCancel={() => setSelectedFile(null)} onConfirm={(file) => { dispatch(uploadProfileAsset({ type, file })); setSelectedFile(null) }} />}</AnimatePresence>
   </article>
 }
 
