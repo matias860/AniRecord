@@ -4,7 +4,7 @@ services:
     runtime: docker
     plan: free
     rootDir: backend
-    healthCheckPath: /api/profile
+    healthCheckPath: /api/health
     autoDeployTrigger: commit
     envVars:
       - key: JDBC_DATABASE_URL
@@ -14,7 +14,7 @@ services:
       - key: DATABASE_PASSWORD
         sync: false
       - key: FRONTEND_URL
-        value: https://anime-list-matias.vercel.app
+        value: https://anime-list-alca.vercel.app
       - key: ANILIST_CLIENT_ID
         sync: false
       - key: ANILIST_CLIENT_SECRET
