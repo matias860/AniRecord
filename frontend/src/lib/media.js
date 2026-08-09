@@ -3,8 +3,18 @@ export const STATUS_LABELS = {
   COMPLETED: 'Completado', DROPPED: 'Abandonado',
 }
 
-export const cleanSynopsis = (value = '') =>
-  value.replace(/<br\s*\/?\s*>/gi, ' ').replace(/<[^>]*>/g, '').trim()
+export const cleanAniListText = (value = '') => value
+  .replace(/<br\s*\/?\s*>/gi, '\n')
+  .replace(/<[^>]*>/g, '')
+  .replace(/~!([\s\S]*?)!~/g, '$1')
+  .replace(/\[([^\]]+)]\([^\s)]+\)/g, '$1')
+  .replace(/(__|\*\*)(.*?)\1/g, '$2')
+  .replace(/^\s*[-*]\s+/gm, '• ')
+  .replace(/[ \t]+\n/g, '\n')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim()
+
+export const cleanSynopsis = (value = '') => cleanAniListText(value).replace(/\s*\n\s*/g, ' ')
 
 export const getProgressPercent = (progress, total) =>
   total ? Math.min(100, Math.round((progress / total) * 100)) : 0

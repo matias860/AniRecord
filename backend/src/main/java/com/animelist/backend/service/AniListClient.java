@@ -670,7 +670,6 @@ public class AniListClient {
     private List<MediaCharacterResponse> mapCharacters(Object charactersValue) {
         return asList(asMap(charactersValue).get("edges")).stream()
                 .map(this::asMap)
-                .filter(edge -> "MAIN".equals(asString(edge.get("role"))))
                 .map(edge -> {
                     Map<String, Object> node = asMap(edge.get("node"));
                     return new MediaCharacterResponse(

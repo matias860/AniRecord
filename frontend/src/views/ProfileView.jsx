@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { BookOpen, Clapperboard, FileImage, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
+import { BookOpen, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
@@ -9,18 +9,21 @@ import { fetchLibrary } from '../features/library/librarySlice.js'
 import { selectTopRatedAnime, selectTopRatedManga } from '../features/library/librarySelectors.js'
 import { fetchHistory } from '../features/history/historySlice.js'
 import { deleteProfileAsset, resetTheme, saveProfile, updateProfile, uploadProfileAsset } from '../features/profile/profileSlice.js'
+import { fetchPersonFavorites } from '../features/favorites/favoritesSlice.js'
 
 export default function ProfileView() {
   const dispatch = useDispatch()
   const profile = useSelector((state) => state.profile)
   const libraryState = useSelector((state) => state.library)
   const historyState = useSelector((state) => state.history)
+  const favorites = useSelector((state) => state.favorites)
   const library = libraryState.items
   const topAnime = useSelector(selectTopRatedAnime)
   const topManga = useSelector(selectTopRatedManga)
   const update = (changes) => dispatch(updateProfile(changes))
   useEffect(() => { if (libraryState.status === 'idle') dispatch(fetchLibrary()) }, [dispatch, libraryState.status])
   useEffect(() => { if (historyState.status === 'idle') dispatch(fetchHistory()) }, [dispatch, historyState.status])
+  useEffect(() => { dispatch(fetchPersonFavorites()) }, [dispatch])
   return (
     <>
       <section className="profile-hero">
@@ -32,6 +35,7 @@ export default function ProfileView() {
         <ActivityTimeline entries={historyState.items} status={historyState.status} error={historyState.error} />
         <section className="profile-highlights"><div className="section-heading"><div><span className="eyebrow">Tu selección</span><h2><Trophy /> Tus mejores puntuados</h2></div></div><div className="top-rated-grid"><TopRated title="Top 5 anime" icon={<Clapperboard />} entries={topAnime} /><TopRated title="Top 5 manga" icon={<BookOpen />} entries={topManga} /></div></section>
       </div>
+      <FavoritePeople entries={favorites.people} />
       <div className="profile-layout">
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => dispatch(resetTheme())}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
@@ -46,6 +50,16 @@ export default function ProfileView() {
       </div>
     </>
   )
+}
+
+function FavoritePeople({ entries }) {
+  const characters = entries.filter((item) => item.personType === 'CHARACTER')
+  const staff = entries.filter((item) => item.personType === 'STAFF')
+  return <section className="profile-favorite-people"><div className="section-heading"><div><span className="eyebrow">Tu reparto</span><h2><Heart /> Personajes y seiyūs favoritos</h2></div></div><div className="favorite-people-columns"><FavoritePeopleList title="Personajes" entries={characters} path="personajes" /><FavoritePeopleList title="Seiyūs" entries={staff} path="seiyuus" /></div></section>
+}
+
+function FavoritePeopleList({ title, entries, path }) {
+  return <div><h3>{title}</h3>{entries.length ? <div className="favorite-people-grid">{entries.slice(0, 8).map((item) => <Link key={item.id} to={`/${path}/${item.anilistId}`}><img src={item.imageUrl} alt={item.name} /><span><strong>{item.name}</strong>{item.nativeName && <small>{item.nativeName}</small>}</span></Link>)}</div> : <p>Aún no has agregado favoritos de este tipo.</p>}</div>
 }
 
 function ProfileFileField({ type, label, hint, value, busy, dispatch }) {

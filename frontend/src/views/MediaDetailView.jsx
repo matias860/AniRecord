@@ -51,7 +51,7 @@ export default function MediaDetailView() {
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'No hay una sinopsis disponible.'}</p></div>
     </div>
-    {(!!detail.relations?.length || !!detail.characters?.length) && <div className="detail-extras"><section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations || []} /></section><section className="characters-section"><span className="eyebrow">Reparto principal</span><h2>Personajes</h2><CharacterCarousel key={detail.anilistId} characters={detail.characters || []} /></section></div>}
+    {(!!detail.relations?.length || !!detail.characters?.length) && <div className="detail-extras"><section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations || []} /></section><section className="characters-section"><span className="eyebrow">Reparto</span><h2>Personajes</h2><CharacterCarousel key={detail.anilistId} characters={detail.characters || []} /></section></div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
 }
@@ -68,10 +68,14 @@ function RelationCarousel({ relations }) {
 
 function CharacterCarousel({ characters }) {
   const [page, setPage] = useState(0)
-  const pages = Math.ceil(characters.length / 3)
-  const visible = characters.slice(page * 3, page * 3 + 3)
+  const [role, setRole] = useState('MAIN')
+  const filtered = characters.filter((character) => character.role === role)
+  const pages = Math.max(1, Math.ceil(filtered.length / 3))
+  const visible = filtered.slice(page * 3, page * 3 + 3)
+  const changeRole = (nextRole) => { setRole(nextRole); setPage(0) }
   return <div className="character-carousel">
-    <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((character) => <article key={character.anilistId}><Link className="character-main-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} /><span><strong>{character.name}</strong><small>Principal</small></span></Link>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</article>)}</motion.div></AnimatePresence>
+    <div className="character-role-switch" role="group" aria-label="Tipo de personaje"><button className={role === 'MAIN' ? 'active' : ''} onClick={() => changeRole('MAIN')}>Principales</button><button className={role === 'SUPPORTING' ? 'active' : ''} onClick={() => changeRole('SUPPORTING')}>Secundarios</button></div>
+    <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={`${role}-${page}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.length ? visible.map((character) => <article key={character.anilistId}><Link className="character-image-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} /></Link><span><Link className="character-name-link" to={`/personajes/${character.anilistId}`}><strong>{character.name}</strong></Link><small>{role === 'MAIN' ? 'Principal' : 'Secundario'}</small>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</span></article>) : <p className="character-empty">No hay personajes en esta categoría.</p>}</motion.div></AnimatePresence>
     {pages > 1 && <div className="character-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Tres personajes anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Tres personajes siguientes"><ChevronRight /></button></div>}
   </div>
 }
