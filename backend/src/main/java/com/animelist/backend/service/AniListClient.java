@@ -100,8 +100,20 @@ public class AniListClient {
                     }
                   }
                 }
-                characters(page: 1, perPage: 50, sort: [ROLE, RELEVANCE, ID]) {
-                  pageInfo { currentPage hasNextPage }
+                mainCharacters: characters(page: 1, perPage: 50, role: MAIN, sort: [RELEVANCE, ID]) {
+                  edges {
+                    role
+                    node {
+                      id
+                      name { full }
+                      image { large }
+                    }
+                    voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+                      id name { full native } image { large } languageV2
+                    }
+                  }
+                }
+                supportingCharacters: characters(page: 1, perPage: 50, role: SUPPORTING, sort: [RELEVANCE, ID]) {
                   edges {
                     role
                     node {
@@ -195,27 +207,6 @@ public class AniListClient {
                 seasonYear
                 startDate { year month day }
                 endDate { year month day }
-              }
-            }
-            """;
-
-    private static final String CHARACTER_PAGE_QUERY = """
-            query MediaCharacters($id: Int!, $page: Int!) {
-              Media(id: $id) {
-                characters(page: $page, perPage: 25, sort: [ROLE, RELEVANCE, ID]) {
-                  pageInfo { currentPage hasNextPage }
-                  edges {
-                    role
-                    node {
-                      id
-                      name { full }
-                      image { large }
-                    }
-                    voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
-                      id name { full native } image { large } languageV2
-                    }
-                  }
-                }
               }
             }
             """;
@@ -332,22 +323,9 @@ public class AniListClient {
             throw new AniListClientException("AniList no encontró la obra solicitada");
         }
         Map<String, Object> media = new LinkedHashMap<>(asMap(mediaData));
-        Map<String, Object> characters = new LinkedHashMap<>(asMap(media.get("characters")));
-        List<Object> characterEdges = new ArrayList<>(asList(characters.get("edges")));
-        Map<String, Object> pageInfo = asMap(characters.get("pageInfo"));
-        int page = asInteger(pageInfo.get("currentPage")) == null ? 1 : asInteger(pageInfo.get("currentPage"));
-
-        while (Boolean.TRUE.equals(pageInfo.get("hasNextPage"))) {
-            page++;
-            Map<String, Object> pageData = execute(CHARACTER_PAGE_QUERY, Map.of("id", anilistId, "page", page));
-            Map<String, Object> pageMedia = asMap(pageData.get("Media"));
-            Map<String, Object> pageCharacters = asMap(pageMedia.get("characters"));
-            characterEdges.addAll(asList(pageCharacters.get("edges")));
-            pageInfo = asMap(pageCharacters.get("pageInfo"));
-        }
-
-        characters.put("edges", characterEdges);
-        media.put("characters", characters);
+        List<Object> characterEdges = new ArrayList<>(asList(asMap(media.get("mainCharacters")).get("edges")));
+        characterEdges.addAll(asList(asMap(media.get("supportingCharacters")).get("edges")));
+        media.put("characters", Map.of("edges", characterEdges));
         return mapMedia(media);
     }
 
