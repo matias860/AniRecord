@@ -2,7 +2,7 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
 
 export const fetchPersonFavorites = createAsyncThunk('favorites/fetchPeople', async () => (await apiClient.get('/favorites/people')).data, {
-  condition: (_, { getState }) => getState().favorites.status !== 'loading' && getState().favorites.status !== 'succeeded',
+  condition: (force, { getState }) => force === true || (getState().favorites.status !== 'loading' && getState().favorites.status !== 'succeeded'),
 })
 export const addPersonFavorite = createAsyncThunk('favorites/addPerson', async (person) => (await apiClient.post('/favorites/people', person)).data)
 export const removePersonFavorite = createAsyncThunk('favorites/removePerson', async ({ anilistId, personType }) => {

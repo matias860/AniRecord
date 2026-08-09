@@ -6,6 +6,9 @@ public record LibraryImportResponse(
         int anime,
         int manga,
         int created,
-        int updated
+        int updated,
+        int personFavoritesCreated,
+        int characterFavoritesCreated,
+        int staffFavoritesCreated
 ) {
 }

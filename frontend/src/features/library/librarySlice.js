@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
+import { fetchPersonFavorites } from '../favorites/favoritesSlice.js'
 
 export const fetchLibrary = createAsyncThunk(
   'library/fetchAll',
@@ -51,7 +52,10 @@ export const synchronizeAniListLibrary = createAsyncThunk(
   'library/synchronizeAniList',
   async (_, { dispatch }) => {
     const { data } = await apiClient.post('/library/import/anilist')
-    await dispatch(fetchLibrary()).unwrap()
+    await Promise.all([
+      dispatch(fetchLibrary()).unwrap(),
+      dispatch(fetchPersonFavorites(true)).unwrap(),
+    ])
     return data
   },
 )

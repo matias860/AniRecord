@@ -4,6 +4,7 @@ import com.animelist.backend.dto.anilist.AiringInfoResponse;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.AniListLibraryExport;
 import com.animelist.backend.dto.anilist.AniListLibraryItem;
+import com.animelist.backend.dto.anilist.AniListPersonFavorite;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.MediaRelationResponse;
 import com.animelist.backend.dto.anilist.MediaCharacterResponse;
@@ -14,6 +15,7 @@ import com.animelist.backend.dto.anilist.StaffCharacterResponse;
 import com.animelist.backend.dto.anilist.StaffDetailResponse;
 import com.animelist.backend.dto.anilist.VoiceActorResponse;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.PersonType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
 import com.animelist.backend.enums.TrackingStatus;
@@ -207,6 +209,23 @@ public class AniListClient {
                 seasonYear
                 startDate { year month day }
                 endDate { year month day }
+              }
+            }
+            """;
+
+    private static final String USER_PERSON_FAVOURITES_QUERY = """
+            query ViewerPersonFavourites($characterPage: Int!, $staffPage: Int!, $perPage: Int!) {
+              Viewer {
+                favourites {
+                  characters(page: $characterPage, perPage: $perPage) {
+                    pageInfo { hasNextPage }
+                    nodes { id name { full native } image { large } }
+                  }
+                  staff(page: $staffPage, perPage: $perPage) {
+                    pageInfo { hasNextPage }
+                    nodes { id name { full native } image { large } }
+                  }
+                }
               }
             }
             """;
@@ -461,6 +480,55 @@ public class AniListClient {
                 asString(user.get("bannerImage")),
                 List.copyOf(uniqueEntries.values())
         );
+    }
+
+    public List<AniListPersonFavorite> getViewerPersonFavorites(String accessToken) {
+        final int perPage = 25;
+        int characterPage = 1;
+        int staffPage = 1;
+        boolean moreCharacters = true;
+        boolean moreStaff = true;
+        Map<String, AniListPersonFavorite> unique = new LinkedHashMap<>();
+
+        while (moreCharacters || moreStaff) {
+            Map<String, Object> data = execute(USER_PERSON_FAVOURITES_QUERY, Map.of(
+                    "characterPage", characterPage,
+                    "staffPage", staffPage,
+                    "perPage", perPage
+            ), accessToken);
+            Map<String, Object> favourites = asMap(asMap(data.get("Viewer")).get("favourites"));
+            Map<String, Object> characters = asMap(favourites.get("characters"));
+            Map<String, Object> staff = asMap(favourites.get("staff"));
+
+            if (moreCharacters) {
+                collectPersonFavorites(characters.get("nodes"), PersonType.CHARACTER, unique);
+                moreCharacters = Boolean.TRUE.equals(asMap(characters.get("pageInfo")).get("hasNextPage"));
+                if (moreCharacters) characterPage++;
+            }
+            if (moreStaff) {
+                collectPersonFavorites(staff.get("nodes"), PersonType.STAFF, unique);
+                moreStaff = Boolean.TRUE.equals(asMap(staff.get("pageInfo")).get("hasNextPage"));
+                if (moreStaff) staffPage++;
+            }
+        }
+        return List.copyOf(unique.values());
+    }
+
+    private void collectPersonFavorites(Object nodesValue, PersonType type,
+            Map<String, AniListPersonFavorite> target) {
+        for (Object value : asList(nodesValue)) {
+            Map<String, Object> person = asMap(value);
+            Integer id = asInteger(person.get("id"));
+            if (id == null) continue;
+            Map<String, Object> name = asMap(person.get("name"));
+            target.putIfAbsent(type.name() + ":" + id, new AniListPersonFavorite(
+                    id,
+                    type,
+                    asString(name.get("full")),
+                    asString(name.get("native")),
+                    asString(asMap(person.get("image")).get("large"))
+            ));
+        }
     }
 
     private void collectLibraryChunks(String username, MediaType type, String accessToken,

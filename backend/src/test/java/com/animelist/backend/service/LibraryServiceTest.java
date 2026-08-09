@@ -7,20 +7,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import com.animelist.backend.dto.library.AddLibraryEntryRequest;
 import com.animelist.backend.dto.library.LibraryEntryResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
+import com.animelist.backend.dto.library.LibraryImportResponse;
+import com.animelist.backend.dto.anilist.AniListLibraryExport;
+import com.animelist.backend.dto.anilist.AniListPersonFavorite;
 import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
 import com.animelist.backend.entity.AppUser;
+import com.animelist.backend.entity.PersonFavorite;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
+import com.animelist.backend.enums.PersonType;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import com.animelist.backend.repository.MediaRepository;
 import com.animelist.backend.repository.AppUserRepository;
+import com.animelist.backend.repository.PersonFavoriteRepository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -49,6 +57,7 @@ class LibraryServiceTest {
     private ActivityHistoryService activityHistoryService;
     @Mock private CurrentUserService currentUserService;
     @Mock private AniListAuthService aniListAuthService;
+    @Mock private PersonFavoriteRepository personFavoriteRepository;
     private AppUser user;
 
     private LibraryService libraryService;
@@ -56,7 +65,8 @@ class LibraryServiceTest {
     @BeforeEach
     void setUp() {
         libraryService = new LibraryService(
-                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService, currentUserService, aniListAuthService
+                libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService,
+                currentUserService, aniListAuthService, personFavoriteRepository
         );
         user = new AppUser(); user.setId(1L); user.setAnilistUserId(1); user.setAnilistUsername("test");
         lenient().when(currentUserService.require()).thenReturn(user);
@@ -182,6 +192,29 @@ class LibraryServiceTest {
                 () -> libraryService.add(new AddLibraryEntryRequest(21, TrackingStatus.PLANNED))
         );
         verifyNoInteractions(aniListClient);
+    }
+
+    @Test
+    void importingAniListAddsNewPersonFavoritesWithoutDuplicatingLocalOnes() {
+        PersonFavorite existing = new PersonFavorite();
+        existing.setAnilistId(40);
+        existing.setPersonType(PersonType.CHARACTER);
+        when(appUserRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(aniListAuthService.validToken(user)).thenReturn("token");
+        when(aniListClient.getUserLibrary("test", "token"))
+                .thenReturn(new AniListLibraryExport("test", null, null, List.of()));
+        when(aniListClient.getViewerPersonFavorites("token")).thenReturn(List.of(
+                new AniListPersonFavorite(40, PersonType.CHARACTER, "Luffy", null, "character.jpg"),
+                new AniListPersonFavorite(95075, PersonType.STAFF, "Mayumi Tanaka", null, "staff.jpg")
+        ));
+        when(personFavoriteRepository.findAllByUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(existing));
+
+        LibraryImportResponse response = libraryService.importForUser(1L, "test");
+
+        assertEquals(1, response.personFavoritesCreated());
+        assertEquals(0, response.characterFavoritesCreated());
+        assertEquals(1, response.staffFavoritesCreated());
+        verify(personFavoriteRepository, times(1)).save(any(PersonFavorite.class));
     }
 
     private void mockEntry(Long id, LibraryEntry entry) {
