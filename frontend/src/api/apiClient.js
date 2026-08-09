@@ -6,7 +6,6 @@ const apiClient = axios.create({
   // take well over a minute. Keep the first request alive while it wakes up.
   timeout: 180000,
   withCredentials: true,
-  headers: { 'Content-Type': 'application/json' },
 })
 
 apiClient.interceptors.response.use(

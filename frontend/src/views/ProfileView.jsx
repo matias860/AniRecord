@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
 import ImageCropModal from '../components/profile/ImageCropModal.jsx'
+import { prepareImageForCrop } from '../lib/profileImage.js'
 import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
 import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
@@ -69,15 +70,19 @@ function FavoritePeopleList({ title, entries, path }) {
 function ProfileFileField({ type, label, hint, value, custom, aniListFallback, busy, dispatch }) {
   const inputId = `profile-${type}-file`
   const [selectedFile, setSelectedFile] = useState(null)
-  const choose = (event) => {
+  const [preparing, setPreparing] = useState(false)
+  const choose = async (event) => {
     const file = event.target.files?.[0]
-    if (file) setSelectedFile(file)
     event.target.value = ''
+    if (!file) return
+    setPreparing(true)
+    try { setSelectedFile(await prepareImageForCrop(file, type)) }
+    finally { setPreparing(false) }
   }
   return <article className="profile-file-field">
     <div className="profile-file-icon">{value ? <img src={value} alt="" /> : <FileImage />}</div>
-    <div><strong>{label}</strong><small>{hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy ? 'disabled' : ''}><Upload /> {custom ? 'Cambiar' : 'Subir'}</label>{custom && <button type="button" disabled={busy} onClick={() => dispatch(deleteProfileAsset(type))}><RotateCcw /> {aniListFallback ? 'Usar AniList' : 'Quitar'}</button>}</div></div>
-    <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} disabled={busy} />
+    <div><strong>{label}</strong><small>{preparing ? 'Preparando vista previa...' : hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy || preparing ? 'disabled' : ''}><Upload /> {preparing ? 'Preparando...' : custom ? 'Cambiar' : 'Subir'}</label>{custom && <button type="button" disabled={busy || preparing} onClick={() => dispatch(deleteProfileAsset(type))}><RotateCcw /> {aniListFallback ? 'Usar AniList' : 'Quitar'}</button>}</div></div>
+    <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} disabled={busy || preparing} />
     <AnimatePresence>{selectedFile && <ImageCropModal file={selectedFile} type={type} onCancel={() => setSelectedFile(null)} onConfirm={(file) => { dispatch(uploadProfileAsset({ type, file })); setSelectedFile(null) }} />}</AnimatePresence>
   </article>
 }
