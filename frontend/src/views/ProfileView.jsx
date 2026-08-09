@@ -1,5 +1,6 @@
-import { useEffect } from 'react'
-import { BookOpen, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { AnimatePresence, motion } from 'framer-motion'
+import { BookOpen, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trash2, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import ThemeColorPicker from '../components/profile/ThemeColorPicker.jsx'
@@ -59,7 +60,11 @@ function FavoritePeople({ entries }) {
 }
 
 function FavoritePeopleList({ title, entries, path }) {
-  return <div><h3>{title}</h3>{entries.length ? <div className="favorite-people-grid">{entries.slice(0, 8).map((item) => <Link key={item.id} to={`/${path}/${item.anilistId}`}><img src={item.imageUrl} alt={item.name} /><span><strong>{item.name}</strong>{item.nativeName && <small>{item.nativeName}</small>}</span></Link>)}</div> : <p>Aún no has agregado favoritos de este tipo.</p>}</div>
+  const [page, setPage] = useState(0)
+  const pageCount = Math.max(1, Math.ceil(entries.length / 8))
+  const visibleEntries = entries.slice(page * 8, page * 8 + 8)
+  useEffect(() => { if (page >= pageCount) setPage(pageCount - 1) }, [page, pageCount])
+  return <div className="favorite-people-list"><div className="favorite-people-heading"><h3>{title}</h3>{entries.length > 0 && <span>{entries.length} favoritos</span>}</div>{entries.length ? <><AnimatePresence mode="wait" initial={false}><motion.div className="favorite-people-grid" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .2, ease: 'easeOut' }}>{visibleEntries.map((item) => <Link key={item.id} to={`/${path}/${item.anilistId}`}><img src={item.imageUrl} alt={item.name} /><span><strong>{item.name}</strong>{item.nativeName && <small>{item.nativeName}</small>}</span></Link>)}</motion.div></AnimatePresence>{pageCount > 1 && <div className="favorite-people-controls"><button type="button" disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label={`Ocho ${title.toLowerCase()} anteriores`}><ChevronLeft /></button><span>{page + 1} / {pageCount}</span><button type="button" disabled={page === pageCount - 1} onClick={() => setPage((current) => current + 1)} aria-label={`Ocho ${title.toLowerCase()} siguientes`}><ChevronRight /></button></div>}</> : <p>Aún no has agregado favoritos de este tipo.</p>}</div>
 }
 
 function ProfileFileField({ type, label, hint, value, busy, dispatch }) {
