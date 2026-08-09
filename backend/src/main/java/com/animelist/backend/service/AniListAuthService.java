@@ -51,7 +51,7 @@ public class AniListAuthService {
     @Transactional @SuppressWarnings("unchecked")
     public LoginResult exchangeCode(String code, String state) {
         LocalDateTime expiry=pending.remove(state);
-        if (expiry==null || expiry.isBefore(LocalDateTime.now())) throw new BusinessException("La autorización venció. Volvé a iniciar sesión.");
+        if (expiry==null || expiry.isBefore(LocalDateTime.now())) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
         Map<String,Object> token=client.post().uri("https://anilist.co/api/v2/oauth/token").contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("grant_type","authorization_code","client_id",clientId,"client_secret",clientSecret,"redirect_uri",redirectUri,"code",code))
                 .retrieve().body(Map.class);

@@ -12,6 +12,8 @@ import LoginView from './views/LoginView.jsx'
 import { fetchAuth } from './features/auth/authSlice.js'
 import apiClient from './api/apiClient.js'
 import ImportView from './views/ImportView.jsx'
+import CharacterDetailView from './views/CharacterDetailView.jsx'
+import StaffDetailView from './views/StaffDetailView.jsx'
 
 export default function App() {
   const dispatch = useDispatch()
@@ -35,6 +37,8 @@ export default function App() {
         <Route path="catalogo" element={<CatalogView />} />
         <Route path="catalogo/:mediaType" element={<CatalogView />} />
         <Route path="media/:anilistId" element={<MediaDetailView />} />
+        <Route path="personajes/:anilistId" element={<CharacterDetailView />} />
+        <Route path="seiyuus/:anilistId" element={<StaffDetailView />} />
         <Route path="perfil" element={<Suspense fallback={<div className="page-state">Cargando perfil...</div>}><ProfileView /></Suspense>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

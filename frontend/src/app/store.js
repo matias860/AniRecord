@@ -10,6 +10,7 @@ import notificationReducer from '../features/notifications/notificationSlice.js'
 import toastReducer from '../features/toast/toastSlice.js'
 import { toastMiddleware } from './toastMiddleware.js'
 import authReducer from '../features/auth/authSlice.js'
+import peopleReducer from '../features/people/peopleSlice.js'
 
 const rootReducer = combineReducers({
   library: libraryReducer,
@@ -21,6 +22,7 @@ const rootReducer = combineReducers({
   notifications: notificationReducer,
   toast: toastReducer,
   auth: authReducer,
+  people: peopleReducer,
 })
 
 const storage = {

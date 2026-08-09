@@ -2,6 +2,8 @@ package com.animelist.backend.controller;
 
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
+import com.animelist.backend.dto.anilist.CharacterDetailResponse;
+import com.animelist.backend.dto.anilist.StaffDetailResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
@@ -58,6 +60,16 @@ public class AniListController {
             @jakarta.validation.constraints.Pattern(regexp = "POPULARITY|SCORE|TRENDING|NEWEST") String sort
     ) {
         return aniListClient.browse(type, page, perPage, search, year, season, genre, status, sort);
+    }
+
+    @GetMapping("/characters/{anilistId}")
+    public CharacterDetailResponse character(@PathVariable Integer anilistId) {
+        return aniListClient.getCharacter(anilistId);
+    }
+
+    @GetMapping("/staff/{anilistId}")
+    public StaffDetailResponse staff(@PathVariable Integer anilistId) {
+        return aniListClient.getStaff(anilistId);
     }
 
     @GetMapping("/catalog/genres")

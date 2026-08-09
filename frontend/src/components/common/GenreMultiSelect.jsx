@@ -9,7 +9,7 @@ export default function GenreMultiSelect({ genres, value, onChange }) {
   return <details className="genre-multi-select">
     <summary><span>{selected.length ? `${selected.length} categorías` : 'Categorías'}</span><ChevronDown /></summary>
     <div className="genre-multi-popover">
-      <header><strong>Categorías</strong><small>Podés elegir varias</small></header>
+      <header><strong>Categorías</strong><small>Puedes elegir varias</small></header>
       <div>{genres.map((genre) => <label key={genre} className={selected.includes(genre) ? 'selected' : ''}>
         <input type="checkbox" checked={selected.includes(genre)} onChange={() => toggle(genre)} />
         <span>{genre}</span><Check />

@@ -29,7 +29,7 @@ public class ProfileAssetService {
         AppUser user = localUser();
         long max = type == ProfileAssetType.AVATAR ? 2L * 1024 * 1024 : 6L * 1024 * 1024;
         String contentType = file.getContentType() == null ? "" : file.getContentType().toLowerCase(Locale.ROOT);
-        if (file.isEmpty()) throw new BusinessException("Seleccioná una imagen");
+        if (file.isEmpty()) throw new BusinessException("Selecciona una imagen");
         if (file.getSize() > max) throw new BusinessException(type == ProfileAssetType.AVATAR
                 ? "El avatar no puede superar 2 MB" : "El banner no puede superar 6 MB");
         if (!ALLOWED_TYPES.contains(contentType)) throw new BusinessException("Usá una imagen JPG, PNG o WebP");

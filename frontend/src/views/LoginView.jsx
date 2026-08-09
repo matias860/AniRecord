@@ -24,7 +24,7 @@ export default function LoginView() {
         <div className="login-art"><Sparkles /><img src={anilistLogo} alt="AniList" /></div>
         <span className="eyebrow">Tu biblioteca personal</span>
         <h1>Todo lo que ves y leés, en un solo lugar.</h1>
-        <p>Entrá con AniList para importar tu colección o creá un perfil independiente desde cero.</p>
+        <p>Inicia sesión con AniList para importar tu colección o crea un perfil independiente desde cero.</p>
         <div className="login-options">
           <a className="anilist-login-button" href="/api/auth/login"><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
           <button className="local-account-button" onClick={() => setMode('register')}><UserPlus /><span>Crear un perfil nuevo</span></button>
@@ -33,7 +33,7 @@ export default function LoginView() {
         <small><ShieldCheck /> Las contraseñas locales se guardan cifradas y nunca se muestran.</small>
       </> : <>
         <span className="eyebrow">{mode === 'register' ? 'Nuevo perfil local' : 'Bienvenido de nuevo'}</span>
-        <h1>{mode === 'register' ? 'Creá tu espacio.' : 'Entrá a tu perfil.'}</h1>
+        <h1>{mode === 'register' ? 'Crea tu espacio.' : 'Entra en tu perfil.'}</h1>
         <p>{mode === 'register' ? 'Empezá con una biblioteca vacía y personalizala a tu manera.' : 'Usá el nombre y la contraseña que elegiste.'}</p>
         <form className="local-auth-form" onSubmit={submit}>
           <label><span>Usuario</span><input name="username" value={form.username} onChange={update} minLength={3} maxLength={30} pattern="[A-Za-z0-9._-]+" autoComplete="username" required /></label>

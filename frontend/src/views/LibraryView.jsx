@@ -96,7 +96,7 @@ export default function LibraryView() {
   return (
     <>
       <div className="page-title">
-        <div><span className="eyebrow">Colección personal</span><h1><Library /> Mi biblioteca</h1><p>Seguí tu progreso sin perder el hilo.</p></div>
+        <div><span className="eyebrow">Colección personal</span><h1><Library /> Mi biblioteca</h1><p>Sigue tu progreso sin perder el hilo.</p></div>
         <div className="type-toggle">
           <button className={mediaType === 'ANIME' ? 'active' : ''} onClick={() => dispatch(setLibraryMediaType('ANIME'))}>Anime</button>
           <button className={mediaType === 'MANGA' ? 'active' : ''} onClick={() => dispatch(setLibraryMediaType('MANGA'))}>Manga</button>

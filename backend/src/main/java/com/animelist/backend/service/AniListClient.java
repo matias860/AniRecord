@@ -8,6 +8,11 @@ import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.MediaRelationResponse;
 import com.animelist.backend.dto.anilist.MediaCharacterResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
+import com.animelist.backend.dto.anilist.CharacterDetailResponse;
+import com.animelist.backend.dto.anilist.PersonMediaResponse;
+import com.animelist.backend.dto.anilist.StaffCharacterResponse;
+import com.animelist.backend.dto.anilist.StaffDetailResponse;
+import com.animelist.backend.dto.anilist.VoiceActorResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
@@ -103,6 +108,9 @@ public class AniListClient {
                       id
                       name { full }
                       image { large }
+                    }
+                    voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+                      id name { full native } image { large } languageV2
                     }
                   }
                 }
@@ -203,6 +211,44 @@ public class AniListClient {
                       name { full }
                       image { large }
                     }
+                    voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+                      id name { full native } image { large } languageV2
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
+    private static final String CHARACTER_DETAIL_QUERY = """
+            query CharacterDetail($id: Int!) {
+              Character(id: $id) {
+                id name { full native } image { large } description gender age bloodType
+                dateOfBirth { year month day } favourites
+                media(page: 1, perPage: 30, sort: [POPULARITY_DESC]) {
+                  edges {
+                    characterRole
+                    node { id type title { english romaji native } coverImage { large } }
+                    voiceActors(language: JAPANESE, sort: [RELEVANCE, ID]) {
+                      id name { full native } image { large } languageV2
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
+    private static final String STAFF_DETAIL_QUERY = """
+            query StaffDetail($id: Int!) {
+              Staff(id: $id) {
+                id name { full native } image { large } description languageV2
+                primaryOccupations gender age dateOfBirth { year month day }
+                homeTown favourites
+                characters(page: 1, perPage: 30, sort: [FAVOURITES_DESC]) {
+                  edges {
+                    role
+                    node { id name { full } image { large } }
+                    media { id type title { english romaji native } coverImage { large } }
                   }
                 }
               }
@@ -303,6 +349,41 @@ public class AniListClient {
         characters.put("edges", characterEdges);
         media.put("characters", characters);
         return mapMedia(media);
+    }
+
+    public CharacterDetailResponse getCharacter(Integer anilistId) {
+        Map<String, Object> character = asMap(execute(CHARACTER_DETAIL_QUERY, Map.of("id", anilistId)).get("Character"));
+        if (character.isEmpty()) throw new AniListClientException("AniList no encontró el personaje solicitado");
+        List<Map<String, Object>> edges = asList(asMap(character.get("media")).get("edges")).stream().map(this::asMap).toList();
+        List<VoiceActorResponse> voiceActors = edges.stream()
+                .flatMap(edge -> asList(edge.get("voiceActors")).stream())
+                .map(this::asMap).map(this::mapVoiceActor)
+                .filter(actor -> actor.anilistId() != null)
+                .collect(java.util.stream.Collectors.toMap(VoiceActorResponse::anilistId, actor -> actor, (first, ignored) -> first, LinkedHashMap::new))
+                .values().stream().toList();
+        List<PersonMediaResponse> media = edges.stream().map(edge -> mapPersonMedia(asMap(edge.get("node")), asString(edge.get("characterRole")))).toList();
+        Map<String, Object> name = asMap(character.get("name"));
+        return new CharacterDetailResponse(asInteger(character.get("id")), asString(name.get("full")), asString(name.get("native")),
+                asString(asMap(character.get("image")).get("large")), asString(character.get("description")), asString(character.get("gender")),
+                asString(character.get("age")), formatFuzzyDate(character.get("dateOfBirth")), asString(character.get("bloodType")),
+                asInteger(character.get("favourites")), voiceActors, media);
+    }
+
+    public StaffDetailResponse getStaff(Integer anilistId) {
+        Map<String, Object> staff = asMap(execute(STAFF_DETAIL_QUERY, Map.of("id", anilistId)).get("Staff"));
+        if (staff.isEmpty()) throw new AniListClientException("AniList no encontró al profesional solicitado");
+        List<StaffCharacterResponse> characters = asList(asMap(staff.get("characters")).get("edges")).stream().map(this::asMap).map(edge -> {
+            Map<String, Object> node = asMap(edge.get("node"));
+            List<PersonMediaResponse> media = asList(edge.get("media")).stream().map(this::asMap).limit(6).map(item -> mapPersonMedia(item, asString(edge.get("role")))).toList();
+            return new StaffCharacterResponse(asInteger(node.get("id")), asString(asMap(node.get("name")).get("full")),
+                    asString(asMap(node.get("image")).get("large")), asString(edge.get("role")), media);
+        }).toList();
+        Map<String, Object> name = asMap(staff.get("name"));
+        return new StaffDetailResponse(asInteger(staff.get("id")), asString(name.get("full")), asString(name.get("native")),
+                asString(asMap(staff.get("image")).get("large")), asString(staff.get("description")), asString(staff.get("languageV2")),
+                asList(staff.get("primaryOccupations")).stream().map(String::valueOf).toList(), asString(staff.get("gender")),
+                asInteger(staff.get("age")), formatFuzzyDate(staff.get("dateOfBirth")), asString(staff.get("homeTown")),
+                asInteger(staff.get("favourites")), characters);
     }
 
     public List<AniListMediaResponse> getAiringMedia(List<Integer> anilistIds) {
@@ -596,10 +677,35 @@ public class AniListClient {
                             asInteger(node.get("id")),
                             asString(asMap(node.get("name")).get("full")),
                             asString(asMap(node.get("image")).get("large")),
-                            asString(edge.get("role"))
+                            asString(edge.get("role")),
+                            asList(edge.get("voiceActors")).stream().map(this::asMap).map(this::mapVoiceActor).toList()
                     );
                 })
                 .toList();
+    }
+
+    private VoiceActorResponse mapVoiceActor(Map<String, Object> actor) {
+        Map<String, Object> name = asMap(actor.get("name"));
+        return new VoiceActorResponse(asInteger(actor.get("id")), asString(name.get("full")), asString(name.get("native")),
+                asString(asMap(actor.get("image")).get("large")), asString(actor.get("languageV2")));
+    }
+
+    private PersonMediaResponse mapPersonMedia(Map<String, Object> media, String role) {
+        return new PersonMediaResponse(asInteger(media.get("id")), enumValue(MediaType.class, asString(media.get("type"))),
+                selectTitle(asMap(media.get("title"))), asString(asMap(media.get("coverImage")).get("large")), role);
+    }
+
+    private String formatFuzzyDate(Object value) {
+        Map<String, Object> date = asMap(value);
+        Integer year = asInteger(date.get("year"));
+        Integer month = asInteger(date.get("month"));
+        Integer day = asInteger(date.get("day"));
+        if (year == null && month == null && day == null) return null;
+        List<String> parts = new ArrayList<>();
+        if (day != null) parts.add(String.valueOf(day));
+        if (month != null) parts.add(String.valueOf(month));
+        if (year != null) parts.add(String.valueOf(year));
+        return String.join("/", parts);
     }
 
     private List<MediaRelationResponse> mapRelations(Object relationsValue) {

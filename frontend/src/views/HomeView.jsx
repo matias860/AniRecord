@@ -122,7 +122,7 @@ export default function HomeView() {
             <h2 id="commit-sync-title">¿Actualizamos tu biblioteca?</h2>
             <p>{synchronizationRecommended
               ? 'Esta versión modifica la base o los metadatos. Conviene traer la información reciente de AniList; tu progreso, estados y puntajes no se modificarán.'
-              : 'Esta versión contiene cambios de interfaz o funcionamiento que no afectan los datos de tu biblioteca. Podés continuar sin sincronizar.'}</p>
+              : 'Esta versión contiene cambios de interfaz o funcionamiento que no afectan los datos de tu biblioteca. Puedes continuar sin sincronizar.'}</p>
             <div className="commit-sync-version"><small>{pendingCommits.length > 1 ? 'Commits' : 'Versión'} {commitSummary}</small><span className={synchronizationRecommended ? 'recommended' : 'optional'}>{synchronizationRecommended ? 'Conviene sincronizar' : 'No hace falta sincronizar'}</span></div>
             <div className="commit-sync-actions">
               <button type="button" className="secondary-button" onClick={closeSyncPrompt}>Ahora no</button>
@@ -152,8 +152,8 @@ export default function HomeView() {
         onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
       />
 
-      <LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tenés anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
-      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tenés manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
+      <LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
+      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
     </>
   )
 }

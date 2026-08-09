@@ -277,7 +277,7 @@ public class LibraryService {
         AppUser profile=appUserRepository.findById(userId).orElseThrow();
         String accessToken = aniListAuthService.validToken(profile);
         if (accessToken == null || accessToken.isBlank()) {
-            throw new BusinessException("La conexión con AniList venció. Volvé a iniciar sesión.");
+            throw new BusinessException("La conexión con AniList venció. Vuelve a iniciar sesión.");
         }
         AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim(), accessToken);
         int created = 0;
