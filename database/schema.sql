@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS media (
         'MANGA'
     ) NOT NULL,
 
+    country_of_origin VARCHAR(2) DEFAULT NULL,
+
     title VARCHAR(255) NOT NULL,
     cover_image VARCHAR(1000) DEFAULT NULL,
     banner_image VARCHAR(1000) DEFAULT NULL,

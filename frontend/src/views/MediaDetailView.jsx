@@ -45,7 +45,7 @@ export default function MediaDetailView() {
     <div className="detail-content">
       <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
       <div className={`detail-copy ${saved ? 'with-tracking-card' : ''}`}>
-        <div className="detail-primary"><span className="eyebrow">{detail.mediaType === 'ANIME' ? 'Anime' : 'Manga'} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}<div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>{!saved && <button className="primary-button" onClick={() => setLibraryModal('add')}><ListPlus /> Agregar a la biblioteca</button>}</div>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}<div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>{!saved && <button className="primary-button" onClick={() => setLibraryModal('add')}><ListPlus /> Agregar a la biblioteca</button>}</div>
         {saved && <SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} />}
       </div>
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
@@ -54,6 +54,11 @@ export default function MediaDetailView() {
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className="detail-extras"><section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations || []} /></section><CharacterCarousel key={detail.anilistId} characters={detail.characters || []} /></div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
+}
+
+function publicationLabel(media) {
+  if (media.mediaType === 'ANIME') return 'Anime'
+  return { KR: 'Manhwa', CN: 'Manhua', JP: 'Manga' }[media.countryOfOrigin] || 'Manga'
 }
 
 function RelationCarousel({ relations }) {

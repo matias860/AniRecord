@@ -29,6 +29,7 @@ const sectionLabels = {
 }
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const releaseStatuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
+const publicationTypes = [{ value: '', label: 'Publicación' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 
 const byPersonalScore = (a, b) => {
   const aScored = a.personalScore != null
@@ -79,6 +80,7 @@ export default function LibraryView() {
         && (!filters.year || String(item.releaseYear) === filters.year)
         && (!filters.season || item.releaseSeason === filters.season)
         && (!selectedGenres.length || selectedGenres.every((genre) => itemGenres.includes(genre)))
+        && (!filters.country || item.countryOfOrigin === filters.country)
         && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)
         && scoreMatches
     })
@@ -107,6 +109,7 @@ export default function LibraryView() {
         <StyledSelect ariaLabel="Año de la biblioteca" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Año' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
         <GenreMultiSelect genres={catalog.genres} value={filters.genre ?? []} onChange={updateFilter('genre')} />
+        {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Emisión' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
         <StyledSelect ariaLabel="Puntaje de la biblioteca" value={filters.score ?? ''} onChange={updateFilter('score')} options={[{ value: '', label: 'Puntaje' }, { value: 'SCORED', label: 'Con puntaje' }, { value: 'UNSCORED', label: 'Sin puntaje' }, { value: '10', label: '10 puntos' }, { value: '9', label: '9 o más' }, { value: '8', label: '8 o más' }]} />
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>

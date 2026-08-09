@@ -364,6 +364,7 @@ public class LibraryService {
     private void copyExternalMedia(AniListMediaResponse source, Media target) {
         target.setAnilistId(source.anilistId());
         target.setMediaType(source.mediaType());
+        target.setCountryOfOrigin(source.countryOfOrigin());
         target.setTitle(source.title());
         target.setRomajiTitle(source.romajiTitle());
         target.setCoverImage(source.coverImage());
@@ -385,6 +386,7 @@ public class LibraryService {
                 entry.getId(),
                 media.getAnilistId(),
                 media.getMediaType(),
+                media.getCountryOfOrigin(),
                 media.getTitle(),
                 media.getRomajiTitle(),
                 media.getCoverImage(),
