@@ -12,7 +12,6 @@ const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
   { to: '/biblioteca', label: 'Biblioteca', icon: Library },
   { to: '/catalogo', label: 'Catálogo', icon: Compass },
-  { to: '/perfil', label: 'Perfil', icon: UserRound },
 ]
 
 export default function AppLayout() {
@@ -39,6 +38,10 @@ export default function AppLayout() {
                 <Icon size={17} /><span>{label}</span>
               </NavLink>
             ))}
+            <NavLink to="/perfil" aria-label="Perfil" title="Perfil" onMouseEnter={() => setHovered('/perfil')} className={({ isActive }) => `nav-profile${isActive ? ' active' : ''}`}>
+              {hovered === '/perfil' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
+              <span className="nav-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <UserRound size={18} />}</span>
+            </NavLink>
           </nav>
           {accountType === 'ANILIST' && <NotificationBell />}
           <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
