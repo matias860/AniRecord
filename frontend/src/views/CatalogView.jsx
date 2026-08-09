@@ -11,7 +11,7 @@ import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSli
 import { fetchLibrary } from '../features/library/librarySlice.js'
 
 const emptyFilters = { search: '', year: '', season: '', genre: [], country: '', status: '', sort: 'POPULARITY' }
-const publicationTypes = [{ value: '', label: 'Publicación' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
+const publicationTypes = [{ value: '', label: 'Tipo' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
