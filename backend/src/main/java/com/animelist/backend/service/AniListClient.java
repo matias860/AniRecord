@@ -214,8 +214,8 @@ public class AniListClient {
             """;
 
     private static final String USER_PERSON_FAVOURITES_QUERY = """
-            query ViewerPersonFavourites($characterPage: Int!, $staffPage: Int!, $perPage: Int!) {
-              Viewer {
+            query UserPersonFavourites($userName: String!, $characterPage: Int!, $staffPage: Int!, $perPage: Int!) {
+              User(name: $userName) {
                 favourites {
                   characters(page: $characterPage, perPage: $perPage) {
                     pageInfo { hasNextPage }
@@ -482,7 +482,7 @@ public class AniListClient {
         );
     }
 
-    public List<AniListPersonFavorite> getViewerPersonFavorites(String accessToken) {
+    public List<AniListPersonFavorite> getUserPersonFavorites(String username, String accessToken) {
         final int perPage = 25;
         int characterPage = 1;
         int staffPage = 1;
@@ -492,11 +492,16 @@ public class AniListClient {
 
         while (moreCharacters || moreStaff) {
             Map<String, Object> data = execute(USER_PERSON_FAVOURITES_QUERY, Map.of(
+                    "userName", username,
                     "characterPage", characterPage,
                     "staffPage", staffPage,
                     "perPage", perPage
             ), accessToken);
-            Map<String, Object> favourites = asMap(asMap(data.get("Viewer")).get("favourites"));
+            Map<String, Object> user = asMap(data.get("User"));
+            if (user.isEmpty()) {
+                throw new AniListClientException("AniList no encontró el usuario al importar sus favoritos");
+            }
+            Map<String, Object> favourites = asMap(user.get("favourites"));
             Map<String, Object> characters = asMap(favourites.get("characters"));
             Map<String, Object> staff = asMap(favourites.get("staff"));
 

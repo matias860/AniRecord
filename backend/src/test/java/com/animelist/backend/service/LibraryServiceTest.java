@@ -203,7 +203,7 @@ class LibraryServiceTest {
         when(aniListAuthService.validToken(user)).thenReturn("token");
         when(aniListClient.getUserLibrary("test", "token"))
                 .thenReturn(new AniListLibraryExport("test", null, null, List.of()));
-        when(aniListClient.getViewerPersonFavorites("token")).thenReturn(List.of(
+        when(aniListClient.getUserPersonFavorites("test", "token")).thenReturn(List.of(
                 new AniListPersonFavorite(40, PersonType.CHARACTER, "Luffy", null, "character.jpg"),
                 new AniListPersonFavorite(95075, PersonType.STAFF, "Mayumi Tanaka", null, "staff.jpg")
         ));

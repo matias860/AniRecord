@@ -10,6 +10,7 @@ import SeasonMarquee from '../components/home/SeasonMarquee.jsx'
 import PageState from '../components/common/PageState.jsx'
 import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setWatchingPage } from '../features/home/homeSlice.js'
 import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
+import { addToast } from '../features/toast/toastSlice.js'
 
 const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
@@ -104,7 +105,15 @@ export default function HomeView() {
 
   const synchronize = async () => {
     try {
-      await dispatch(synchronizeAniListLibrary()).unwrap()
+      const result = await dispatch(synchronizeAniListLibrary()).unwrap()
+      const people = result.personFavoritesCreated || 0
+      dispatch(addToast({
+        type: 'success',
+        title: 'Sincronización terminada',
+        message: people
+          ? `Se agregaron ${people} favoritos de AniList (${result.characterFavoritesCreated} personajes y ${result.staffFavoritesCreated} seiyūs).`
+          : 'La biblioteca se actualizó, pero no había personajes o seiyūs favoritos nuevos.',
+      }))
       closeSyncPrompt()
     } catch {
       // The global toast keeps the error visible and the modal open for retrying.

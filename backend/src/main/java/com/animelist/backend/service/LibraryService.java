@@ -287,7 +287,7 @@ public class LibraryService {
             throw new BusinessException("La conexión con AniList venció. Vuelve a iniciar sesión.");
         }
         AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim(), accessToken);
-        List<AniListPersonFavorite> externalFavorites = aniListClient.getViewerPersonFavorites(accessToken);
+        List<AniListPersonFavorite> externalFavorites = aniListClient.getUserPersonFavorites(username.trim(), accessToken);
         int created = 0;
         int updated = 0;
         int anime = 0;
