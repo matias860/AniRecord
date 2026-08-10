@@ -26,7 +26,8 @@ function describe(entry) {
 }
 
 function formatDate(value) {
-  const date = new Date(value)
+  const normalized = typeof value === 'string' && !/(?:Z|[+-]\d{2}:\d{2})$/i.test(value) ? `${value}Z` : value
+  const date = new Date(normalized)
   const today = new Date()
   const sameDay = date.toDateString() === today.toDateString()
   return sameDay ? `Hoy, ${date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : date.toLocaleString('es-AR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })

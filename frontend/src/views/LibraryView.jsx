@@ -22,7 +22,7 @@ const statuses = [['ALL', 'Todos'], ['IN_PROGRESS', 'En curso'], ['PLANNED', 'Pe
 const sectionOrder = ['IN_PROGRESS', 'COMPLETED', 'PLANNED', 'PAUSED', 'DROPPED']
 const sectionLabels = {
   IN_PROGRESS: { ANIME: 'Viendo', MANGA: 'Leyendo' },
-  COMPLETED: { ANIME: 'Anime completado', MANGA: 'Manga completado' },
+  COMPLETED: { ANIME: 'Animes completados', MANGA: 'Mangas completados' },
   PLANNED: { ANIME: 'Anime pendiente', MANGA: 'Manga pendiente' },
   PAUSED: { ANIME: 'Anime pausado', MANGA: 'Manga pausado' },
   DROPPED: { ANIME: 'Anime abandonado', MANGA: 'Manga abandonado' },
@@ -105,7 +105,7 @@ export default function LibraryView() {
           <button className={mediaType === 'MANGA' ? 'active' : ''} onClick={() => dispatch(setLibraryMediaType('MANGA'))}>Manga</button>
         </div>
       </div>
-      <div className="library-advanced-filters">
+      <div className="library-advanced-filters" key={mediaType}>
         <label className="library-search"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Buscar en tu biblioteca..." /></label>
         <StyledSelect ariaLabel="Año de la biblioteca" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Año' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}

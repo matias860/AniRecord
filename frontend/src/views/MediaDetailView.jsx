@@ -125,7 +125,7 @@ function TrackingEditor({ form, setForm, mediaType, unit, total, statusOptions, 
     <div className="tracking-fields">
       <label><span>Estado</span><StyledSelect ariaLabel="Estado de seguimiento" value={form.trackingStatus} onChange={(value) => update('trackingStatus', value)} options={statusOptions} /></label>
       <label><span>Progreso ({unit})</span><input type="number" min="0" max={total ?? undefined} value={form.progress} onChange={(event) => update('progress', event.target.value)} /></label>
-      <label><span>Puntaje personal</span><input type="number" min="0" max="10" step="0.5" placeholder="Sin puntaje" value={form.personalScore} onChange={(event) => update('personalScore', event.target.value)} /></label>
+      <label className="score-range-field"><span>Puntaje personal <b>{form.personalScore === '' ? 'Sin puntaje' : `${form.personalScore}/10`}</b></span><div><input type="range" min="0" max="10" step="0.5" value={form.personalScore === '' ? 0 : form.personalScore} onChange={(event) => update('personalScore', event.target.value)} />{form.personalScore !== '' && <button type="button" onClick={() => update('personalScore', '')}>Quitar</button>}</div></label>
       <label><span><Repeat2 /> {mediaType === 'ANIME' ? 'Rewatches' : 'Releídas'}</span><input type="number" min="0" value={form.rewatchCount} onChange={(event) => update('rewatchCount', event.target.value)} /></label>
     </div>
     <div className="tracking-actions"><button className="danger-text-button" disabled={loading} onClick={onRemove}><Trash2 /> Quitar de la biblioteca</button><span>{message}</span><button className="primary-button" disabled={loading} onClick={onSave}><Save /> {loading ? 'Guardando…' : 'Guardar cambios'}</button></div>
