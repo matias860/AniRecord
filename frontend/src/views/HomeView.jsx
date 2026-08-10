@@ -156,9 +156,9 @@ export default function HomeView() {
         <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div>
       </section>
 
-      <button className={`recommendation-cta ${ownRecommendation ? 'completed' : ''}`} type="button" disabled={!!ownRecommendation || library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)}>
-        <span>{ownRecommendation ? 'Ya recomendaste una serie esta semana' : 'Recomendar una serie esta semana'}</span>
-      </button>
+      <AnimatePresence initial={false}>{!ownRecommendation && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)} initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 52, marginTop: 22, marginBottom: 22 }} exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
+        <span>Recomendar una serie esta semana</span>
+      </motion.button>}</AnimatePresence>
 
       <PageState loading={home.status === 'loading'} error={home.error} />
       {home.status === 'succeeded' && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
