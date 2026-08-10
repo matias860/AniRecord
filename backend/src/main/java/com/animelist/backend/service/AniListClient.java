@@ -207,6 +207,7 @@ public class AniListClient {
                 bannerImage
                 description
                 genres
+                tags { name rank description category isMediaSpoiler }
                 episodes
                 chapters
                 status
