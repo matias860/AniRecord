@@ -66,8 +66,8 @@ export default function LibraryView() {
     const search = (filters.search ?? '').trim().toLocaleLowerCase('es')
     return items.filter((item) => {
       const score = item.personalScore == null ? null : Number(item.personalScore)
-      const minimumScore = Number(filters.score) || 0
-      const scoreMatches = !minimumScore || (score != null && score >= minimumScore)
+      const selectedScore = Number(filters.score) || 0
+      const scoreMatches = !selectedScore || score === selectedScore
       const selectedGenres = Array.isArray(filters.genre) ? filters.genre : []
       const itemGenres = item.genres ? item.genres.split('|') : []
       const itemTags = item.tags ? item.tags.split('|') : []
@@ -108,7 +108,7 @@ export default function LibraryView() {
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
         {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Emisión' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
-        <label className="library-score-range"><span>Puntaje <b>{Number(filters.score) ? `${filters.score}+` : 'Todos'}</b></span><input type="range" min="0" max="10" step="1" value={Number(filters.score) || 0} onChange={(event) => updateFilter('score')(event.target.value === '0' ? '' : event.target.value)} /></label>
+        <label className="library-score-range"><span>Puntaje <b>{Number(filters.score) ? filters.score : 'Todos'}</b></span><input type="range" min="0" max="10" step="1" value={Number(filters.score) || 0} onChange={(event) => updateFilter('score')(event.target.value === '0' ? '' : event.target.value)} /></label>
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>
       </div>
       <div className="filter-row">{statuses.map(([value, label]) => <button key={value} className={trackingStatus === value ? 'active' : ''} onClick={() => dispatch(setLibraryTrackingStatus(value))}>{label}</button>)}</div>
