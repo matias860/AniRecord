@@ -66,12 +66,8 @@ export default function LibraryView() {
     const search = (filters.search ?? '').trim().toLocaleLowerCase('es')
     return items.filter((item) => {
       const score = item.personalScore == null ? null : Number(item.personalScore)
-      const scoreMatches = !filters.score
-        || (filters.score === 'SCORED' && score != null)
-        || (filters.score === 'UNSCORED' && score == null)
-        || (filters.score === '10' && score === 10)
-        || (filters.score === '9' && score >= 9)
-        || (filters.score === '8' && score >= 8)
+      const minimumScore = Number(filters.score) || 0
+      const scoreMatches = !minimumScore || (score != null && score >= minimumScore)
       const selectedGenres = Array.isArray(filters.genre) ? filters.genre : []
       const itemGenres = item.genres ? item.genres.split('|') : []
       const itemTags = item.tags ? item.tags.split('|') : []
@@ -112,7 +108,7 @@ export default function LibraryView() {
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
         {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Emisión' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
-        <StyledSelect ariaLabel="Puntaje de la biblioteca" value={filters.score ?? ''} onChange={updateFilter('score')} options={[{ value: '', label: 'Puntaje' }, { value: 'SCORED', label: 'Con puntaje' }, { value: 'UNSCORED', label: 'Sin puntaje' }, { value: '10', label: '10 puntos' }, { value: '9', label: '9 o más' }, { value: '8', label: '8 o más' }]} />
+        <label className="library-score-range"><span>Puntaje <b>{Number(filters.score) ? `${filters.score}+` : 'Todos'}</b></span><input type="range" min="0" max="10" step="1" value={Number(filters.score) || 0} onChange={(event) => updateFilter('score')(event.target.value === '0' ? '' : event.target.value)} /></label>
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>
       </div>
       <div className="filter-row">{statuses.map(([value, label]) => <button key={value} className={trackingStatus === value ? 'active' : ''} onClick={() => dispatch(setLibraryTrackingStatus(value))}>{label}</button>)}</div>
