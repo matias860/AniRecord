@@ -44,6 +44,12 @@ public class ProfileController {
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .contentType(MediaType.parseMediaType(asset.contentType())).body(asset.bytes());
     }
+    @GetMapping("/users/{userId}/avatar")
+    public ResponseEntity<byte[]> publicAvatar(@PathVariable Long userId) {
+        var asset = assetService.getForUser(userId, ProfileAssetType.AVATAR);
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .contentType(MediaType.parseMediaType(asset.contentType())).body(asset.bytes());
+    }
     @DeleteMapping("/assets/{type}")
     public ProfileResponse deleteAsset(@PathVariable String type) {
         assetService.delete(assetType(type));

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, X } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, Sparkles, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -7,10 +7,13 @@ import WeeklySchedule from '../components/home/WeeklySchedule.jsx'
 import MediaCard from '../components/media/MediaCard.jsx'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import SeasonMarquee from '../components/home/SeasonMarquee.jsx'
+import RecommendationMarquee from '../components/home/RecommendationMarquee.jsx'
+import WeeklyRecommendationModal from '../components/home/WeeklyRecommendationModal.jsx'
 import PageState from '../components/common/PageState.jsx'
 import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setWatchingPage } from '../features/home/homeSlice.js'
 import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
 import { addToast } from '../features/toast/toastSlice.js'
+import { fetchWeeklyRecommendations } from '../features/recommendations/recommendationsSlice.js'
 
 const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
@@ -39,6 +42,8 @@ export default function HomeView() {
   const auth = useSelector((state) => state.auth)
   const library = useSelector((state) => state.library)
   const home = useSelector((state) => state.home)
+  const recommendations = useSelector((state) => state.recommendations)
+  const [recommendationModal, setRecommendationModal] = useState(false)
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
   const [dismissedCommit, setDismissedCommit] = useState(() => window.localStorage.getItem(syncPromptKey))
   const pendingCommits = commitsSince(dismissedCommit)
@@ -53,7 +58,8 @@ export default function HomeView() {
   useEffect(() => {
     if (library.status === 'idle') dispatch(fetchLibrary())
     if (home.status === 'idle') dispatch(fetchAiringSchedule())
-  }, [dispatch, library.status, home.status])
+    if (recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
+  }, [dispatch, library.status, home.status, recommendations.status])
 
   useEffect(() => {
     if (!home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
@@ -84,6 +90,7 @@ export default function HomeView() {
   const inProgress = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS').length
   const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
   const libraryReady = library.status === 'succeeded'
+  const ownRecommendation = recommendations.items.find((item) => item.recommenderId === auth.userId)
   const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
   const scheduleOptions = [0, 1, 2, 3].map((offset) => {
       const item = seasonAtOffset(offset)
@@ -123,7 +130,7 @@ export default function HomeView() {
   return (
     <>
       <AnimatePresence>
-        {showSyncPrompt && <motion.div className="commit-sync-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+        {showSyncPrompt && <motion.div key="sync-prompt" className="commit-sync-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
           <motion.section className="commit-sync-modal" role="dialog" aria-modal="true" aria-labelledby="commit-sync-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
             <button className="commit-sync-close" type="button" onClick={closeSyncPrompt} aria-label="Cerrar"><X /></button>
             <div className="commit-sync-icon"><RefreshCw /></div>
@@ -142,14 +149,21 @@ export default function HomeView() {
             </div>
           </motion.section>
         </motion.div>}
+        {recommendationModal && <WeeklyRecommendationModal key="recommendation-modal" onClose={() => setRecommendationModal(false)} />}
       </AnimatePresence>
       <section className="welcome-row">
         <div><span className="eyebrow">Biblioteca personal</span><h1>¿Qué seguimos hoy?</h1><p>Todo tu anime y manga, ordenado en un solo lugar.</p></div>
         <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div>
       </section>
 
+      <section className={`recommendation-cta ${ownRecommendation ? 'completed' : ''}`}>
+        <div><span><Sparkles /></span><div><small>Una elección por semana</small><strong>{ownRecommendation ? `Recomendaste ${ownRecommendation.title}` : 'Comparte una historia que valga la pena'}</strong></div></div>
+        <button type="button" disabled={!!ownRecommendation || library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)}>{ownRecommendation ? 'Recomendación enviada' : 'Recomienda una serie esta semana'}<ArrowRight /></button>
+      </section>
+
       <PageState loading={home.status === 'loading'} error={home.error} />
       {home.status === 'succeeded' && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
+      <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
       <SeasonMarquee
         key={selectedSeasonKey}
         entries={selectedSeasonEntries}

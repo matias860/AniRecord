@@ -12,6 +12,7 @@ import { toastMiddleware } from './toastMiddleware.js'
 import authReducer from '../features/auth/authSlice.js'
 import peopleReducer from '../features/people/peopleSlice.js'
 import favoritesReducer from '../features/favorites/favoritesSlice.js'
+import recommendationsReducer from '../features/recommendations/recommendationsSlice.js'
 
 const rootReducer = combineReducers({
   library: libraryReducer,
@@ -25,6 +26,7 @@ const rootReducer = combineReducers({
   auth: authReducer,
   people: peopleReducer,
   favorites: favoritesReducer,
+  recommendations: recommendationsReducer,
 })
 
 const storage = {

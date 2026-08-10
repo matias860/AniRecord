@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Repeat2, Save, Star, Trash2, X } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useParams } from 'react-router-dom'
@@ -9,6 +9,7 @@ import MediaTags from '../components/media/MediaTags.jsx'
 import { addToLibrary, fetchLibrary, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
 import { cleanSynopsis } from '../lib/media.js'
 import { clearDetail, fetchMediaDetail } from '../features/search/searchSlice.js'
+import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 
 const statusLabels = {
   PLANNED: 'Por comenzar', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
@@ -20,11 +21,13 @@ export default function MediaDetailView() {
   const dispatch = useDispatch()
   const { detail, detailStatus, error } = useSelector((state) => state.search)
   const library = useSelector((state) => state.library)
+  const mediaRecommendations = useSelector((state) => state.recommendations.byMedia[Number(anilistId)]?.entries ?? null)
   const saved = library.items.find((item) => item.anilistId === Number(anilistId))
   const [libraryModal, setLibraryModal] = useState(null)
 
   useEffect(() => {
     dispatch(fetchMediaDetail(anilistId))
+    dispatch(fetchMediaRecommendations(anilistId))
     return () => dispatch(clearDetail())
   }, [anilistId, dispatch])
 
@@ -45,7 +48,7 @@ export default function MediaDetailView() {
     <div className="detail-content">
       <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
       <div className={`detail-copy ${saved ? 'with-tracking-card' : ''}`}>
-        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}<div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>{!saved && <button className="primary-button" onClick={() => setLibraryModal('add')}><ListPlus /> Agregar a la biblioteca</button>}</div>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}<div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>{!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}{!saved && <button className="primary-button" onClick={() => setLibraryModal('add')}><ListPlus /> Agregar a la biblioteca</button>}</div>
         {saved && <SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} />}
       </div>
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
