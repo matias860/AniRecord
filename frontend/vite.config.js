@@ -10,6 +10,7 @@ const commit = process.env.VERCEL_GIT_COMMIT_SHA
 const synchronizationPaths = [
   'backend/src/main/resources/db/migration/',
   'database/schema.sql',
+  'database/sync-version.txt',
   'backend/src/main/java/com/animelist/backend/entity/Media.java',
   'backend/src/main/java/com/animelist/backend/dto/anilist/',
   'backend/src/main/java/com/animelist/backend/dto/library/',
