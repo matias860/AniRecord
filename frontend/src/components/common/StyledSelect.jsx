@@ -2,10 +2,10 @@ import { ListBox, Select } from '@heroui/react'
 
 const emptyKey = '__empty__'
 
-export default function StyledSelect({ value, onChange, options, ariaLabel, className = '' }) {
+export default function StyledSelect({ value, onChange, options, ariaLabel, fieldLabel, className = '' }) {
   const selectedValue = value === '' || value == null ? emptyKey : String(value)
   return (
-    <Select className={`styled-select ${className}`} value={selectedValue} onChange={(next) => onChange(next === emptyKey ? '' : String(next))} aria-label={ariaLabel}>
+    <Select className={`styled-select ${className}`} data-field-label={fieldLabel || undefined} value={selectedValue} onChange={(next) => onChange(next === emptyKey ? '' : String(next))} aria-label={ariaLabel}>
       <Select.Trigger className="styled-select-trigger">
         <Select.Value />
         <Select.Indicator />

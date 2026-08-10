@@ -6,8 +6,8 @@ export default function GenreMultiSelect({ genres, value, onChange }) {
     ? selected.filter((item) => item !== genre)
     : [...selected, genre])
 
-  return <details className="genre-multi-select">
-    <summary><span>{selected.length ? `${selected.length} categorías` : 'Categorías'}</span><ChevronDown /></summary>
+  return <details className="genre-multi-select" data-field-label="Categorías">
+    <summary><span>{selected.length ? `${selected.length} seleccionadas` : 'Todas'}</span><ChevronDown /></summary>
     <div className="genre-multi-popover">
       <header><strong>Categorías</strong><small>Puedes elegir varias</small></header>
       <div>{genres.map((genre) => <label key={genre} className={selected.includes(genre) ? 'selected' : ''}>

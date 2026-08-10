@@ -11,7 +11,7 @@ import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSli
 import { fetchLibrary } from '../features/library/librarySlice.js'
 
 const emptyFilters = { search: '', year: '', season: '', genre: [], country: '', status: '', sort: 'POPULARITY' }
-const publicationTypes = [{ value: '', label: 'Tipo' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
+const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
@@ -76,13 +76,13 @@ export default function CatalogView() {
       <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button></div>
 
       <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={(event) => event.preventDefault()}>
-        <label className="catalog-search"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={`Buscar ${type === 'ANIME' ? 'anime' : 'manga'}...`} /></label>
-        <StyledSelect ariaLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Año' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
-        <StyledSelect ariaLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
+        <label className="catalog-search" data-field-label="Buscar"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={type === 'ANIME' ? 'Anime...' : 'Manga...'} /></label>
+        <StyledSelect ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
+        <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre} onChange={update('genre')} />
-        {type === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación" value={filters.country} onChange={update('country')} options={publicationTypes} />}
-        <StyledSelect ariaLabel="Estado de emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Estado' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
-        <StyledSelect ariaLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
+        {type === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación" fieldLabel="Tipo" value={filters.country} onChange={update('country')} options={publicationTypes} />}
+        <StyledSelect ariaLabel="Estado de emisión" fieldLabel="Estado" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
+        <StyledSelect ariaLabel="Orden" fieldLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
         <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 

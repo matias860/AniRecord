@@ -29,7 +29,7 @@ const sectionLabels = {
 }
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const releaseStatuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
-const publicationTypes = [{ value: '', label: 'Tipo' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
+const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 
 const byPersonalScore = (a, b) => {
   const aScored = a.personalScore != null
@@ -102,12 +102,12 @@ export default function LibraryView() {
         </div>
       </div>
       <div className="library-advanced-filters" key={mediaType}>
-        <label className="library-search"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Buscar en tu biblioteca..." /></label>
-        <StyledSelect ariaLabel="Año de la biblioteca" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Año' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
-        {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
+        <label className="library-search" data-field-label="Buscar"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Título..." /></label>
+        <StyledSelect ariaLabel="Año de la biblioteca" fieldLabel="Año" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Todos' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
+        {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" fieldLabel="Temporada" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
-        {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
-        <StyledSelect ariaLabel="Estado de emisión de la biblioteca" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Emisión' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
+        {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" fieldLabel="Tipo" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
+        <StyledSelect ariaLabel="Estado de emisión de la biblioteca" fieldLabel="Emisión" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Todas' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
         <label className="library-score-range"><span>Puntaje <b>{Number(filters.score) ? filters.score : 'Todos'}</b></span><input type="range" min="0" max="10" step="1" value={Number(filters.score) || 0} onChange={(event) => updateFilter('score')(event.target.value === '0' ? '' : event.target.value)} /></label>
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>
       </div>
