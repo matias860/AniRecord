@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, Sparkles, X } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
@@ -156,10 +156,9 @@ export default function HomeView() {
         <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div>
       </section>
 
-      <section className={`recommendation-cta ${ownRecommendation ? 'completed' : ''}`}>
-        <div><span><Sparkles /></span><div><small>Una elección por semana</small><strong>{ownRecommendation ? `Recomendaste ${ownRecommendation.title}` : 'Comparte una historia que valga la pena'}</strong></div></div>
-        <button type="button" disabled={!!ownRecommendation || library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)}>{ownRecommendation ? 'Recomendación enviada' : 'Recomienda una serie esta semana'}<ArrowRight /></button>
-      </section>
+      <button className={`recommendation-cta ${ownRecommendation ? 'completed' : ''}`} type="button" disabled={!!ownRecommendation || library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)}>
+        <span>{ownRecommendation ? 'Ya recomendaste una serie esta semana' : 'Recomendar una serie esta semana'}</span>
+      </button>
 
       <PageState loading={home.status === 'loading'} error={home.error} />
       {home.status === 'succeeded' && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}

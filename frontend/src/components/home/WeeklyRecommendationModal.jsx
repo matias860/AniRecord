@@ -16,6 +16,7 @@ export default function WeeklyRecommendationModal({ onClose }) {
   const entries = useMemo(() => {
     const query = search.trim().toLocaleLowerCase('es')
     return library.filter((entry) => entry.mediaType === mediaType
+      && ['IN_PROGRESS', 'COMPLETED'].includes(entry.trackingStatus)
       && (!query || entry.title.toLocaleLowerCase('es').includes(query)
         || entry.romajiTitle?.toLocaleLowerCase('es').includes(query)))
   }, [library, mediaType, search])
