@@ -1,5 +1,6 @@
 export default function MediaTags({ tags = [], compact = false }) {
-  const visible = compact ? tags.slice(0, 3) : tags.slice(0, 5)
+  const limit = compact ? 3 : 5
+  const visible = prioritizeYuri(tags, limit)
   if (!visible.length) return null
 
   return <div className={`media-tags ${compact ? 'compact' : ''}`}>
@@ -12,4 +13,11 @@ export default function MediaTags({ tags = [], compact = false }) {
       </span>
     </span>)}
   </div>
+}
+
+function prioritizeYuri(tags, limit) {
+  const visible = tags.slice(0, limit)
+  const yuri = tags.find((tag) => tag.name?.toLocaleLowerCase('en') === 'yuri')
+  if (!yuri || visible.some((tag) => tag.name?.toLocaleLowerCase('en') === 'yuri')) return visible
+  return [...visible.slice(0, Math.max(0, limit - 1)), yuri]
 }
