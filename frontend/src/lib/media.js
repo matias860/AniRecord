@@ -3,7 +3,7 @@ export const STATUS_LABELS = {
   COMPLETED: 'Completado', DROPPED: 'Abandonado',
 }
 
-export const cleanAniListText = (value = '') => value
+export const cleanAniListText = (value) => (value ?? '')
   .replace(/<br\s*\/?\s*>/gi, '\n')
   .replace(/<[^>]*>/g, '')
   .replace(/~!([\s\S]*?)!~/g, '$1')

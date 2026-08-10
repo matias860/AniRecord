@@ -52,7 +52,7 @@ export default function MediaDetailView() {
         {saved && <SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} />}
       </div>
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
-      <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'No hay una sinopsis disponible.'}</p></div>
+      <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className="detail-extras"><section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations || []} /></section><CharacterCarousel key={detail.anilistId} characters={detail.characters || []} /></div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
