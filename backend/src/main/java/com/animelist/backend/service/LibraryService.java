@@ -371,6 +371,7 @@ public class LibraryService {
         target.setBannerImage(source.bannerImage());
         target.setSynopsis(source.synopsis());
         target.setGenres(source.genres() == null ? null : String.join("|", source.genres()));
+        target.setTags(source.tags() == null ? null : source.tags().stream().map(tag -> tag.name()).collect(java.util.stream.Collectors.joining("|")));
         target.setTotalUnits(source.totalUnits());
         target.setReleaseStartDate(source.releaseStartDate());
         target.setReleaseEndDate(source.releaseEndDate());
@@ -393,6 +394,7 @@ public class LibraryService {
                 media.getBannerImage(),
                 media.getSynopsis(),
                 media.getGenres(),
+                media.getTags(),
                 media.getTotalUnits(),
                 media.getReleaseStartDate(),
                 media.getReleaseEndDate(),

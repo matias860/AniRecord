@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS media (
     banner_image VARCHAR(1000) DEFAULT NULL,
     synopsis TEXT DEFAULT NULL,
     genres TEXT DEFAULT NULL,
+    tags TEXT DEFAULT NULL,
 
     total_units INT DEFAULT NULL,
 

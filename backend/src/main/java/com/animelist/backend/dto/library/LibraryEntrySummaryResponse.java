@@ -17,6 +17,7 @@ public record LibraryEntrySummaryResponse(
         String romajiTitle,
         String coverImage,
         String genres,
+        String tags,
         Integer totalUnits,
         ReleaseStatus releaseStatus,
         ReleaseSeason releaseSeason,

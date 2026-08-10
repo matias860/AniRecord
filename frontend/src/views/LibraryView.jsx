@@ -74,12 +74,13 @@ export default function LibraryView() {
         || (filters.score === '8' && score >= 8)
       const selectedGenres = Array.isArray(filters.genre) ? filters.genre : []
       const itemGenres = item.genres ? item.genres.split('|') : []
+      const itemTags = item.tags ? item.tags.split('|') : []
       return item.mediaType === mediaType
         && (trackingStatus === 'ALL' || item.trackingStatus === trackingStatus)
         && (!search || [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(search)))
         && (!filters.year || String(item.releaseYear) === filters.year)
         && (!filters.season || item.releaseSeason === filters.season)
-        && (!selectedGenres.length || selectedGenres.every((genre) => itemGenres.includes(genre)))
+        && (!selectedGenres.length || selectedGenres.every((category) => category === 'Yuri' ? itemTags.includes(category) : itemGenres.includes(category)))
         && (!filters.country || item.countryOfOrigin === filters.country)
         && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)
         && scoreMatches
@@ -108,7 +109,7 @@ export default function LibraryView() {
         <label className="library-search"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Buscar en tu biblioteca..." /></label>
         <StyledSelect ariaLabel="Año de la biblioteca" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Año' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
-        <GenreMultiSelect genres={catalog.genres} value={filters.genre ?? []} onChange={updateFilter('genre')} />
+        <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
         {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Emisión' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
         <StyledSelect ariaLabel="Puntaje de la biblioteca" value={filters.score ?? ''} onChange={updateFilter('score')} options={[{ value: '', label: 'Puntaje' }, { value: 'SCORED', label: 'Con puntaje' }, { value: 'UNSCORED', label: 'Sin puntaje' }, { value: '10', label: '10 puntos' }, { value: '9', label: '9 o más' }, { value: '8', label: '8 o más' }]} />

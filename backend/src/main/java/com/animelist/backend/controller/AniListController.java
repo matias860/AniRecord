@@ -55,13 +55,14 @@ public class AniListController {
             @RequestParam(required = false) @Min(1940) @Max(2100) Integer year,
             @RequestParam(required = false) ReleaseSeason season,
             @RequestParam(required = false) List<String> genre,
+            @RequestParam(required = false) List<String> tag,
             @RequestParam(required = false) ReleaseStatus status,
             @RequestParam(required = false)
             @jakarta.validation.constraints.Pattern(regexp = "JP|KR|CN") String country,
             @RequestParam(defaultValue = "POPULARITY")
             @jakarta.validation.constraints.Pattern(regexp = "POPULARITY|SCORE|TRENDING|NEWEST") String sort
     ) {
-        return aniListClient.browse(type, page, perPage, search, year, season, genre, status, country, sort);
+        return aniListClient.browse(type, page, perPage, search, year, season, genre, tag, status, country, sort);
     }
 
     @GetMapping("/characters/{anilistId}")

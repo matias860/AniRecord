@@ -58,6 +58,9 @@ public class Media {
     @Column(columnDefinition = "TEXT")
     private String genres;
 
+    @Column(columnDefinition = "TEXT")
+    private String tags;
+
     @Column(name = "total_units")
     private Integer totalUnits;
 

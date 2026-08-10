@@ -6,7 +6,7 @@ import HomeView from './views/HomeView.jsx'
 import LibraryView from './views/LibraryView.jsx'
 import MediaDetailView from './views/MediaDetailView.jsx'
 import CatalogView from './views/CatalogView.jsx'
-import { BookOpen } from 'lucide-react'
+import ProfileLoader from './components/common/ProfileLoader.jsx'
 const ProfileView = lazy(() => import('./views/ProfileView.jsx'))
 import LoginView from './views/LoginView.jsx'
 import { fetchAuth } from './features/auth/authSlice.js'
@@ -26,7 +26,7 @@ export default function App() {
       apiClient.post('/auth/claim', { ticket }).finally(() => { window.history.replaceState({}, '', '/'); dispatch(fetchAuth()) })
     } else dispatch(fetchAuth())
   }, [auth.status, dispatch])
-  if (auth.status === 'idle' || auth.status === 'loading') return <div className="auth-loading"><BookOpen /> Despertando tu biblioteca…</div>
+  if (auth.status === 'idle' || auth.status === 'loading') return <div className="auth-loading dot-background"><ProfileLoader message="Despertando tu biblioteca…" /></div>
   if (!auth.authenticated) return <LoginView />
   if (auth.needsImport) return <ImportView />
   return (
@@ -39,7 +39,7 @@ export default function App() {
         <Route path="media/:anilistId" element={<MediaDetailView />} />
         <Route path="personajes/:anilistId" element={<CharacterDetailView />} />
         <Route path="seiyuus/:anilistId" element={<StaffDetailView />} />
-        <Route path="perfil" element={<Suspense fallback={<div className="page-state">Cargando perfil...</div>}><ProfileView /></Suspense>} />
+        <Route path="perfil" element={<Suspense fallback={<div className="page-state"><ProfileLoader message="Cargando perfil..." /></div>}><ProfileView /></Suspense>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

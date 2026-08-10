@@ -15,8 +15,16 @@ const publicationTypes = [{ value: '', label: 'Tipo' }, { value: 'JP', label: 'M
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
-const requestFilters = (filters) => Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
-  Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 1)))
+const requestFilters = (filters) => {
+  const active = Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
+    Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 1)))
+  if (active.genre?.includes('Yuri')) {
+    active.genre = active.genre.filter((category) => category !== 'Yuri')
+    active.tag = ['Yuri']
+    if (!active.genre.length) delete active.genre
+  }
+  return active
+}
 
 export default function CatalogView() {
   const { mediaType } = useParams()
@@ -71,7 +79,7 @@ export default function CatalogView() {
         <label className="catalog-search"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={`Buscar ${type === 'ANIME' ? 'anime' : 'manga'}...`} /></label>
         <StyledSelect ariaLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Año' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
         <StyledSelect ariaLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Temporada' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
-        <GenreMultiSelect genres={catalog.genres} value={filters.genre} onChange={update('genre')} />
+        <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre} onChange={update('genre')} />
         {type === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación" value={filters.country} onChange={update('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Estado de emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Estado' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
         <StyledSelect ariaLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />

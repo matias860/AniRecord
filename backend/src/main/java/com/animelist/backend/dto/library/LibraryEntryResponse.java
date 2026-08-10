@@ -19,6 +19,7 @@ public record LibraryEntryResponse(
         String bannerImage,
         String synopsis,
         String genres,
+        String tags,
         Integer totalUnits,
         LocalDate releaseStartDate,
         LocalDate releaseEndDate,

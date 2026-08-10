@@ -413,7 +413,7 @@ public class AniListClient {
 
     public AniListSearchResponse browse(
             MediaType type, int page, int perPage, String search, Integer year,
-            ReleaseSeason season, List<String> genres, ReleaseStatus status, String country, String sort
+            ReleaseSeason season, List<String> genres, List<String> tags, ReleaseStatus status, String country, String sort
     ) {
         Map<String, Object> variables = new LinkedHashMap<>();
         StringBuilder declarations = new StringBuilder(
@@ -442,6 +442,11 @@ public class AniListClient {
             declarations.append(", $genres: [String]");
             arguments.append(", genre_in: $genres");
             variables.put("genres", genres);
+        }
+        if (tags != null && !tags.isEmpty()) {
+            declarations.append(", $tags: [String]");
+            arguments.append(", tag_in: $tags");
+            variables.put("tags", tags);
         }
         if (status != null) {
             declarations.append(", $status: MediaStatus");
@@ -714,19 +719,26 @@ public class AniListClient {
     }
 
     private List<MediaTagResponse> mapTags(Object tagsValue) {
-        return asList(tagsValue).stream()
+        List<MediaTagResponse> tags = asList(tagsValue).stream()
                 .map(this::asMap)
                 .filter(tag -> !Boolean.TRUE.equals(tag.get("isMediaSpoiler")))
                 .sorted((first, second) -> Integer.compare(
                         asInteger(second.get("rank")) == null ? 0 : asInteger(second.get("rank")),
                         asInteger(first.get("rank")) == null ? 0 : asInteger(first.get("rank"))))
-                .limit(5)
                 .map(tag -> new MediaTagResponse(
                         asString(tag.get("name")),
                         asInteger(tag.get("rank")),
                         asString(tag.get("description")),
                         asString(tag.get("category"))))
                 .toList();
+        List<MediaTagResponse> visible = new ArrayList<>(tags.stream().limit(5).toList());
+        tags.stream().filter(tag -> "Yuri".equalsIgnoreCase(tag.name())).findFirst().ifPresent(yuri -> {
+            if (visible.stream().noneMatch(tag -> "Yuri".equalsIgnoreCase(tag.name()))) {
+                if (visible.size() == 5) visible.remove(4);
+                visible.add(yuri);
+            }
+        });
+        return visible;
     }
 
     private List<MediaCharacterResponse> mapCharacters(Object charactersValue) {
