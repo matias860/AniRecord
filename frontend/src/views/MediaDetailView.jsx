@@ -12,7 +12,7 @@ import { clearDetail, fetchMediaDetail } from '../features/search/searchSlice.js
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 
 const statusLabels = {
-  PLANNED: 'Por comenzar', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
+  PLANNED: 'Planeando', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
   COMPLETED: 'Completado', DROPPED: 'Abandonado',
 }
 
