@@ -20,7 +20,10 @@ apiClient.interceptors.response.use(
       (error.code === 'ECONNABORTED'
         ? 'El servidor tardó demasiado en responder.'
         : 'No se pudo conectar con el backend.')
-    return Promise.reject(new Error(message))
+    const wrappedError = new Error(message, { cause: error })
+    wrappedError.status = error.response?.status
+    wrappedError.code = error.code
+    return Promise.reject(wrappedError)
   },
 )
 

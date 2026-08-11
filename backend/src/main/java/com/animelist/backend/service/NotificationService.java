@@ -7,9 +7,12 @@ import com.animelist.backend.repository.AppNotificationRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.Duration;
+import java.net.http.HttpClient;
 import java.util.*;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +36,16 @@ public class NotificationService {
     private final AppNotificationRepository repository;
     private final AniListAuthService auth;
     private final CurrentUserService currentUser;
-    private final RestClient client = RestClient.create();
-    public NotificationService(AppNotificationRepository repository, AniListAuthService auth, CurrentUserService currentUser) { this.repository = repository; this.auth = auth; this.currentUser=currentUser; }
+    private final RestClient client;
+    public NotificationService(AppNotificationRepository repository, AniListAuthService auth, CurrentUserService currentUser) {
+        this.repository = repository;
+        this.auth = auth;
+        this.currentUser = currentUser;
+        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(10));
+        this.client = RestClient.builder().requestFactory(requestFactory).build();
+    }
 
     public int syncSafely() {
         try { return repository.countByUserId(currentUser.require().getId()) == 0 ? initialSync() : sync(); }

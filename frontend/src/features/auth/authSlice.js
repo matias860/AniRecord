@@ -1,7 +1,32 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
 
-export const fetchAuth = createAsyncThunk('auth/status', async () => (await apiClient.get('/auth/status')).data)
+const wait = (milliseconds, signal) => new Promise((resolve, reject) => {
+  const handleAbort = () => {
+    window.clearTimeout(timer)
+    reject(new DOMException('Solicitud cancelada', 'AbortError'))
+  }
+  const timer = window.setTimeout(() => {
+    signal?.removeEventListener('abort', handleAbort)
+    resolve()
+  }, milliseconds)
+  signal?.addEventListener('abort', handleAbort, { once: true })
+})
+
+export const fetchAuth = createAsyncThunk('auth/status', async (_, { signal }) => {
+  let lastError
+  for (let attempt = 0; attempt < 9; attempt += 1) {
+    try {
+      return (await apiClient.get('/auth/status', { timeout: 18000, signal })).data
+    } catch (error) {
+      lastError = error
+      const serverCanRecover = !error.status || error.status >= 500
+      if (!serverCanRecover || attempt === 8 || signal.aborted) throw error
+      await wait(2500, signal)
+    }
+  }
+  throw lastError
+})
 export const logout = createAsyncThunk('auth/logout', async () => { await apiClient.post('/auth/logout') })
 export const localLogin = createAsyncThunk('auth/localLogin', async (credentials, { rejectWithValue }) => {
   try { return (await apiClient.post('/auth/local-login', credentials)).data }

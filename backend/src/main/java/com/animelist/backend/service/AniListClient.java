@@ -33,6 +33,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
@@ -159,17 +160,11 @@ public class AniListClient {
                   countryOfOrigin
                   title { romaji english native }
                   coverImage { extraLarge large }
-                  bannerImage
-                  description
-                  genres
                   episodes
                   chapters
                   status
                   season
                   seasonYear
-                  startDate { year month day }
-                  endDate { year month day }
-                  nextAiringEpisode { episode airingAt timeUntilAiring }
                   tags { name rank description category isMediaSpoiler }
                 }
               }
@@ -412,6 +407,7 @@ public class AniListClient {
         return result;
     }
 
+    @Cacheable("catalog")
     public AniListSearchResponse browse(
             MediaType type, int page, int perPage, String search, Integer year,
             ReleaseSeason season, List<String> genres, List<String> tags, ReleaseStatus status, String country, String sort
@@ -476,6 +472,7 @@ public class AniListClient {
         );
     }
 
+    @Cacheable("catalogGenres")
     public List<String> getGenres() {
         return asList(execute(GENRES_QUERY, Map.of()).get("GenreCollection")).stream()
                 .map(String::valueOf)
@@ -622,6 +619,7 @@ public class AniListClient {
         return getSeason(season, today.getYear(), perPage);
     }
 
+    @Cacheable("seasons")
     public List<AniListMediaResponse> getSeason(ReleaseSeason season, int year, int perPage) {
         Map<String, Object> data = execute(SEASON_QUERY, Map.of(
                 "season", season.name(),
@@ -641,45 +639,66 @@ public class AniListClient {
 
     @SuppressWarnings("unchecked")
     private Map<String, Object> execute(String query, Map<String, Object> variables, String accessToken) {
-        try {
-            RestClient.RequestBodySpec request = restClient.post();
-            if (accessToken != null && !accessToken.isBlank()) {
-                request.header("Authorization", "Bearer " + accessToken);
-            }
-            Map<String, Object> response = request.body(Map.of("query", query, "variables", variables))
-                    .retrieve()
-                    .body(Map.class);
+        for (int attempt = 0; attempt < 2; attempt++) {
+            try {
+                RestClient.RequestBodySpec request = restClient.post();
+                if (accessToken != null && !accessToken.isBlank()) {
+                    request.header("Authorization", "Bearer " + accessToken);
+                }
+                Map<String, Object> response = request.body(Map.of("query", query, "variables", variables))
+                        .retrieve()
+                        .body(Map.class);
 
-            if (response == null) {
-                throw new AniListClientException("AniList devolvió una respuesta vacía");
-            }
-            if (response.get("errors") instanceof List<?> errors && !errors.isEmpty()) {
-                Map<String, Object> firstError = asMap(errors.get(0));
+                if (response == null) {
+                    throw new AniListClientException("AniList devolvió una respuesta vacía");
+                }
+                if (response.get("errors") instanceof List<?> errors && !errors.isEmpty()) {
+                    Map<String, Object> firstError = asMap(errors.get(0));
+                    throw new AniListClientException(
+                            "AniList rechazó la consulta: " + firstError.getOrDefault("message", "error desconocido")
+                    );
+                }
+                if (!(response.get("data") instanceof Map<?, ?> data) || data.isEmpty()) {
+                    throw new AniListClientException("AniList devolvió datos incompletos");
+                }
+                return asMap(data);
+            } catch (AniListClientException exception) {
+                throw exception;
+            } catch (HttpStatusCodeException exception) {
+                int status = exception.getStatusCode().value();
+                if (attempt == 0 && status >= 500) {
+                    pauseBeforeRetry();
+                    continue;
+                }
+                if (status == 429) {
+                    throw new AniListClientException(
+                            "AniList alcanzó temporalmente su límite de solicitudes. Intenta nuevamente en un minuto.",
+                            exception
+                    );
+                }
+                throw new AniListClientException("AniList respondió con el estado HTTP " + status, exception);
+            } catch (ResourceAccessException exception) {
+                if (attempt == 0) {
+                    pauseBeforeRetry();
+                    continue;
+                }
                 throw new AniListClientException(
-                        "AniList rechazó la consulta: " + firstError.getOrDefault("message", "error desconocido")
-                );
-            }
-            return asMap(response.get("data"));
-        } catch (AniListClientException exception) {
-            throw exception;
-        } catch (HttpStatusCodeException exception) {
-            if (exception.getStatusCode().value() == 429) {
-                throw new AniListClientException(
-                        "AniList alcanzó temporalmente su límite de solicitudes. Intenta nuevamente en un minuto.",
+                        "AniList tardó demasiado en responder o no se pudo establecer la conexión",
                         exception
                 );
+            } catch (RestClientException exception) {
+                throw new AniListClientException("No se pudo conectar con AniList", exception);
             }
-            throw new AniListClientException(
-                    "AniList respondió con el estado HTTP " + exception.getStatusCode().value(),
-                    exception
-            );
-        } catch (ResourceAccessException exception) {
-            throw new AniListClientException(
-                    "AniList tardó demasiado en responder o no se pudo establecer la conexión",
-                    exception
-            );
-        } catch (RestClientException exception) {
-            throw new AniListClientException("No se pudo conectar con AniList", exception);
+        }
+        throw new AniListClientException("AniList no respondió después de reintentar");
+    }
+
+    private void pauseBeforeRetry() {
+        try {
+            Thread.sleep(350);
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new AniListClientException("Se interrumpió el reintento hacia AniList", exception);
         }
     }
 

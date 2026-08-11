@@ -57,15 +57,21 @@ export default function HomeView() {
 
   useEffect(() => {
     if (library.status === 'idle') dispatch(fetchLibrary())
-    if (home.status === 'idle') dispatch(fetchAiringSchedule())
-    if (recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
-  }, [dispatch, library.status, home.status, recommendations.status])
+  }, [dispatch, library.status])
 
   useEffect(() => {
-    if (!home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
+    if (library.status === 'succeeded' && home.status === 'idle') dispatch(fetchAiringSchedule())
+  }, [dispatch, home.status, library.status])
+
+  useEffect(() => {
+    if (home.status === 'succeeded' && recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
+  }, [dispatch, home.status, recommendations.status])
+
+  useEffect(() => {
+    if (home.status === 'succeeded' && !home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
       dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear }))
     }
-  }, [dispatch, home.seasonCache, home.seasonRequestKey, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
+  }, [dispatch, home.seasonCache, home.seasonRequestKey, home.status, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
   const airingWithCurrentProgress = home.airing.map((entry) => ({
     ...entry,

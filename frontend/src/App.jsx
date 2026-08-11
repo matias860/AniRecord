@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react'
+import { RefreshCw } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout.jsx'
@@ -26,7 +27,8 @@ export default function App() {
       apiClient.post('/auth/claim', { ticket }).finally(() => { window.history.replaceState({}, '', '/'); dispatch(fetchAuth()) })
     } else dispatch(fetchAuth())
   }, [auth.status, dispatch])
-  if (auth.status === 'idle' || auth.status === 'loading') return <div className="auth-loading dot-background"><ProfileLoader message="Despertando tu biblioteca…" /></div>
+  if (auth.status === 'idle' || auth.status === 'loading') return <div className="auth-loading dot-background"><ProfileLoader message="Despertando tu biblioteca… Esto puede tardar hasta dos minutos." /></div>
+  if (auth.status === 'failed') return <div className="auth-loading auth-wake-error dot-background"><ProfileLoader message="El servidor no pudo despertarse." /><p>{auth.error}</p><button className="primary-button" onClick={() => dispatch(fetchAuth())}><RefreshCw /> Reintentar conexión</button></div>
   if (!auth.authenticated) return <LoginView />
   if (auth.needsImport) return <ImportView />
   return (
