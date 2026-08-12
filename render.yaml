@@ -22,4 +22,4 @@ services:
       - key: ANILIST_REDIRECT_URI
         sync: false
       - key: JAVA_TOOL_OPTIONS
-        value: -XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC
+        value: -XX:MaxRAMPercentage=70.0 -XX:+UseSerialGC -XX:TieredStopAtLevel=1
