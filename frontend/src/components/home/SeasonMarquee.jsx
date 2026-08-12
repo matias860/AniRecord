@@ -8,7 +8,8 @@ export default function SeasonMarquee({ entries, loading, label, canGoPrevious, 
   const featured = entries.slice(0, 3)
   const [active, setActive] = useState(0)
   const move = (direction) => setActive((current) => (current + direction + featured.length) % featured.length)
-  const media = featured[active]
+  const safeActive = featured.length ? active % featured.length : 0
+  const media = featured[safeActive]
 
   useEffect(() => {
     if (featured.length < 2) return undefined
@@ -17,7 +18,7 @@ export default function SeasonMarquee({ entries, loading, label, canGoPrevious, 
   }, [active, featured.length])
 
   return <section className="season-section season-featured-section">
-    <div className="section-heading"><div><span className="eyebrow">Los más favoritos</span><h2>Destacados de {label}</h2></div><div className="season-actions"><button disabled={!canGoPrevious || loading} onClick={onPrevious} title="Temporada anterior"><ChevronLeft /></button><button disabled={!canGoNext || loading} onClick={onNext} title="Temporada siguiente"><ChevronRight /></button><Link to="/catalogo/anime">Ver catálogo</Link></div></div>
+    <div className="section-heading"><div><span className="eyebrow">Los más favoritos</span><h2 className="animated-season-title"><span>Destacados de</span><span className="animated-season-value"><AnimatePresence initial={false} mode="popLayout"><motion.span key={label} initial={{ y: -12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 12, opacity: 0 }} transition={{ duration: .22, ease: 'easeOut' }}>{label}</motion.span></AnimatePresence></span></h2></div><div className="season-actions"><button disabled={!canGoPrevious || loading} onClick={onPrevious} title="Temporada anterior"><ChevronLeft /></button><button disabled={!canGoNext || loading} onClick={onNext} title="Temporada siguiente"><ChevronRight /></button><Link to="/catalogo/anime">Ver catálogo</Link></div></div>
     <AnimatePresence mode="wait" initial={false}>{loading ? <motion.div key={`loading-${label}`} className="season-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}><ProfileLoader compact message="Cargando temporada…" /></motion.div>
       : !media ? <motion.div key={`empty-${label}`} className="season-loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>AniList todavía no publicó títulos para esta temporada.</motion.div>
       : <motion.div key={`season-${label}`} className="panorama-carousel" initial={{ opacity: 0, y: 18, filter: 'blur(5px)' }} animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -12, filter: 'blur(4px)' }} transition={{ duration: .34, ease: 'easeOut' }}>
@@ -26,7 +27,7 @@ export default function SeasonMarquee({ entries, loading, label, canGoPrevious, 
           <span className="panorama-blur" style={{ backgroundImage: `url(${media.bannerImage || media.coverImage})` }} />
           <img src={media.bannerImage || media.coverImage} alt={`Banner de ${media.title}`} />
           <span className="panorama-shade" />
-          <div className="panorama-copy"><small>#{active + 1} · Anime de temporada</small><strong>{media.title}</strong><span><Heart /> {media.favourites?.toLocaleString('es-AR') ?? '—'} favoritos</span></div>
+          <div className="panorama-copy"><small>#{safeActive + 1} · Anime de temporada</small><strong>{media.title}</strong><span><Heart /> {media.favourites?.toLocaleString('es-AR') ?? '—'} favoritos</span></div>
           {featured.length > 1 && <span className="carousel-progress" key={`progress-${media.anilistId}`} />}
         </Link>
       </motion.div></AnimatePresence>
