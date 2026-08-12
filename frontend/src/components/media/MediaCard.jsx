@@ -14,7 +14,7 @@ export default function MediaCard({ media, onIncrement }) {
         <img src={media.coverImage} alt={`Portada de ${media.title}`} loading="lazy" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
         {media.personalScore != null && <span className="score-badge"><Star /> {media.personalScore}</span>}
-        {isLiveAnime && <span className="airing-badge"><i /> En vivo</span>}
+        {isLiveAnime && <span className="airing-badge"><i /> Emisión</span>}
       </Link>
       <div className="media-card-body">
         <Link to={`/media/${media.anilistId}`} className="media-title">{media.title}</Link>
