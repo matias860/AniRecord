@@ -6,6 +6,7 @@ import MediaTags from './MediaTags.jsx'
 
 export default function MediaCard({ media, onIncrement }) {
   const progress = media.progress ?? 0
+  const isLiveAnime = media.mediaType === 'ANIME' && media.releaseStatus === 'RELEASING'
   const totalLabel = media.totalUnits ?? (media.mediaType === 'MANGA' ? (progress > 0 ? `${progress}+` : 'En publicación') : '?')
   return (
     <article className="media-card">
@@ -13,6 +14,7 @@ export default function MediaCard({ media, onIncrement }) {
         <img src={media.coverImage} alt={`Portada de ${media.title}`} loading="lazy" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
         {media.personalScore != null && <span className="score-badge"><Star /> {media.personalScore}</span>}
+        {isLiveAnime && <span className="airing-badge"><i /> En vivo</span>}
       </Link>
       <div className="media-card-body">
         <Link to={`/media/${media.anilistId}`} className="media-title">{media.title}</Link>
