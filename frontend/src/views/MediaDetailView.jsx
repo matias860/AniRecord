@@ -124,14 +124,14 @@ function SavedTrackingEditor({ saved, mediaType, unit, total, statusOptions, loa
 function TrackingEditor({ form, setForm, mediaType, unit, total, statusOptions, loading, message, onSave, onRemove }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   return <section className="tracking-editor">
-    <div className="tracking-editor-heading"><div><span className="eyebrow">Mi biblioteca</span><h2>Seguimiento personal</h2></div><span className="saved-label">Guardado en tu biblioteca</span></div>
+    <div className="tracking-editor-heading"><div><span className="eyebrow">Mi biblioteca</span><h2>Seguimiento</h2></div><span className="saved-label">Guardado en tu biblioteca</span></div>
     <div className="tracking-fields">
       <label><span>Estado</span><StyledSelect ariaLabel="Estado de seguimiento" value={form.trackingStatus} onChange={(value) => update('trackingStatus', value)} options={statusOptions} /></label>
       <label><span>Progreso ({unit})</span><input type="number" min="0" max={total ?? undefined} value={form.progress} onChange={(event) => update('progress', event.target.value)} /></label>
       <label className="detail-score-range"><span>Puntaje personal <b>{form.personalScore === '' ? 'Sin puntaje' : `${form.personalScore}/10`}</b></span><div><input aria-label="Puntaje personal" type="range" min="0" max="10" step="0.5" value={form.personalScore === '' ? 0 : form.personalScore} onChange={(event) => update('personalScore', event.target.value)} />{form.personalScore !== '' && <button type="button" onClick={() => update('personalScore', '')}>Quitar</button>}</div></label>
       <label><span><Repeat2 /> {mediaType === 'ANIME' ? 'Rewatches' : 'Releídas'}</span><input type="number" min="0" value={form.rewatchCount} onChange={(event) => update('rewatchCount', event.target.value)} /></label>
     </div>
-    <div className="tracking-actions"><button className="danger-text-button" disabled={loading} onClick={onRemove}><Trash2 /> Quitar de la biblioteca</button><span>{message}</span><button className="primary-button" disabled={loading} onClick={onSave}><Save /> {loading ? 'Guardando…' : 'Guardar cambios'}</button></div>
+    <div className="tracking-actions"><span>{message}</span><button className="tracking-remove-button" type="button" disabled={loading} onClick={onRemove} aria-label="Quitar de la biblioteca" title="Quitar de la biblioteca"><Trash2 /></button><button className="tracking-save-button" type="button" disabled={loading} onClick={onSave} aria-label={loading ? 'Guardando cambios' : 'Guardar cambios'} title="Guardar cambios"><Save /></button></div>
   </section>
 }
 
