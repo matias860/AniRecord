@@ -225,6 +225,14 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
 @media(max-width:620px){.detail-information-strip{padding:0}}
 .schedule-scroll,.compact-schedule-scroll,.future-schedule-scroll,.filter-row,.relations>div,.characters-section>div { scrollbar-width:none; -ms-overflow-style:none; overscroll-behavior-inline:contain; }.schedule-scroll::-webkit-scrollbar,.compact-schedule-scroll::-webkit-scrollbar,.future-schedule-scroll::-webkit-scrollbar,.filter-row::-webkit-scrollbar,.relations>div::-webkit-scrollbar,.characters-section>div::-webkit-scrollbar { display:none; width:0; height:0; }
 .animated-season-title { display:flex!important; align-items:baseline!important; flex-wrap:wrap; gap:0 7px!important; }.animated-season-value { display:inline-grid; overflow:hidden; vertical-align:bottom; }.animated-season-value>span { grid-area:1/1; display:block; }
+
+/* El calendario usa la personalización activa del perfil. */
+.schedule-panel{border-color:color-mix(in srgb,var(--accent) 14%,var(--line));background:linear-gradient(135deg,color-mix(in srgb,var(--user-surface,#171b29) 96%,var(--accent) 4%),color-mix(in srgb,var(--user-bg,#0a0c14) 92%,var(--user-surface,#171b29)))}
+.schedule-line,.compact-schedule-line{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 22%,var(--line)),var(--accent),color-mix(in srgb,var(--accent) 22%,var(--line)))}
+.day-dot{background:color-mix(in srgb,var(--user-surface,#171b29) 86%,var(--user-bg,#0a0c14));border-color:color-mix(in srgb,var(--accent) 18%,var(--line))}
+.schedule-day.today .day-dot{border-color:color-mix(in srgb,var(--accent) 72%,#fff);background:var(--accent);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 12%,transparent),0 0 18px color-mix(in srgb,var(--accent) 24%,transparent)}
+.live-pill{background:color-mix(in srgb,var(--accent) 12%,var(--user-surface,#171b29));color:color-mix(in srgb,var(--accent) 58%,#fff)!important}
+.no-airing{color:color-mix(in srgb,var(--muted) 45%,transparent)}
 @media(max-width:620px){.season-featured-section,.season-featured-section .panorama-carousel,.season-featured-section .panorama-carousel>div{width:100%;min-width:0;max-width:100%}.season-featured-section .panorama-slide,.season-featured-section .panorama-slide.has-banner,.season-featured-section .panorama-slide.cover-fallback{width:100%;height:300px;min-height:300px;aspect-ratio:auto}.season-featured-section .panorama-slide>img{width:100%;height:100%;object-fit:contain}.season-featured-section .panorama-copy{max-width:88%;left:20px;bottom:22px}.season-featured-section .panorama-copy strong{font-size:28px}.season-featured-section .section-heading{align-items:flex-start}.season-featured-section .season-actions{flex:none}}
 
 /* Compact connected seasonal calendar */
