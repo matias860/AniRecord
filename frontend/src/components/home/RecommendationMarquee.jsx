@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronLeft, ChevronRight, Sparkles, UserRound } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CircleAlert, UserRound } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 
@@ -18,9 +18,9 @@ export default function RecommendationMarquee({ entries, loading }) {
   }, [entries.length, safeActive])
 
   return <section className="recommendations-section">
-    <div className="section-heading"><div><span className="eyebrow">Elegidos por la comunidad</span><h2><Sparkles /> Recomendados esta semana</h2></div>{entries.length > 0 && <span>{entries.length} {entries.length === 1 ? 'recomendación' : 'recomendaciones'}</span>}</div>
+    <div className="section-heading"><div><span className="eyebrow">Elegidos por la comunidad</span><h2><CircleAlert /> Recomendados esta semana</h2></div>{entries.length > 0 && <span>{entries.length} {entries.length === 1 ? 'recomendación' : 'recomendaciones'}</span>}</div>
     {loading ? <div className="recommendations-empty">Cargando recomendaciones…</div>
-      : !recommendation ? <div className="recommendations-empty"><Sparkles /><strong>Todavía no hay recomendaciones</strong><span>Puedes inaugurar la selección de esta semana.</span></div>
+      : !recommendation ? <div className="recommendations-empty"><CircleAlert /><strong>Todavía no hay recomendaciones</strong><span>Puedes inaugurar la selección de esta semana.</span></div>
         : <div className="recommendation-carousel">
           <AnimatePresence mode="wait" initial={false}><motion.div key={recommendation.id} initial={{ opacity: 0, x: 40 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -40 }} transition={{ duration: .34, ease: 'easeOut' }}>
             <Link className={`recommendation-slide ${recommendation.bannerImage ? 'has-banner' : 'cover-fallback'}`} to={`/media/${recommendation.anilistId}`}>
