@@ -12,6 +12,7 @@ const slice = createSlice({
     .addCase(fetchNotifications.fulfilled, (state, action) => { state.status = 'succeeded'; state.items = action.payload; state.error = null })
     .addCase(fetchNotifications.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
     .addCase(markNotificationRead.fulfilled, (state, action) => { const item = state.items.find((entry) => entry.id === action.payload); if (item) item.read = true })
+    .addCase(markAllNotificationsRead.pending, (state) => { state.items.forEach((item) => { item.read = true }) })
     .addCase(markAllNotificationsRead.fulfilled, (state) => { state.items.forEach((item) => { item.read = true }) })
 })
 export default slice.reducer

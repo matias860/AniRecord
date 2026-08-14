@@ -42,8 +42,8 @@ export default function AppLayout() {
               {hovered === '/perfil' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
               <span className="nav-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : <UserRound size={18} />}</span>
             </NavLink>
+            {accountType === 'ANILIST' && <NotificationBell hovered={hovered === '/notificaciones'} onMouseEnter={() => setHovered('/notificaciones')} />}
           </nav>
-          {accountType === 'ANILIST' && <NotificationBell />}
           <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>
         </div>
       </header>

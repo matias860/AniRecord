@@ -90,19 +90,19 @@ public class NotificationService {
         return added;
     }
 
+    static boolean shouldImport(String typename, Integer episode) {
+        return !"AiringNotification".equals(typename) || episode != null;
+    }
+
     public List<NotificationResponse> findRecent(int limit) { return repository.findByUserIdOrderByOccurredAtDesc(currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100))).stream().map(this::response).toList(); }
     public long unreadCount() { return repository.countByUserIdAndReadFalse(currentUser.require().getId()); }
     @Transactional public void read(Long id) { Long uid=currentUser.require().getId(); repository.findById(id).filter(n->n.getUser().getId().equals(uid)).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
     @Transactional public void readAll() { repository.markAllAsRead(currentUser.require().getId()); }
 
-    static boolean shouldImport(String typename, Integer episode) {
-        return !"AiringNotification".equals(typename) || Objects.equals(episode, 1);
-    }
-
     @SuppressWarnings("unchecked")
     private AppNotification map(Map<String, Object> item, String typename, Integer episode, Integer externalId) {
         NotificationType type = switch (typename) {
-            case "AiringNotification" -> NotificationType.FIRST_EPISODE;
+            case "AiringNotification" -> Objects.equals(episode, 1) ? NotificationType.FIRST_EPISODE : NotificationType.AIRING_EPISODE;
             case "RelatedMediaAdditionNotification" -> NotificationType.RELATED_MEDIA_ADDITION;
             case "MediaDataChangeNotification" -> NotificationType.MEDIA_DATA_CHANGE;
             case "MediaMergeNotification" -> NotificationType.MEDIA_MERGE;
@@ -119,7 +119,7 @@ public class NotificationService {
         n.setMessage(message(item, type)); Number created = (Number) item.get("createdAt");
         n.setOccurredAt(created == null ? LocalDateTime.now() : LocalDateTime.ofInstant(Instant.ofEpochSecond(created.longValue()), ZoneId.systemDefault())); return n;
     }
-    private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); }; }
+    private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case AIRING_EPISODE -> "Se estrenó el episodio " + number(item.get("episode")); case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); }; }
     private Integer number(Object value) { return value instanceof Number number ? number.intValue() : null; }
     private NotificationResponse response(AppNotification n) { return new NotificationResponse(n.getId(), n.getNotificationType(), n.getAnilistMediaId(), n.getTitle(), n.getCoverImage(), n.getMessage(), n.getEpisode(), n.getRead(), n.getOccurredAt()); }
 }
