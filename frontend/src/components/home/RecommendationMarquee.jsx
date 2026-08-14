@@ -31,7 +31,7 @@ export default function RecommendationMarquee({ entries, loading }) {
               {entries.length > 1 && <span className="carousel-progress" key={`progress-${recommendation.id}`} />}
             </Link>
           </motion.div></AnimatePresence>
-          {entries.length > 1 && <div className="recommendation-controls"><button type="button" onClick={() => move(-1)} aria-label="Recomendación anterior"><ChevronLeft /></button><span>{safeActive + 1} / {entries.length}</span><button type="button" onClick={() => move(1)} aria-label="Recomendación siguiente"><ChevronRight /></button></div>}
+          {entries.length > 1 && <div className="featured-controls"><button type="button" onClick={() => move(-1)} aria-label="Recomendación anterior"><ChevronLeft /></button>{entries.map((item, index) => <button type="button" className={index === safeActive ? 'active' : ''} onClick={() => setActive(index)} aria-label={`Ver recomendación de ${item.title}`} key={item.id} />)}<button type="button" onClick={() => move(1)} aria-label="Recomendación siguiente"><ChevronRight /></button></div>}
         </div>}
   </section>
 }
