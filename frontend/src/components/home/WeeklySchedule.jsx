@@ -10,7 +10,7 @@ const days = [
   { day: 0, label: 'D', name: 'Domingo' },
 ]
 
-export default function WeeklySchedule({ entries, airingEntries, seasonLabel, seasonOptions, seasonOffset, onSeasonChange }) {
+export default function WeeklySchedule({ entries, airingEntries, liveDataAvailable = true, seasonLabel, seasonOptions, seasonOffset, onSeasonChange }) {
   const airingById = new Map(airingEntries.map((entry) => [entry.anilistId, entry]))
   const scheduled = entries.map((entry) => {
     const airing = airingById.get(entry.anilistId)
@@ -20,11 +20,21 @@ export default function WeeklySchedule({ entries, airingEntries, seasonLabel, se
   })
 
   return <section className="schedule-panel">
-    <div className="section-heading"><div><span className="eyebrow">{seasonOffset === 0 ? 'Tu semana' : 'Tu lista planeada'}</span><h2><CalendarDays /> {seasonOffset === 0 ? 'Próximas emisiones' : `Temporada ${seasonLabel}`}</h2></div><div className="schedule-controls"><StyledSelect className="schedule-select" ariaLabel="Temporada del calendario" value={String(seasonOffset)} onChange={onSeasonChange} options={seasonOptions} />{seasonOffset === 0 && <span className="live-pill"><i /> En emisión</span>}</div></div>
+    <div className="section-heading"><div><span className="eyebrow">{seasonOffset === 0 ? 'Tu semana' : 'Tu lista planeada'}</span><h2><CalendarDays /> {seasonOffset === 0 ? 'Próximas emisiones' : `Temporada ${seasonLabel}`}</h2></div><div className="schedule-controls"><StyledSelect className="schedule-select" ariaLabel="Temporada del calendario" value={String(seasonOffset)} onChange={onSeasonChange} options={seasonOptions} />{seasonOffset === 0 && <span className={`live-pill ${liveDataAvailable ? '' : 'unavailable'}`}><i /> {liveDataAvailable ? 'En emisión' : 'Datos guardados'}</span>}</div></div>
     <AnimatePresence mode="wait" initial={false}><motion.div key={seasonOffset} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: .25, ease: 'easeOut' }}>
-      {seasonOffset === 0 ? <CurrentWeek entries={airingEntries} /> : <FutureSeason entries={scheduled} />}
+      {seasonOffset === 0
+        ? liveDataAvailable ? <CurrentWeek entries={airingEntries} /> : <SavedSchedule entries={scheduled} />
+        : <FutureSeason entries={scheduled} />}
     </motion.div></AnimatePresence>
   </section>
+}
+
+function SavedSchedule({ entries }) {
+  if (!entries.length) return <div className="schedule-preview-empty">No hay fechas guardadas para los anime de esta temporada. Tu biblioteca sigue disponible.</div>
+  const knownGroups = days.map((item) => ({ ...item, entries: entries.filter((entry) => entry.day === item.day) }))
+  return <div className="schedule-scroll"><div className="schedule-grid"><div className="schedule-line" />{knownGroups.map((item) => <div className="schedule-day" key={item.name}>
+    <span className="day-dot">{item.label}</span><small>{item.name}</small><div className="day-covers">{item.entries.map((entry) => <Link to={`/media/${entry.anilistId}`} className="airing-cover" key={entry.anilistId} title={`${entry.title} · horario no disponible`}><img src={entry.coverImage} alt={entry.title} /><span>—</span></Link>)}{!item.entries.length && <span className="no-airing">—</span>}</div>
+  </div>)}</div></div>
 }
 
 function CurrentWeek({ entries }) {

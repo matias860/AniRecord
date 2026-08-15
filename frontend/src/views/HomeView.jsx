@@ -64,8 +64,10 @@ export default function HomeView() {
   }, [dispatch, home.status, library.status])
 
   useEffect(() => {
-    if (home.status === 'succeeded' && recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
-  }, [dispatch, home.status, recommendations.status])
+    // Weekly recommendations live in our own database. They must not wait for
+    // AniList's airing endpoint, otherwise an external outage hides a local feature.
+    if (library.status === 'succeeded' && recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
+  }, [dispatch, library.status, recommendations.status])
 
   useEffect(() => {
     if (home.status === 'succeeded' && !home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
@@ -162,14 +164,17 @@ export default function HomeView() {
         <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div>
       </section>
 
-      <AnimatePresence initial={false}>{!ownRecommendation && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)} initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 52, marginTop: 22, marginBottom: 22 }} exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
+      <AnimatePresence initial={false}>{recommendations.status === 'succeeded' && !ownRecommendation && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)} initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 52, marginTop: 22, marginBottom: 22 }} exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
         <span>Recomendar una serie esta semana</span>
       </motion.button>}</AnimatePresence>
 
-      <PageState loading={home.status === 'loading'} error={home.error} />
-      {home.status === 'succeeded' && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
+      {home.status === 'failed' && <aside className="external-service-notice" role="status">
+        <strong>Información en tiempo real temporalmente no disponible</strong>
+        <span>AniList deshabilitó su API pública. Conservamos tu biblioteca y mostramos las fechas guardadas localmente.</span>
+      </aside>}
+      {libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
-      <SeasonMarquee
+      {home.status === 'succeeded' && home.seasonStatus !== 'failed' && <SeasonMarquee
         entries={selectedSeasonEntries}
         loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'}
         label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`}
@@ -177,7 +182,7 @@ export default function HomeView() {
         canGoNext={home.seasonOffset < 3}
         onPrevious={() => dispatch(setSeasonOffset(home.seasonOffset - 1))}
         onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
-      />
+      />}
 
       <LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
       <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
