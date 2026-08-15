@@ -168,10 +168,11 @@ export default function HomeView() {
         <span>Recomendar una serie esta semana</span>
       </motion.button>}</AnimatePresence>
 
-      {home.status === 'failed' && <aside className="external-service-notice" role="status">
+      {home.unavailable && <aside className="external-service-notice" role="status">
         <strong>Información en tiempo real temporalmente no disponible</strong>
         <span>AniList deshabilitó su API pública. Conservamos tu biblioteca y mostramos las fechas guardadas localmente.</span>
       </aside>}
+      {home.status === 'failed' && !home.unavailable && <PageState error={home.error} />}
       {libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
       {home.status === 'succeeded' && home.seasonStatus !== 'failed' && <SeasonMarquee

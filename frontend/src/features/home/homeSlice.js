@@ -1,9 +1,13 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
 
-export const fetchAiringSchedule = createAsyncThunk('home/airing', async () => {
-  const { data } = await apiClient.get('/library/airing')
-  return data
+export const fetchAiringSchedule = createAsyncThunk('home/airing', async (_, { rejectWithValue }) => {
+  try {
+    const { data } = await apiClient.get('/library/airing')
+    return data
+  } catch (error) {
+    return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
+  }
 })
 
 export const fetchSeason = createAsyncThunk(
@@ -24,7 +28,7 @@ export const fetchSeason = createAsyncThunk(
 const homeSlice = createSlice({
   name: 'home',
   initialState: {
-    airing: [], season: [], seasonCache: {}, status: 'idle', seasonStatus: 'idle', error: null,
+    airing: [], season: [], seasonCache: {}, status: 'idle', seasonStatus: 'idle', error: null, unavailable: false,
     seasonOffset: 0, loadedSeason: null, loadedYear: null, watchingPage: 0, readingPage: 0,
   },
   reducers: {
@@ -34,9 +38,11 @@ const homeSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAiringSchedule.pending, (state) => { state.status = 'loading'; state.error = null })
-      .addCase(fetchAiringSchedule.fulfilled, (state, action) => { state.status = 'succeeded'; state.airing = action.payload })
-      .addCase(fetchAiringSchedule.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
+      .addCase(fetchAiringSchedule.pending, (state) => { state.status = 'loading'; state.error = null; state.unavailable = false })
+      .addCase(fetchAiringSchedule.fulfilled, (state, action) => { state.status = 'succeeded'; state.airing = action.payload; state.unavailable = false })
+      .addCase(fetchAiringSchedule.rejected, (state, action) => {
+        state.status = 'failed'; state.error = action.payload?.message || action.error.message; state.unavailable = Boolean(action.payload?.unavailable)
+      })
       .addCase(fetchSeason.pending, (state, action) => {
         state.seasonStatus = 'loading'
         state.seasonRequestKey = `${action.meta.arg.season}-${action.meta.arg.year}`
