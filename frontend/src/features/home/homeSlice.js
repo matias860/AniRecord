@@ -1,11 +1,15 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
+import { cachedAniListError, clearAniListOutage, isAniListTemporarilyUnavailable, rememberAniListOutage } from '../../api/anilistAvailability.js'
 
 export const fetchAiringSchedule = createAsyncThunk('home/airing', async (_, { rejectWithValue }) => {
+  if (isAniListTemporarilyUnavailable()) return rejectWithValue(cachedAniListError())
   try {
     const { data } = await apiClient.get('/library/airing')
+    clearAniListOutage()
     return data
   } catch (error) {
+    if (error.status === 502) rememberAniListOutage()
     return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
   }
 })

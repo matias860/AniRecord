@@ -1,27 +1,34 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
+import { cachedAniListError, clearAniListOutage, isAniListTemporarilyUnavailable, rememberAniListOutage } from '../../api/anilistAvailability.js'
 
 export const fetchCatalog = createAsyncThunk(
   'catalog/fetch',
   async ({ type, page = 1, filters = {} }, { signal, rejectWithValue }) => {
+    if (isAniListTemporarilyUnavailable()) return rejectWithValue(cachedAniListError())
     try {
       const activeFilters = Object.fromEntries(
         Object.entries(filters).filter(([, value]) => value !== '' && value !== null && value !== undefined),
       )
       const params = { type, page, perPage: 24, ...activeFilters }
       const { data } = await apiClient.get('/anilist/catalog', { params, signal, paramsSerializer: { indexes: null } })
+      clearAniListOutage()
       return { ...data, type, filters: activeFilters }
     } catch (error) {
+      if (error.status === 502) rememberAniListOutage()
       return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
     }
   },
 )
 
 export const fetchCatalogGenres = createAsyncThunk('catalog/genres', async (_, { rejectWithValue }) => {
+  if (isAniListTemporarilyUnavailable()) return rejectWithValue(cachedAniListError())
   try {
     const { data } = await apiClient.get('/anilist/catalog/genres')
+    clearAniListOutage()
     return data
   } catch (error) {
+    if (error.status === 502) rememberAniListOutage()
     return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
   }
 })
