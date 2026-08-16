@@ -66,6 +66,9 @@ export default function MediaDetailView() {
 
 function publicationLabel(media) {
   if (media.mediaType === 'ANIME') return 'Anime'
+  if (media.mediaFormat === 'NOVEL') return 'Light novel'
+  if (media.mediaFormat === 'ONE_SHOT') return 'One-shot'
+  if (media.tags?.some?.((tag) => (tag.name || tag) === 'Web Comic') || media.tags?.split?.('|').includes('Web Comic')) return 'Web cómic'
   return { KR: 'Manhwa', CN: 'Manhua', JP: 'Manga' }[media.countryOfOrigin] || 'Manga'
 }
 

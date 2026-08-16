@@ -12,6 +12,7 @@ public record LibraryEntrySummaryResponse(
         Long id,
         Integer anilistId,
         MediaType mediaType,
+        String mediaFormat,
         String countryOfOrigin,
         String title,
         String romajiTitle,

@@ -15,7 +15,7 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
 
     @Query("""
             select new com.animelist.backend.dto.library.LibraryEntrySummaryResponse(
-                entry.id, media.anilistId, media.mediaType, media.countryOfOrigin, media.title, media.romajiTitle,
+                entry.id, media.anilistId, media.mediaType, media.mediaFormat, media.countryOfOrigin, media.title, media.romajiTitle,
                 media.coverImage, media.genres, media.tags, media.totalUnits, media.releaseStatus, media.releaseSeason,
                 media.releaseYear, entry.progress, entry.personalScore, entry.rewatchCount,
                 entry.trackingStatus, entry.startedAt, entry.completedAt, entry.createdAt, entry.updatedAt)

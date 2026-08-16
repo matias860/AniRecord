@@ -10,8 +10,9 @@ import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
 import { fetchLibrary } from '../features/library/librarySlice.js'
 
-const emptyFilters = { search: '', year: '', season: '', genre: [], country: '', status: '', sort: 'POPULARITY' }
+const emptyFilters = { search: '', year: '', season: '', genre: [], country: '', format: '', status: '', sort: 'POPULARITY' }
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
+const mediaFormats = [{ value: '', label: 'Todos' }, { value: 'MANGA', label: 'Manga' }, { value: 'NOVEL', label: 'Light novel' }, { value: 'ONE_SHOT', label: 'One-shot' }, { value: 'WEB_COMIC', label: 'Web cómic' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
@@ -22,6 +23,10 @@ const requestFilters = (filters) => {
     active.genre = active.genre.filter((category) => category !== 'Yuri')
     active.tag = ['Yuri']
     if (!active.genre.length) delete active.genre
+  }
+  if (active.format === 'WEB_COMIC') {
+    active.tag = [...(active.tag || []), 'Web Comic']
+    delete active.format
   }
   return active
 }
@@ -59,10 +64,11 @@ export default function CatalogView() {
       && (!filters.season || item.releaseSeason === filters.season)
       && (!filters.status || item.releaseStatus === filters.status)
       && (!filters.country || item.countryOfOrigin === filters.country)
+      && (!filters.format || (filters.format === 'WEB_COMIC' ? item.tags?.split('|').includes('Web Comic') : item.mediaFormat === filters.format))
       && !filters.genre.length)
     const localIds = new Set(localMatches.map((item) => item.anilistId))
     return [...localMatches, ...catalog.items.filter((item) => !localIds.has(item.anilistId))]
-  }, [catalog.items, filters.country, filters.genre.length, filters.search, filters.season, filters.status, filters.year, library.items, type])
+  }, [catalog.items, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.year, library.items, type])
 
   if (mediaType && !type) return <Navigate to="/catalogo" replace />
   if (!type) return <CatalogLanding />
@@ -81,7 +87,7 @@ export default function CatalogView() {
         <StyledSelect ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
         <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre} onChange={update('genre')} />
-        {type === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación" fieldLabel="Tipo" value={filters.country} onChange={update('country')} options={publicationTypes} />}
+        {type === 'MANGA' && <><StyledSelect ariaLabel="Origen de publicación" fieldLabel="Origen" value={filters.country} onChange={update('country')} options={publicationTypes} /><StyledSelect ariaLabel="Formato de publicación" fieldLabel="Formato" value={filters.format} onChange={update('format')} options={mediaFormats} /></>}
         <StyledSelect ariaLabel="Estado de emisión" fieldLabel="Estado" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
         <StyledSelect ariaLabel="Orden" fieldLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
         <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>

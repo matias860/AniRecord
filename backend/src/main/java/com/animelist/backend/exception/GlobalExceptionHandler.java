@@ -72,7 +72,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ApiErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException exception) {
-        return build(HttpStatus.PAYLOAD_TOO_LARGE, "La imagen supera el tamaño permitido", Map.of());
+        return build(HttpStatus.CONTENT_TOO_LARGE, "La imagen supera el tamaño permitido", Map.of());
     }
 
     @ExceptionHandler(Exception.class)

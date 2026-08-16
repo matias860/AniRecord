@@ -23,13 +23,14 @@ const sectionOrder = ['IN_PROGRESS', 'COMPLETED', 'PLANNED', 'PAUSED', 'DROPPED'
 const sectionLabels = {
   IN_PROGRESS: { ANIME: 'Viendo', MANGA: 'Leyendo' },
   COMPLETED: { ANIME: 'Animes completados', MANGA: 'Mangas completados' },
-  PLANNED: { ANIME: 'Anime pendiente', MANGA: 'Manga pendiente' },
-  PAUSED: { ANIME: 'Anime pausado', MANGA: 'Manga pausado' },
-  DROPPED: { ANIME: 'Anime abandonado', MANGA: 'Manga abandonado' },
+  PLANNED: { ANIME: 'Animes pendientes', MANGA: 'Mangas pendientes' },
+  PAUSED: { ANIME: 'Animes pausados', MANGA: 'Mangas pausados' },
+  DROPPED: { ANIME: 'Animes abandonados', MANGA: 'Mangas abandonados' },
 }
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const releaseStatuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
+const mediaFormats = [{ value: '', label: 'Todos' }, { value: 'MANGA', label: 'Manga' }, { value: 'NOVEL', label: 'Light novel' }, { value: 'ONE_SHOT', label: 'One-shot' }, { value: 'WEB_COMIC', label: 'Web cómic' }]
 
 const byPersonalScore = (a, b) => {
   const aScored = a.personalScore != null
@@ -78,6 +79,7 @@ export default function LibraryView() {
         && (!filters.season || item.releaseSeason === filters.season)
         && (!selectedGenres.length || selectedGenres.every((category) => category === 'Yuri' ? itemTags.includes(category) : itemGenres.includes(category)))
         && (!filters.country || item.countryOfOrigin === filters.country)
+        && (!filters.format || (filters.format === 'WEB_COMIC' ? itemTags.includes('Web Comic') : item.mediaFormat === filters.format))
         && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)
         && scoreMatches
     })
@@ -106,7 +108,7 @@ export default function LibraryView() {
         <StyledSelect ariaLabel="Año de la biblioteca" fieldLabel="Año" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Todos' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" fieldLabel="Temporada" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
-        {mediaType === 'MANGA' && <StyledSelect ariaLabel="Tipo de publicación de la biblioteca" fieldLabel="Tipo" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
+        {mediaType === 'MANGA' && <><StyledSelect ariaLabel="Origen de publicación de la biblioteca" fieldLabel="Origen" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} /><StyledSelect ariaLabel="Formato de publicación de la biblioteca" fieldLabel="Formato" value={filters.format ?? ''} onChange={updateFilter('format')} options={mediaFormats} /></>}
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" fieldLabel="Emisión" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Todas' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
         <label className="library-score-range"><span>Puntaje <b>{Number(filters.score) ? filters.score : 'Todos'}</b></span><input type="range" min="0" max="10" step="1" value={Number(filters.score) || 0} onChange={(event) => updateFilter('score')(event.target.value === '0' ? '' : event.target.value)} /></label>
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>

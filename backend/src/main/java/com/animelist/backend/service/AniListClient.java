@@ -52,6 +52,7 @@ public class AniListClient {
                 media(search: $search, type: $type, sort: POPULARITY_DESC) {
                   id
                   type
+                  format
                   countryOfOrigin
                   title { romaji english native }
                   coverImage { large }
@@ -141,6 +142,7 @@ public class AniListClient {
                 media(id_in: $ids, type: ANIME) {
                   id
                   type
+                  format
                   countryOfOrigin
                   title { romaji english native }
                   coverImage { large }
@@ -157,6 +159,7 @@ public class AniListClient {
                 media(%s) {
                   id
                   type
+                  format
                   countryOfOrigin
                   title { romaji english native }
                   coverImage { extraLarge large }
@@ -196,6 +199,7 @@ public class AniListClient {
               media {
                 id
                 type
+                format
                 countryOfOrigin
                 title { romaji english native }
                 coverImage { extraLarge large }
@@ -410,7 +414,7 @@ public class AniListClient {
     @Cacheable("catalog")
     public AniListSearchResponse browse(
             MediaType type, int page, int perPage, String search, Integer year,
-            ReleaseSeason season, List<String> genres, List<String> tags, ReleaseStatus status, String country, String sort
+            ReleaseSeason season, List<String> genres, List<String> tags, ReleaseStatus status, String country, String format, String sort
     ) {
         Map<String, Object> variables = new LinkedHashMap<>();
         StringBuilder declarations = new StringBuilder(
@@ -454,6 +458,11 @@ public class AniListClient {
             declarations.append(", $country: CountryCode");
             arguments.append(", countryOfOrigin: $country");
             variables.put("country", country.trim().toUpperCase());
+        }
+        if (format != null && !format.isBlank()) {
+            declarations.append(", $format: MediaFormat");
+            arguments.append(", format: $format");
+            variables.put("format", format.trim().toUpperCase());
         }
         variables.put("sort", switch (sort) {
             case "SCORE" -> List.of("SCORE_DESC", "POPULARITY_DESC");
@@ -717,6 +726,7 @@ public class AniListClient {
         return new AniListMediaResponse(
                 asInteger(media.get("id")),
                 mediaType,
+                asString(media.get("format")),
                 asString(media.get("countryOfOrigin")),
                 selectTitle(titles),
                 asString(titles.get("romaji")),

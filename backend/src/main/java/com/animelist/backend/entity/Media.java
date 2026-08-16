@@ -37,6 +37,9 @@ public class Media {
     @Column(name = "media_type", nullable = false)
     private MediaType mediaType;
 
+    @Column(name = "media_format", length = 24)
+    private String mediaFormat;
+
     @Column(name = "country_of_origin", length = 2)
     private String countryOfOrigin;
 

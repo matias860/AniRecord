@@ -9,6 +9,7 @@ import java.util.List;
 public record AniListMediaResponse(
         Integer anilistId,
         MediaType mediaType,
+        String mediaFormat,
         String countryOfOrigin,
         String title,
         String romajiTitle,
