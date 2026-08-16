@@ -42,14 +42,12 @@ public class WeeklyRecommendationService {
 
     @Transactional(readOnly = true)
     public List<WeeklyRecommendationResponse> currentWeek() {
-        currentUser.require();
         return recommendations.findByWeekStartOrderByCreatedAtDesc(currentWeekStart())
                 .stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
     public List<WeeklyRecommendationResponse> forMedia(Integer anilistId) {
-        currentUser.require();
         return recommendations.findByWeekStartAndMediaAnilistIdOrderByCreatedAtDesc(
                 currentWeekStart(), anilistId).stream().map(this::toResponse).toList();
     }
