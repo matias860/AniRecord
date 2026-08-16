@@ -25,10 +25,16 @@ export default function AppLayout() {
     '--user-bg': profile.backgroundColor,
     '--user-surface': profile.surfaceColor,
     '--accent': profile.accentColor,
+    '--surface': profile.surfaceColor,
   }
   useEffect(() => {
     const root = document.documentElement
-    const variables = { '--user-bg': profile.backgroundColor, '--user-surface': profile.surfaceColor, '--accent': profile.accentColor }
+    const variables = {
+      '--user-bg': profile.backgroundColor,
+      '--user-surface': profile.surfaceColor,
+      '--surface': profile.surfaceColor,
+      '--accent': profile.accentColor,
+    }
     Object.entries(variables).forEach(([name, value]) => value && root.style.setProperty(name, value))
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
   }, [profile.accentColor, profile.backgroundColor, profile.surfaceColor])

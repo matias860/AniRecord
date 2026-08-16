@@ -30,7 +30,7 @@ const sectionLabels = {
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const releaseStatuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
-const mediaFormats = [{ value: '', label: 'Todos' }, { value: 'MANGA', label: 'Manga' }, { value: 'NOVEL', label: 'Light novel' }, { value: 'ONE_SHOT', label: 'One-shot' }, { value: 'WEB_COMIC', label: 'Web cómic' }]
+const mediaFormats = [{ value: '', label: 'Todos' }, { value: 'MANGA', label: 'Manga' }, { value: 'NOVEL', label: 'Light novel' }, { value: 'ONE_SHOT', label: 'One-shot' }]
 
 const byPersonalScore = (a, b) => {
   const aScored = a.personalScore != null
@@ -57,6 +57,11 @@ export default function LibraryView() {
 
   useEffect(() => { if (status === 'idle') dispatch(fetchLibrary()) }, [dispatch, status])
   useEffect(() => { if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres()) }, [catalog.genresStatus, dispatch])
+  useEffect(() => {
+    if (filters.format && !mediaFormats.some((option) => option.value === filters.format)) {
+      dispatch(setLibraryFilter({ key: 'format', value: '' }))
+    }
+  }, [dispatch, filters.format])
   useEffect(() => () => { dispatch(setLibraryFilter({ key: 'search', value: '' })) }, [dispatch])
   useEffect(() => {
     const requestedType = searchParams.get('tipo')?.toUpperCase()
@@ -79,7 +84,7 @@ export default function LibraryView() {
         && (!filters.season || item.releaseSeason === filters.season)
         && (!selectedGenres.length || selectedGenres.every((category) => category === 'Yuri' ? itemTags.includes(category) : itemGenres.includes(category)))
         && (!filters.country || item.countryOfOrigin === filters.country)
-        && (!filters.format || (filters.format === 'WEB_COMIC' ? itemTags.includes('Web Comic') : item.mediaFormat === filters.format))
+        && (!filters.format || item.mediaFormat === filters.format)
         && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)
         && scoreMatches
     })

@@ -12,7 +12,7 @@ import { fetchLibrary } from '../features/library/librarySlice.js'
 
 const emptyFilters = { search: '', year: '', season: '', genre: [], country: '', format: '', status: '', sort: 'POPULARITY' }
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
-const mediaFormats = [{ value: '', label: 'Todos' }, { value: 'MANGA', label: 'Manga' }, { value: 'NOVEL', label: 'Light novel' }, { value: 'ONE_SHOT', label: 'One-shot' }, { value: 'WEB_COMIC', label: 'Web cómic' }]
+const mediaFormats = [{ value: '', label: 'Todos' }, { value: 'MANGA', label: 'Manga' }, { value: 'NOVEL', label: 'Light novel' }, { value: 'ONE_SHOT', label: 'One-shot' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
@@ -23,10 +23,6 @@ const requestFilters = (filters) => {
     active.genre = active.genre.filter((category) => category !== 'Yuri')
     active.tag = ['Yuri']
     if (!active.genre.length) delete active.genre
-  }
-  if (active.format === 'WEB_COMIC') {
-    active.tag = [...(active.tag || []), 'Web Comic']
-    delete active.format
   }
   return active
 }
@@ -64,7 +60,7 @@ export default function CatalogView() {
       && (!filters.season || item.releaseSeason === filters.season)
       && (!filters.status || item.releaseStatus === filters.status)
       && (!filters.country || item.countryOfOrigin === filters.country)
-      && (!filters.format || (filters.format === 'WEB_COMIC' ? item.tags?.split('|').includes('Web Comic') : item.mediaFormat === filters.format))
+      && (!filters.format || item.mediaFormat === filters.format)
       && !filters.genre.length)
     const localIds = new Set(localMatches.map((item) => item.anilistId))
     return [...localMatches, ...catalog.items.filter((item) => !localIds.has(item.anilistId))]

@@ -59,7 +59,10 @@ export default function MediaDetailView() {
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
     </div>
-    {(!!detail.relations?.length || !!detail.characters?.length) && <div className="detail-extras"><section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations || []} /></section><CharacterCarousel key={detail.anilistId} characters={detail.characters || []} /></div>}
+    {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
+      {!!detail.relations?.length && <section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations} /></section>}
+      {!!detail.characters?.length && <CharacterCarousel key={detail.anilistId} characters={detail.characters} />}
+    </div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
 }
@@ -68,7 +71,6 @@ function publicationLabel(media) {
   if (media.mediaType === 'ANIME') return 'Anime'
   if (media.mediaFormat === 'NOVEL') return 'Light novel'
   if (media.mediaFormat === 'ONE_SHOT') return 'One-shot'
-  if (media.tags?.some?.((tag) => (tag.name || tag) === 'Web Comic') || media.tags?.split?.('|').includes('Web Comic')) return 'Web cómic'
   return { KR: 'Manhwa', CN: 'Manhua', JP: 'Manga' }[media.countryOfOrigin] || 'Manga'
 }
 
@@ -84,7 +86,7 @@ function RelationCarousel({ relations }) {
 
 function CharacterCarousel({ characters }) {
   const [page, setPage] = useState(0)
-  const [role, setRole] = useState('MAIN')
+  const [role, setRole] = useState(() => characters.some((character) => character.role === 'MAIN') ? 'MAIN' : 'SUPPORTING')
   const roleTotals = {
     MAIN: characters.filter((character) => character.role === 'MAIN').length,
     SUPPORTING: characters.filter((character) => character.role === 'SUPPORTING').length,

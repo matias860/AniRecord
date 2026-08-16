@@ -581,3 +581,42 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
 }
 
 @media(max-width:380px){.main-nav a{padding:6px}.main-nav a>svg{width:15px}.nav-avatar{width:27px;height:27px}.notification-button{width:31px;height:31px}.logout-button{width:31px;height:31px}.brand-mark{width:34px;height:34px}.page{width:calc(100% - 24px)}}
+
+/* Interactive controls share the user's palette instead of the original purple theme. */
+:root{
+  --surface-2:color-mix(in srgb,var(--user-surface,#171b29) 82%,var(--user-bg,#0a0c14));
+  --line:color-mix(in srgb,var(--accent,#a88bff) 16%,var(--user-surface,#171b29));
+  --accent-2:color-mix(in srgb,var(--accent,#a88bff) 72%,var(--user-bg,#0a0c14));
+}
+.primary-button,.discover-button,.tracking-save-button{
+  border-color:color-mix(in srgb,var(--accent) 64%,#fff);
+  background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 88%,#fff),color-mix(in srgb,var(--accent) 76%,var(--user-bg,#0a0c14)));
+  box-shadow:0 9px 26px color-mix(in srgb,var(--accent) 27%,transparent);
+}
+.primary-button:hover:not(:disabled),.discover-button:hover:not(:disabled){filter:brightness(1.08);transform:translateY(-1px)}
+:is(.secondary-button,.filter-toggle,.quick-add,.pagination button,.shelf-pagination button,.season-actions button,.featured-controls button:first-child,.featured-controls button:last-child,.recommendation-controls button,.relation-controls button,.character-controls button,.staff-role-controls button,.staff-media-controls button,.favorite-people-controls button,.modal-close,.commit-sync-close){
+  border-color:color-mix(in srgb,var(--accent) 18%,var(--line));
+  color:color-mix(in srgb,var(--accent) 18%,#fff);
+  background:color-mix(in srgb,var(--user-surface,#171b29) 88%,var(--accent) 12%);
+}
+:is(.secondary-button,.filter-toggle,.quick-add,.pagination button,.shelf-pagination button,.season-actions button,.featured-controls button:first-child,.featured-controls button:last-child,.recommendation-controls button,.relation-controls button,.character-controls button,.staff-role-controls button,.staff-media-controls button,.favorite-people-controls button,.modal-close,.commit-sync-close):hover:not(:disabled){
+  border-color:color-mix(in srgb,var(--accent) 58%,var(--line));
+  background:color-mix(in srgb,var(--user-surface,#171b29) 74%,var(--accent) 26%);
+}
+.type-toggle,.catalog-type-switch{background:color-mix(in srgb,var(--user-surface,#171b29) 90%,var(--user-bg,#0a0c14))}
+.type-toggle button.active,.filter-row button.active,.catalog-type-switch button.active,.character-role-switch button.active{
+  border-color:color-mix(in srgb,var(--accent) 62%,var(--line));
+  background:color-mix(in srgb,var(--accent) 28%,var(--user-surface,#171b29));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--accent) 28%,transparent),0 7px 20px color-mix(in srgb,var(--accent) 10%,transparent);
+}
+.filter-row button,.character-role-switch button,.profile-file-actions label,.profile-file-actions button,.connection-secondary{
+  border-color:color-mix(in srgb,var(--accent) 14%,var(--line));
+  background:color-mix(in srgb,var(--user-surface,#171b29) 90%,var(--user-bg,#0a0c14));
+}
+.clear-filters,.reset-theme,.notification-popover header button{color:color-mix(in srgb,var(--accent) 72%,#fff)}
+.notification-button:hover,.notification-button[aria-expanded=true],.nav-hover{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:color-mix(in srgb,var(--accent) 16%,transparent)}
+.recommendation-cta{background:color-mix(in srgb,var(--user-surface,#171b29) 92%,var(--accent) 8%)}
+.recommendation-cta::after{background:linear-gradient(105deg,color-mix(in srgb,var(--accent) 25%,var(--user-surface,#171b29)),color-mix(in srgb,var(--accent) 8%,var(--user-bg,#0a0c14)))}
+.schedule-line{background:linear-gradient(90deg,color-mix(in srgb,var(--accent) 25%,var(--user-surface,#171b29)),var(--accent),color-mix(in srgb,var(--accent) 25%,var(--user-surface,#171b29)))}
+.schedule-day.today .day-dot{border-color:color-mix(in srgb,var(--accent) 65%,#fff);background:var(--accent);box-shadow:0 0 0 6px color-mix(in srgb,var(--accent) 12%,transparent)}
+.detail-extras.single-section .relations{border-bottom:0}
