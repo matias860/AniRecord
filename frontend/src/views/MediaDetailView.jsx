@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import MediaTags from '../components/media/MediaTags.jsx'
@@ -10,6 +10,7 @@ import { addToLibrary, fetchLibrary, removeFromLibrary, updateLibraryEntry } fro
 import { cleanSynopsis } from '../lib/media.js'
 import { clearDetail, fetchMediaDetail } from '../features/search/searchSlice.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
+import { requestLogin } from '../lib/authNavigation.js'
 
 const statusLabels = {
   PLANNED: 'Planeando', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
@@ -19,10 +20,13 @@ const statusLabels = {
 export default function MediaDetailView() {
   const { anilistId } = useParams()
   const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const authenticated = useSelector((state) => state.auth.authenticated)
   const { detail, detailStatus, error } = useSelector((state) => state.search)
   const library = useSelector((state) => state.library)
   const mediaRecommendations = useSelector((state) => state.recommendations.byMedia[Number(anilistId)]?.entries ?? null)
-  const saved = library.items.find((item) => item.anilistId === Number(anilistId))
+  const saved = authenticated ? library.items.find((item) => item.anilistId === Number(anilistId)) : null
   const [libraryModal, setLibraryModal] = useState(null)
 
   useEffect(() => {
@@ -32,8 +36,8 @@ export default function MediaDetailView() {
   }, [anilistId, dispatch])
 
   useEffect(() => {
-    if (library.status === 'idle') dispatch(fetchLibrary())
-  }, [dispatch, library.status])
+    if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
+  }, [authenticated, dispatch, library.status])
 
   if (detailStatus !== 'succeeded') return <PageState loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
@@ -48,7 +52,7 @@ export default function MediaDetailView() {
     <div className="detail-content">
       <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
       <div className="detail-copy">
-        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => setLibraryModal('add')}><ListPlus /> Agregar a la biblioteca</button>}</div>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
       </div>
       <div className="detail-information-strip">
         {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}

@@ -32,6 +32,7 @@ export default function CatalogView() {
   const dispatch = useDispatch()
   const catalog = useSelector((state) => state.catalog)
   const library = useSelector((state) => state.library)
+  const authenticated = useSelector((state) => state.auth.authenticated)
   const [filters, setFilters] = useState(emptyFilters)
   const [filtersOpen, setFiltersOpen] = useState(true)
   const type = mediaType?.toLowerCase() === 'anime' ? 'ANIME' : mediaType?.toLowerCase() === 'manga' ? 'MANGA' : null
@@ -39,8 +40,8 @@ export default function CatalogView() {
   useEffect(() => {
     if (!type) return
     if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres())
-    if (library.status === 'idle') dispatch(fetchLibrary())
-  }, [catalog.genresStatus, dispatch, library.status, type])
+    if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
+  }, [authenticated, catalog.genresStatus, dispatch, library.status, type])
 
   useEffect(() => {
     if (!type) return
@@ -55,7 +56,7 @@ export default function CatalogView() {
   const displayedItems = useMemo(() => {
     const query = filters.search.trim().toLocaleLowerCase('es')
     if (!query) return catalog.items
-    const localMatches = library.items.filter((item) => item.mediaType === type
+    const localMatches = (authenticated ? library.items : []).filter((item) => item.mediaType === type
       && [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(query))
       && (!filters.year || String(item.releaseYear) === filters.year)
       && (type !== 'ANIME' || !filters.season || item.releaseSeason === filters.season)
@@ -65,7 +66,7 @@ export default function CatalogView() {
       && !filters.genre.length)
     const localIds = new Set(localMatches.map((item) => item.anilistId))
     return [...localMatches, ...catalog.items.filter((item) => !localIds.has(item.anilistId))]
-  }, [catalog.items, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.year, library.items, type])
+  }, [authenticated, catalog.items, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.year, library.items, type])
 
   if (mediaType && !type) return <Navigate to="/catalogo" replace />
   if (!type) return <CatalogLanding />

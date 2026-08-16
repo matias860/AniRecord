@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import WeeklySchedule from '../components/home/WeeklySchedule.jsx'
 import MediaCard from '../components/media/MediaCard.jsx'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
@@ -14,6 +14,7 @@ import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setW
 import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
 import { addToast } from '../features/toast/toastSlice.js'
 import { fetchWeeklyRecommendations } from '../features/recommendations/recommendationsSlice.js'
+import { requestLogin } from '../lib/authNavigation.js'
 
 const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
@@ -39,6 +40,8 @@ function seasonAtOffset(offset) {
 
 export default function HomeView() {
   const dispatch = useDispatch()
+  const navigate = useNavigate()
+  const location = useLocation()
   const auth = useSelector((state) => state.auth)
   const library = useSelector((state) => state.library)
   const home = useSelector((state) => state.home)
@@ -56,24 +59,24 @@ export default function HomeView() {
   const selectedSeasonEntries = home.seasonCache[selectedSeasonKey] ?? []
 
   useEffect(() => {
-    if (library.status === 'idle') dispatch(fetchLibrary())
-  }, [dispatch, library.status])
+    if (auth.authenticated && library.status === 'idle') dispatch(fetchLibrary())
+  }, [auth.authenticated, dispatch, library.status])
 
   useEffect(() => {
-    if (library.status === 'succeeded' && home.status === 'idle') dispatch(fetchAiringSchedule())
-  }, [dispatch, home.status, library.status])
+    if (auth.authenticated && library.status === 'succeeded' && home.status === 'idle') dispatch(fetchAiringSchedule())
+  }, [auth.authenticated, dispatch, home.status, library.status])
 
   useEffect(() => {
     // Weekly recommendations live in our own database. They must not wait for
     // AniList's airing endpoint, otherwise an external outage hides a local feature.
-    if (library.status === 'succeeded' && recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
-  }, [dispatch, library.status, recommendations.status])
+    if (recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
+  }, [dispatch, recommendations.status])
 
   useEffect(() => {
-    if (home.status === 'succeeded' && !home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
+    if (!home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
       dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear }))
     }
-  }, [dispatch, home.seasonCache, home.seasonRequestKey, home.status, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
+  }, [dispatch, home.seasonCache, home.seasonRequestKey, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
   const airingWithCurrentProgress = home.airing.map((entry) => ({
     ...entry,
@@ -161,10 +164,10 @@ export default function HomeView() {
       </AnimatePresence>
       <section className="welcome-row">
         <div><span className="eyebrow">Biblioteca personal</span><h1>¿Qué seguimos hoy?</h1><p>Todo tu anime y manga, ordenado en un solo lugar.</p></div>
-        <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div>
+        {auth.authenticated ? <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div> : <Link className="primary-button welcome-login-button" to="/login">Iniciar sesión</Link>}
       </section>
 
-      <AnimatePresence initial={false}>{recommendations.status === 'succeeded' && !ownRecommendation && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={library.status !== 'succeeded'} onClick={() => setRecommendationModal(true)} initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 52, marginTop: 22, marginBottom: 22 }} exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
+      <AnimatePresence initial={false}>{recommendations.status === 'succeeded' && !ownRecommendation && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 52, marginTop: 22, marginBottom: 22 }} exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
         <span>Recomendar una serie esta semana</span>
       </motion.button>}</AnimatePresence>
 
@@ -173,9 +176,9 @@ export default function HomeView() {
         <span>AniList deshabilitó su API pública. Conservamos tu biblioteca y mostramos las fechas guardadas localmente.</span>
       </aside>}
       {home.status === 'failed' && !home.unavailable && <PageState error={home.error} />}
-      {libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
+      {auth.authenticated && libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
-      {home.status === 'succeeded' && home.seasonStatus !== 'failed' && <SeasonMarquee
+      {home.seasonStatus !== 'failed' && <SeasonMarquee
         entries={selectedSeasonEntries}
         loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'}
         label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`}
@@ -185,8 +188,8 @@ export default function HomeView() {
         onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
       />}
 
-      <LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
-      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
+      {auth.authenticated && <><LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
+      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} /></>}
     </>
   )
 }

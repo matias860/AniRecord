@@ -1,21 +1,32 @@
 import { useEffect, useState } from 'react'
 import { BookOpen, LogIn, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
 import anilistLogo from '../assets/anilist-logo.svg'
 import { clearAuthError, localLogin, registerLocal } from '../features/auth/authSlice.js'
+import { currentReturnPath, rememberReturnPath } from '../lib/authNavigation.js'
 
 export default function LoginView() {
   const dispatch = useDispatch()
+  const location = useLocation()
   const { mutationStatus, error } = useSelector((state) => state.auth)
   const [mode, setMode] = useState('options')
   const [form, setForm] = useState({ username: '', displayName: '', password: '' })
   const busy = mutationStatus === 'loading'
+  const returnTo = location.state?.returnTo
   useEffect(() => { dispatch(clearAuthError()) }, [dispatch, mode])
+  useEffect(() => {
+    if (returnTo) rememberReturnPath(returnTo)
+  }, [returnTo])
   const update = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   const submit = (event) => {
     event.preventDefault()
     if (mode === 'register') dispatch(registerLocal(form))
     else dispatch(localLogin({ username: form.username, password: form.password }))
+  }
+  const rememberDestination = () => {
+    const current = currentReturnPath(location)
+    if (current !== '/login') rememberReturnPath(current)
   }
   return <main className="login-page dot-background">
     <section className={`login-card ${mode !== 'options' ? 'with-local-form' : ''}`}>
@@ -26,7 +37,7 @@ export default function LoginView() {
         <h1>Todo lo que ves y leés, en un solo lugar.</h1>
         <p>Inicia sesión con AniList para importar tu colección o crea un perfil independiente desde cero.</p>
         <div className="login-options">
-          <a className="anilist-login-button" href="/api/auth/login"><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
+          <a className="anilist-login-button" href="/api/auth/login" onClick={rememberDestination}><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
           <button className="local-account-button" onClick={() => setMode('register')}><UserPlus /><span>Crear un perfil nuevo</span></button>
           <button className="login-text-button" onClick={() => setMode('login')}>Ya tengo un perfil local</button>
         </div>
