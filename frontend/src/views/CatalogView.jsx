@@ -46,7 +46,8 @@ export default function CatalogView() {
     if (!type) return
     let request
     const timer = window.setTimeout(() => {
-      request = dispatch(fetchCatalog({ type, page: 1, filters: requestFilters(filters) }))
+      const applicableFilters = type === 'MANGA' ? { ...filters, season: '' } : filters
+      request = dispatch(fetchCatalog({ type, page: 1, filters: requestFilters(applicableFilters) }))
     }, filters.search.trim() ? 400 : 0)
     return () => { window.clearTimeout(timer); request?.abort() }
   }, [dispatch, filters, type])
@@ -57,7 +58,7 @@ export default function CatalogView() {
     const localMatches = library.items.filter((item) => item.mediaType === type
       && [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(query))
       && (!filters.year || String(item.releaseYear) === filters.year)
-      && (!filters.season || item.releaseSeason === filters.season)
+      && (type !== 'ANIME' || !filters.season || item.releaseSeason === filters.season)
       && (!filters.status || item.releaseStatus === filters.status)
       && (!filters.country || item.countryOfOrigin === filters.country)
       && (!filters.format || item.mediaFormat === filters.format)
@@ -81,7 +82,7 @@ export default function CatalogView() {
       <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={(event) => event.preventDefault()}>
         <label className="catalog-search" data-field-label="Buscar"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={type === 'ANIME' ? 'Anime...' : 'Manga...'} /></label>
         <StyledSelect ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
-        <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />
+        {type === 'ANIME' && <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre} onChange={update('genre')} />
         {type === 'MANGA' && <><StyledSelect ariaLabel="Origen de publicación" fieldLabel="Origen" value={filters.country} onChange={update('country')} options={publicationTypes} /><StyledSelect ariaLabel="Formato de publicación" fieldLabel="Formato" value={filters.format} onChange={update('format')} options={mediaFormats} /></>}
         <StyledSelect ariaLabel="Estado de emisión" fieldLabel="Estado" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
