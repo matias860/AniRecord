@@ -2,6 +2,17 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/media/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Discordbot|discordbot|Twitterbot|facebookexternalhit|Facebot|WhatsApp|TelegramBot|Slackbot|LinkedInBot).*"
+        }
+      ],
+      "destination": "/api/media-preview?id=:id"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://anime-list-matias-backend.onrender.com/api/:path*"
     },
