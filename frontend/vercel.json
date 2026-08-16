@@ -13,6 +13,28 @@
       "destination": "/api/media-preview?id=:id"
     },
     {
+      "source": "/personajes/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Discordbot|discordbot|Twitterbot|facebookexternalhit|Facebot|WhatsApp|TelegramBot|Slackbot|LinkedInBot).*"
+        }
+      ],
+      "destination": "/api/person-preview?id=:id&kind=character"
+    },
+    {
+      "source": "/seiyuus/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Discordbot|discordbot|Twitterbot|facebookexternalhit|Facebot|WhatsApp|TelegramBot|Slackbot|LinkedInBot).*"
+        }
+      ],
+      "destination": "/api/person-preview?id=:id&kind=staff"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://anime-list-matias-backend.onrender.com/api/:path*"
     },
