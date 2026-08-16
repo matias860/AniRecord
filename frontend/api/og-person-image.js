@@ -9,6 +9,8 @@ export default function handler(request) {
   const kind = limit(params.get('kind'), 24) || 'Persona'
   const origin = limit(params.get('origin'), 90)
   const originType = limit(params.get('originType'), 24)
+  const age = limit(params.get('age'), 4)
+  const gender = limit(params.get('gender'), 24)
   const image = safeImage(params.get('image'))
 
   return new ImageResponse(
@@ -25,9 +27,14 @@ export default function handler(request) {
           h('div', { style: eyebrowStyle }, kind),
           h('div', { style: nameStyle }, name),
           origin && h('div', { style: originStyle },
-            h('span', { style: originLabelStyle }, kind === 'Seiyū' ? 'Conocido por' : 'De'),
+            h('span', { style: originLabelStyle }, 'De'),
             h('span', null, origin),
             originType && h('span', { style: originTypeStyle }, originType),
+          ),
+          kind === 'Seiyū' && (age || gender) && h('div', { style: originStyle },
+            age && h('span', null, `${age} años`),
+            age && gender && h('span', { style: separatorStyle }, '·'),
+            gender && h('span', null, gender),
           ),
         ),
       ),
@@ -50,6 +57,7 @@ const eyebrowStyle = { marginBottom: 15, color: '#bca8ff', fontSize: 20, fontWei
 const nameStyle = { maxWidth: 680, fontSize: 62, fontWeight: 800, letterSpacing: -2.8, lineHeight: 1.02, textShadow: '0 5px 25px rgba(0,0,0,.75)' }
 const originStyle = { maxWidth: 690, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 30, color: '#d5d3df', fontSize: 22 }
 const originLabelStyle = { color: '#979aaa' }
+const separatorStyle = { color: '#8b849f' }
 const originTypeStyle = { display: 'flex', marginLeft: 5, padding: '6px 12px', border: '1px solid rgba(185,159,255,.28)', borderRadius: 999, color: '#c7b6ff', background: 'rgba(168,139,255,.1)', fontSize: 16, fontWeight: 700 }
 
 function safeImage(value) {

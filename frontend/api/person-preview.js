@@ -22,9 +22,8 @@ const STAFF_QUERY = `
       name { full }
       image { large }
       description
-      characterMedia(page: 1, perPage: 1, sort: POPULARITY_DESC) {
-        nodes { type format title { english romaji } }
-      }
+      age
+      gender
     }
   }
 `
@@ -39,21 +38,28 @@ export default async function handler(request) {
   const isStaff = kind === 'staff'
   const route = isStaff ? 'seiyuus' : 'personajes'
   const label = isStaff ? 'Seiyū' : 'Personaje'
-  const media = isStaff ? person?.characterMedia?.nodes?.[0] : person?.media?.nodes?.[0]
+  const media = isStaff ? null : person?.media?.nodes?.[0]
   const name = person?.name?.full || `${label} #${id}`
   const origin = media?.title?.english || media?.title?.romaji || ''
   const originType = mediaType(media)
   const canonicalUrl = `${url.origin}/${route}/${id}`
   const description = plainText(person?.description)
-    || (origin ? `${name}, ${isStaff ? 'conocido por' : 'personaje de'} ${origin}.` : `Consulta a ${name} en Anime List.`)
+    || (origin ? `${name}, personaje de ${origin}.` : `Consulta a ${name} en Anime List.`)
   const imageUrl = new URL('/api/og-person-image', url.origin)
   imageUrl.searchParams.set('name', name)
   imageUrl.searchParams.set('kind', label)
-  if (origin) imageUrl.searchParams.set('origin', origin)
-  if (originType) imageUrl.searchParams.set('originType', originType)
+  if (isStaff) {
+    if (person?.age) imageUrl.searchParams.set('age', String(person.age))
+    if (person?.gender) imageUrl.searchParams.set('gender', genderLabel(person.gender))
+  } else {
+    if (origin) imageUrl.searchParams.set('origin', origin)
+    if (originType) imageUrl.searchParams.set('originType', originType)
+  }
   if (person?.image?.large) imageUrl.searchParams.set('image', person.image.large)
 
-  const originText = origin ? `${isStaff ? 'Conocido por' : 'De'} ${origin}${originType ? ` · ${originType}` : ''}` : label
+  const detailText = isStaff
+    ? staffDetails(person)
+    : origin ? `De ${origin}${originType ? ` · ${originType}` : ''}` : label
   const html = `<!doctype html>
 <html lang="es">
   <head>
@@ -65,7 +71,7 @@ export default async function handler(request) {
     <meta property="og:type" content="profile">
     <meta property="og:site_name" content="${SITE_NAME}">
     <meta property="og:title" content="${escapeHtml(name)}">
-    <meta property="og:description" content="${escapeHtml(originText)}">
+    <meta property="og:description" content="${escapeHtml(detailText)}">
     <meta property="og:url" content="${canonicalUrl}">
     <meta property="og:image" content="${escapeHtml(imageUrl.toString())}">
     <meta property="og:image:secure_url" content="${escapeHtml(imageUrl.toString())}">
@@ -75,12 +81,12 @@ export default async function handler(request) {
     <meta property="og:image:alt" content="Tarjeta de ${escapeHtml(name)} en Anime List">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${escapeHtml(name)}">
-    <meta name="twitter:description" content="${escapeHtml(originText)}">
+    <meta name="twitter:description" content="${escapeHtml(detailText)}">
     <meta name="twitter:image" content="${escapeHtml(imageUrl.toString())}">
   </head>
   <body style="font-family:system-ui;background:#0a0c14;color:#eef0f8;padding:40px">
     <h1>${escapeHtml(name)}</h1>
-    <p>${escapeHtml(originText)}</p>
+    <p>${escapeHtml(detailText)}</p>
     <p><a style="color:#a88bff" href="${canonicalUrl}">Abrir en Anime List</a></p>
   </body>
 </html>`
@@ -112,6 +118,17 @@ function mediaType(media) {
   if (!media) return ''
   if (media.type === 'ANIME') return 'Anime'
   return media.format === 'NOVEL' ? 'Light novel' : 'Manga'
+}
+
+function staffDetails(person) {
+  const details = []
+  if (person?.age) details.push(`${person.age} años`)
+  if (person?.gender) details.push(genderLabel(person.gender))
+  return details.join(' · ') || 'Seiyū en Anime List'
+}
+
+function genderLabel(gender) {
+  return { Male: 'Hombre', Female: 'Mujer', Nonbinary: 'No binario' }[gender] || gender
 }
 
 function plainText(value) {
