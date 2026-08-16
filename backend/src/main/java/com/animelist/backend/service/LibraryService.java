@@ -239,7 +239,7 @@ public class LibraryService {
             throw new BusinessException("El progreso no puede ser negativo");
         }
         if (totalUnits != null && progress > totalUnits) {
-            throw new BusinessException("El progreso no puede superar el total de episodios o capítulos");
+            throw new BusinessException("El progreso no puede superar el total de episodios, capítulos o tomos");
         }
     }
 

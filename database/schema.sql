@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS anilist_connection (
 --
 -- total_units:
 --   ANIME -> cantidad total de episodios
---   MANGA -> cantidad total de capítulos
+--   MANGA -> cantidad total de capítulos (o tomos para light novels)
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS media (
@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS media (
 --
 -- progress:
 --   ANIME -> episodios vistos
---   MANGA -> capítulos leídos
+--   MANGA -> capítulos leídos (o tomos para light novels)
 -- =====================================================
 
 CREATE TABLE IF NOT EXISTS library_entries (

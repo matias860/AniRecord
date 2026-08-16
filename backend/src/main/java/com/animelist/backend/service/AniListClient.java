@@ -68,6 +68,7 @@ public class AniListClient {
                   endDate { year month day }
                   nextAiringEpisode { episode airingAt timeUntilAiring }
                   tags { name rank description category isMediaSpoiler }
+                  volumes
                 }
               }
             }
@@ -94,6 +95,7 @@ public class AniListClient {
                 endDate { year month day }
                 nextAiringEpisode { episode airingAt timeUntilAiring }
                 tags { name rank description category isMediaSpoiler }
+                volumes
                 relations {
                   edges {
                     relationType(version: 2)
@@ -169,6 +171,7 @@ public class AniListClient {
                   season
                   seasonYear
                   tags { name rank description category isMediaSpoiler }
+                  volumes
                 }
               }
             }
@@ -193,6 +196,7 @@ public class AniListClient {
               status
               score(format: POINT_10_DECIMAL)
               progress
+              progressVolumes
               repeat
               startedAt { year month day }
               completedAt { year month day }
@@ -207,6 +211,7 @@ public class AniListClient {
                 description
                 genres
                 tags { name rank description category isMediaSpoiler }
+                volumes
                 episodes
                 chapters
                 status
@@ -585,9 +590,12 @@ public class AniListClient {
                 Map<String, Object> entry = asMap(entryValue);
                 AniListMediaResponse media = mapMedia(asMap(entry.get("media")));
                 BigDecimal score = decimalValue(entry.get("score"));
+                int progress = "NOVEL".equals(media.mediaFormat())
+                        ? integerOrZero(entry.get("progressVolumes"))
+                        : integerOrZero(entry.get("progress"));
                 target.putIfAbsent(media.anilistId(), new AniListLibraryItem(
                         media,
-                        integerOrZero(entry.get("progress")),
+                        progress,
                         score != null && score.signum() > 0 ? score : null,
                         integerOrZero(entry.get("repeat")),
                         mapTrackingStatus(asString(entry.get("status"))),
@@ -719,14 +727,17 @@ public class AniListClient {
                 asString(coverImage.get("extraLarge")),
                 asString(coverImage.get("large"))
         );
+        String mediaFormat = asString(media.get("format"));
         Integer totalUnits = mediaType == MediaType.ANIME
                 ? asInteger(media.get("episodes"))
-                : asInteger(media.get("chapters"));
+                : "NOVEL".equals(mediaFormat)
+                        ? asInteger(media.get("volumes"))
+                        : asInteger(media.get("chapters"));
 
         return new AniListMediaResponse(
                 asInteger(media.get("id")),
                 mediaType,
-                asString(media.get("format")),
+                mediaFormat,
                 asString(media.get("countryOfOrigin")),
                 selectTitle(titles),
                 asString(titles.get("romaji")),

@@ -36,7 +36,7 @@ export default function MediaDetailView() {
   }, [dispatch, library.status])
 
   if (detailStatus !== 'succeeded') return <PageState loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
-  const unit = detail.mediaType === 'ANIME' ? 'episodios' : 'capítulos'
+  const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
   const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
     value,
     label: value === 'IN_PROGRESS' ? (detail.mediaType === 'ANIME' ? 'Viendo' : 'Leyendo')
