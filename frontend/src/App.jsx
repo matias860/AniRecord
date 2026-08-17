@@ -18,30 +18,6 @@ import StaffDetailView from './views/StaffDetailView.jsx'
 import { clearReturnPath, consumeReturnPath, currentReturnPath, getReturnPath } from './lib/authNavigation.js'
 
 export default function App() {
-  return <MaintenanceView />
-}
-
-function MaintenanceView() {
-  return (
-    <main className="maintenance-page dot-background">
-      <section className="maintenance-card" aria-labelledby="maintenance-title">
-        <div className="maintenance-logo" aria-hidden="true">
-          <span className="maintenance-book">▯</span>
-          <span className="maintenance-orbit" />
-        </div>
-        <p className="maintenance-eyebrow">ANIME LIST</p>
-        <h1 id="maintenance-title">Estamos migrando</h1>
-        <p className="maintenance-copy">
-          Estamos preparando un servidor más estable para que tu biblioteca cargue mejor.
-          Volveremos dentro de poco.
-        </p>
-        <div className="maintenance-status"><span /> Migración en curso</div>
-      </section>
-    </main>
-  )
-}
-
-function Application() {
   const dispatch = useDispatch()
   const auth = useSelector((state) => state.auth)
   useEffect(() => {

@@ -36,7 +36,7 @@
     },
     {
       "source": "/api/:path*",
-      "destination": "https://anime-list-matias-backend.onrender.com/api/:path*"
+      "destination": "https://p01--anime-list--244mm2wyvsvc.code.run/api/:path*"
     },
     {
       "source": "/(.*)",
