@@ -6,8 +6,8 @@ RUN chmod +x mvnw && ./mvnw -B dependency:go-offline
 COPY src src
 RUN ./mvnw -B clean package -DskipTests
 
-FROM eclipse-temurin:17-jre-alpine
+FROM ibm-semeru-runtimes:open-17-jre-jammy
 WORKDIR /app
 COPY --from=build /workspace/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-Xmx120m", "-XX:MaxMetaspaceSize=64m", "-XX:ReservedCodeCacheSize=24m", "-XX:MaxDirectMemorySize=8m", "-Xss256k", "-XX:+UseSerialGC", "-XX:TieredStopAtLevel=1", "-jar", "/app/app.jar"]
+ENTRYPOINT ["sh", "-c", "unset JAVA_TOOL_OPTIONS; exec java -Xmx144m -Xss256k -Xtune:virtualized -Xquickstart -jar /app/app.jar"]
