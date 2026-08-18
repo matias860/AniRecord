@@ -8,6 +8,7 @@ import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
+import MediaTypeSwitch from '../components/common/MediaTypeSwitch.jsx'
 import {
   fetchLibrary,
   incrementProgress,
@@ -103,10 +104,7 @@ export default function LibraryView() {
     <>
       <div className="page-title">
         <div><span className="eyebrow">Colección personal</span><h1><Library /> Mi biblioteca</h1><p>Sigue tu progreso sin perder el hilo.</p></div>
-        <div className="type-toggle">
-          <button className={mediaType === 'ANIME' ? 'active' : ''} onClick={() => dispatch(setLibraryMediaType('ANIME'))}>Anime</button>
-          <button className={mediaType === 'MANGA' ? 'active' : ''} onClick={() => dispatch(setLibraryMediaType('MANGA'))}>Manga</button>
-        </div>
+        <MediaTypeSwitch value={mediaType} onChange={(nextType) => dispatch(setLibraryMediaType(nextType))} ariaLabel="Cambiar tipo de biblioteca" />
       </div>
       <motion.div className="library-advanced-filters" key={mediaType} initial={{ opacity: 0, x: mediaType === 'ANIME' ? -14 : 14 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .25, ease: 'easeOut' }}>
         <label className="library-search" data-field-label="Buscar"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Título..." /></label>
