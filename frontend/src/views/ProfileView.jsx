@@ -30,7 +30,7 @@ export default function ProfileView() {
   return (
     <>
       <section className="profile-hero">
-        <div className="profile-banner" style={profile.bannerUrl ? { backgroundImage: `linear-gradient(90deg,rgba(12,14,23,.35),rgba(12,14,23,.75)),url(${profile.bannerUrl})` } : undefined}><Sparkles /></div>
+        <div className="profile-banner" style={profile.bannerUrl ? { backgroundImage: `url(${profile.bannerUrl})` } : undefined}><Sparkles /></div>
         <div className="profile-summary"><div className="profile-avatar">{profile.avatarUrl ? <img src={profile.avatarUrl} alt="Avatar del perfil" /> : <UserRound />}</div><div><span className="eyebrow">Perfil personal</span><h1>{profile.displayName}</h1><p>{profile.bio}</p></div></div>
       </section>
       <ProfileAnalytics library={library} history={historyState.items} />

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Clapperboard, House, Search, SlidersHorizontal, Sparkles, WifiOff, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Clapperboard, House, Search, SlidersHorizontal, WifiOff, X } from 'lucide-react'
+import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
@@ -103,5 +104,5 @@ function AniListUnavailable() {
 }
 
 function CatalogLanding() {
-  return <section className="catalog-landing"><div className="catalog-landing-title"><Sparkles /><span className="eyebrow">¿Qué deseas descubrir?</span><h1>Elige un catálogo</h1><p>Después podrás buscar y filtrar todo el contenido de AniList.</p></div><div className="catalog-choices"><Link to="/catalogo/anime" className="catalog-choice anime-choice"><span><Clapperboard /></span><div><small>Series y películas</small><h2>Anime</h2><p>Temporadas, emisiones, episodios y más.</p></div><ChevronRight /></Link><Link to="/catalogo/manga" className="catalog-choice manga-choice"><span><BookOpen /></span><div><small>Manga y novelas</small><h2>Manga</h2><p>Publicaciones, capítulos, estados y géneros.</p></div><ChevronRight /></Link></div></section>
+  return <motion.section className="catalog-landing" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .3 }}><div className="catalog-landing-title"><span className="eyebrow">¿Qué deseas descubrir?</span><h1>Elige un catálogo</h1><p>Después podrás buscar y filtrar todo el contenido de AniList.</p></div><div className="catalog-choices"><Link to="/catalogo/anime" className="catalog-choice anime-choice"><span><Clapperboard /></span><div><small>Series y películas</small><h2>Anime</h2><p>Temporadas, emisiones, episodios y más.</p></div><ChevronRight /></Link><Link to="/catalogo/manga" className="catalog-choice manga-choice"><span><BookOpen /></span><div><small>Manga y novelas</small><h2>Manga</h2><p>Publicaciones, capítulos, estados y géneros.</p></div><ChevronRight /></Link></div></motion.section>
 }
