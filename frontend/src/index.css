@@ -572,7 +572,7 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
 .panorama-copy>span svg{fill:var(--accent);color:var(--accent)}
 .carousel-progress{background:linear-gradient(90deg,var(--accent),color-mix(in srgb,var(--accent) 35%,#fff))}
 .schedule-day .day-dot,.compact-schedule-day .day-dot{border-color:color-mix(in srgb,var(--accent) 28%,var(--line));background:color-mix(in srgb,var(--user-surface,#171b29) 86%,var(--accent) 14%)}
-.schedule-panel :is(.compact-day-media>a,.season-day-group,.season-day-media>a){background:color-mix(in srgb,var(--user-bg,#0a0c14) 72%,var(--user-surface,#171b29))}
+.schedule-panel :is(.compact-day-media>a:not(.future-cover),.season-day-group,.season-day-media>a){background:color-mix(in srgb,var(--user-bg,#0a0c14) 72%,var(--user-surface,#171b29))}
 
 @media(max-width:620px){
   .main-nav a span.nav-avatar{display:grid}
