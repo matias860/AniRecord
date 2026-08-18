@@ -689,3 +689,19 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
   .profile-banner{height:230px;background-position:center 24%}.profile-summary{align-items:center;margin-top:-64px;padding:0 18px 23px;gap:13px}.profile-avatar{width:80px;height:80px;border-radius:21px}.profile-avatar img{border-radius:16px}.profile-summary h1{font-size:25px}.profile-summary p{font-size:11px;line-height:1.45}
   .schedule-panel{overflow:hidden}.schedule-scroll,.future-schedule-scroll{margin-inline:-14px;padding-inline:14px}
 }
+
+/* Clear category labels and an animated in-catalog media switch. */
+.genre-multi-popover header strong{color:#fff;font-size:13px;font-weight:800}
+.genre-multi-popover header small{color:color-mix(in srgb,var(--muted) 65%,#fff);font-size:9px}
+.genre-multi-popover label{color:color-mix(in srgb,var(--muted) 38%,#fff);font-size:12px;font-weight:700;line-height:1.3}
+.genre-multi-popover label:hover,.genre-multi-popover label.selected{color:#fff}
+.genre-multi-popover label svg{width:14px;filter:drop-shadow(0 0 6px color-mix(in srgb,var(--accent) 52%,transparent))}
+.catalog-heading-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.catalog-type-switch{position:relative;isolation:isolate;box-shadow:0 12px 28px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.035)}
+.catalog-type-switch a{display:flex;align-items:center;gap:7px;position:relative;z-index:1;padding:10px 16px;border:1px solid transparent;border-radius:10px;color:var(--muted);font-size:12px;font-weight:750;transition:color .2s,background .2s,border-color .2s,transform .2s}
+.catalog-type-switch a:hover{color:#fff;transform:translateY(-1px)}
+.catalog-type-switch a.active{color:#fff;border-color:color-mix(in srgb,var(--accent) 55%,var(--line));background:linear-gradient(135deg,color-mix(in srgb,var(--accent) 34%,var(--user-surface,#171b29)),color-mix(in srgb,var(--accent) 16%,var(--user-bg,#0a0c14)));box-shadow:0 7px 20px color-mix(in srgb,var(--accent) 12%,transparent),inset 0 0 0 1px color-mix(in srgb,var(--accent) 18%,transparent)}
+.catalog-type-switch a svg{width:17px}
+.catalog-type-content{min-width:0}
+@media(max-width:900px){.catalog-heading-actions{width:100%;justify-content:space-between}.catalog-type-switch{flex:1}.catalog-type-switch a{flex:1;justify-content:center}}
+@media(max-width:520px){.catalog-heading-actions{align-items:stretch;flex-direction:column}.catalog-type-switch,.filter-toggle{width:100%}.filter-toggle{justify-content:center}}

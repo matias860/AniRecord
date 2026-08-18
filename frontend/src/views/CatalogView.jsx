@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Clapperboard, House, Search, SlidersHorizontal, WifiOff, X } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
@@ -48,7 +48,9 @@ export default function CatalogView() {
     if (!type) return
     let request
     const timer = window.setTimeout(() => {
-      const applicableFilters = type === 'MANGA' ? { ...filters, season: '' } : filters
+      const applicableFilters = type === 'MANGA'
+        ? { ...filters, season: '' }
+        : { ...filters, country: '', format: '' }
       request = dispatch(fetchCatalog({ type, page: 1, filters: requestFilters(applicableFilters) }))
     }, filters.search.trim() ? 400 : 0)
     return () => { window.clearTimeout(timer); request?.abort() }
@@ -78,8 +80,9 @@ export default function CatalogView() {
 
   return (
     <>
-      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div>{!catalog.unavailable && <button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div>
+      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><div className="catalog-type-switch" aria-label="Cambiar tipo de catálogo"><Link className={type === 'ANIME' ? 'active' : ''} to="/catalogo/anime"><Clapperboard /> Anime</Link><Link className={type === 'MANGA' ? 'active' : ''} to="/catalogo/manga"><BookOpen /> Manga</Link></div>{!catalog.unavailable && <button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
 
+      <AnimatePresence mode="wait" initial={false}><motion.div className="catalog-type-content" key={type} initial={{ opacity: 0, x: type === 'ANIME' ? -18 : 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: type === 'ANIME' ? 18 : -18 }} transition={{ duration: .26, ease: 'easeOut' }}>
       {catalog.unavailable ? <AniListUnavailable /> : <>
       <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={(event) => event.preventDefault()}>
         <label className="catalog-search" data-field-label="Buscar"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder={type === 'ANIME' ? 'Anime...' : 'Manga...'} /></label>
@@ -95,6 +98,7 @@ export default function CatalogView() {
       <PageState loading={catalog.status === 'loading'} error={catalog.error} />
       {catalog.status === 'succeeded' && <>{!displayedItems.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={catalog.currentPage === 1} onClick={() => changePage(catalog.currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{catalog.currentPage}</b></span><button disabled={!catalog.hasNextPage} onClick={() => changePage(catalog.currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
       </>}
+      </motion.div></AnimatePresence>
     </>
   )
 }
