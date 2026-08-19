@@ -16,6 +16,16 @@ const statusLabels = {
   PLANNED: 'Planeando', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
   COMPLETED: 'Completado', DROPPED: 'Abandonado',
 }
+const releaseStatusLabels = {
+  RELEASING: 'En emisión', FINISHED: 'Finalizado', NOT_YET_RELEASED: 'Próximamente',
+  CANCELLED: 'Cancelado', HIATUS: 'En pausa',
+}
+const relationLabels = {
+  ADAPTATION: 'Adaptación', PREQUEL: 'Precuela', SEQUEL: 'Secuela', PARENT: 'Obra principal',
+  SIDE_STORY: 'Historia paralela', CHARACTER: 'Personajes compartidos', SUMMARY: 'Resumen',
+  ALTERNATIVE: 'Alternativa', SPIN_OFF: 'Spin-off', OTHER: 'Otra', SOURCE: 'Material original',
+  COMPILATION: 'Compilación', CONTAINS: 'Contiene',
+}
 
 export default function MediaDetailView() {
   const { anilistId } = useParams()
@@ -52,7 +62,7 @@ export default function MediaDetailView() {
     <div className="detail-content">
       <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
       <div className="detail-copy">
-        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
       </div>
       <div className="detail-information-strip">
         {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}
@@ -90,6 +100,7 @@ function MediaCredits({ credits, mediaType }) {
 }
 
 function publicationLabel(media) {
+  if (media.mediaFormat === 'MUSIC') return 'Video musical'
   if (media.mediaType === 'ANIME') return 'Anime'
   if (media.mediaFormat === 'NOVEL') return 'Light novel'
   if (media.mediaFormat === 'ONE_SHOT') return 'One-shot'
@@ -98,11 +109,11 @@ function publicationLabel(media) {
 
 function RelationCarousel({ relations }) {
   const [page, setPage] = useState(0)
-  const pages = Math.ceil(relations.length / 3)
-  const visible = relations.slice(page * 3, page * 3 + 3)
+  const pages = Math.ceil(relations.length / 5)
+  const visible = relations.slice(page * 5, page * 5 + 5)
   return <div className="relation-carousel">
-    <AnimatePresence mode="wait" initial={false}><motion.div className="relation-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((relation) => <Link key={`${relation.anilistId}-${relation.relationType}`} to={`/media/${relation.anilistId}`}><img src={relation.coverImage} alt={`Portada de ${relation.title}`} /><span><small>{relation.relationType?.replaceAll('_', ' ')}</small>{relation.title}</span></Link>)}</motion.div></AnimatePresence>
-    {pages > 1 && <div className="relation-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Tres relaciones anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Tres relaciones siguientes"><ChevronRight /></button></div>}
+    <AnimatePresence mode="wait" initial={false}><motion.div className="relation-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((relation) => <Link key={`${relation.anilistId}-${relation.relationType}`} to={`/media/${relation.anilistId}`}><img src={relation.coverImage} alt={`Portada de ${relation.title}`} /><span><small>{relationLabels[relation.relationType] || relation.relationType?.replaceAll('_', ' ')}{relation.format === 'MUSIC' ? ' · Video musical' : ''}</small>{relation.title}</span></Link>)}</motion.div></AnimatePresence>
+    {pages > 1 && <div className="relation-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Relaciones anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Relaciones siguientes"><ChevronRight /></button></div>}
   </div>
 }
 
@@ -114,14 +125,14 @@ function CharacterCarousel({ characters }) {
     SUPPORTING: characters.filter((character) => character.role === 'SUPPORTING').length,
   }
   const filtered = characters.filter((character) => character.role === role)
-  const pages = Math.max(1, Math.ceil(filtered.length / 3))
-  const visible = filtered.slice(page * 3, page * 3 + 3)
+  const pages = Math.max(1, Math.ceil(filtered.length / 5))
+  const visible = filtered.slice(page * 5, page * 5 + 5)
   const changeRole = (nextRole) => { setRole(nextRole); setPage(0) }
   return <section className="characters-section">
     <div className="characters-heading"><div><span className="eyebrow">Reparto</span><h2>Personajes</h2></div><div className="character-role-switch" role="group" aria-label="Tipo de personaje"><button type="button" className={role === 'MAIN' ? 'active' : ''} aria-pressed={role === 'MAIN'} onClick={() => changeRole('MAIN')}>Principales <span>{roleTotals.MAIN}</span></button><button type="button" className={role === 'SUPPORTING' ? 'active' : ''} aria-pressed={role === 'SUPPORTING'} onClick={() => changeRole('SUPPORTING')}>Secundarios <span>{roleTotals.SUPPORTING}</span></button></div></div>
     <div className="character-carousel">
     <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={`${role}-${page}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.length ? visible.map((character) => <article key={character.anilistId}><Link className="character-image-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} /></Link><span><Link className="character-name-link" to={`/personajes/${character.anilistId}`}><strong>{character.name}</strong></Link><small>{role === 'MAIN' ? 'Principal' : 'Secundario'}</small>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</span></article>) : <p className="character-empty">No hay personajes en esta categoría.</p>}</motion.div></AnimatePresence>
-    {pages > 1 && <div className="character-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Tres personajes anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Tres personajes siguientes"><ChevronRight /></button></div>}
+    {pages > 1 && <div className="character-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Personajes anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Personajes siguientes"><ChevronRight /></button></div>}
     </div>
   </section>
 }
