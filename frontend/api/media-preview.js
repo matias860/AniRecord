@@ -28,7 +28,7 @@ export default async function handler(request) {
 
   const media = await fetchMedia(id)
   const title = media?.title?.english || media?.title?.romaji || `Serie #${id}`
-  const type = media?.type === 'ANIME' ? 'Anime' : media?.format === 'NOVEL' ? 'Light novel' : 'Manga'
+  const type = mediaTypeLabel(media)
   const status = statusLabel(media?.status)
   const description = plainText(media?.description) || `Consulta ${title} en tu biblioteca de Anime List.`
   const imageUrl = new URL('/api/og-image', siteOrigin)
@@ -97,6 +97,12 @@ function statusLabel(status) {
     RELEASING: 'En emisión', FINISHED: 'Finalizado', NOT_YET_RELEASED: 'Próximamente',
     CANCELLED: 'Cancelado', HIATUS: 'En pausa',
   }[status] || 'En Anime List'
+}
+
+function mediaTypeLabel(media) {
+  if (media?.format === 'MUSIC') return 'Music video'
+  if (media?.format === 'NOVEL') return 'Light novel'
+  return media?.type === 'ANIME' ? 'Anime' : 'Manga'
 }
 
 function plainText(value) {
