@@ -8,6 +8,7 @@ import com.animelist.backend.dto.anilist.AniListPersonFavorite;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.MediaRelationResponse;
 import com.animelist.backend.dto.anilist.MediaCharacterResponse;
+import com.animelist.backend.dto.anilist.MediaCreditResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
 import com.animelist.backend.dto.anilist.CharacterDetailResponse;
 import com.animelist.backend.dto.anilist.PersonMediaResponse;
@@ -96,6 +97,18 @@ public class AniListClient {
                 nextAiringEpisode { episode airingAt timeUntilAiring }
                 tags { name rank description category isMediaSpoiler }
                 volumes
+                staff(page: 1, perPage: 40, sort: [RELEVANCE, ID]) {
+                  edges {
+                    role
+                    node { id name { full } image { large } }
+                  }
+                }
+                studios {
+                  edges {
+                    isMain
+                    node { id name isAnimationStudio }
+                  }
+                }
                 relations {
                   edges {
                     relationType(version: 2)
@@ -345,6 +358,7 @@ public class AniListClient {
         );
     }
 
+    @Cacheable("mediaDetails")
     public AniListMediaResponse getMedia(Integer anilistId) {
         Map<String, Object> data = execute(DETAIL_QUERY, Map.of("id", anilistId));
         Object mediaData = data.get("Media");
@@ -752,11 +766,93 @@ public class AniListClient {
                 asInteger(media.get("seasonYear")),
                 asInteger(media.get("favourites")),
                 mapAiring(media.get("nextAiringEpisode")),
+                mapCredits(mediaType, media.get("staff"), media.get("studios")),
                 mapRelations(media.get("relations")),
                 mapCharacters(media.get("characters")),
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
                 mapTags(media.get("tags"))
         );
+    }
+
+    private List<MediaCreditResponse> mapCredits(MediaType mediaType, Object staffValue, Object studiosValue) {
+        List<Map<String, Object>> edges = asList(asMap(staffValue).get("edges")).stream()
+                .map(this::asMap)
+                .filter(edge -> !asMap(edge.get("node")).isEmpty())
+                .toList();
+        Map<Integer, CreditBuilder> selected = new LinkedHashMap<>();
+
+        if (mediaType == MediaType.ANIME) {
+            addFirstCredit(selected, edges, "Obra original", "Original Creator", "Original Story");
+            addFirstCredit(selected, edges, "Dirección", "Director", "Chief Director");
+            addFirstCredit(selected, edges, "Composición de serie", "Series Composition", "Head Writer", "Script", "Screenplay");
+            addFirstCredit(selected, edges, "Diseño de personajes", "Character Design");
+        } else {
+            boolean combined = addFirstCredit(selected, edges, "Historia y dibujo", "Story & Art");
+            if (!combined) {
+                boolean hasStory = addFirstCredit(selected, edges, "Historia", "Story", "Original Story");
+                boolean hasArt = addFirstCredit(selected, edges, "Dibujo", "Art");
+                if (!hasStory && !hasArt) addFirstCredit(selected, edges, "Historia y dibujo", "Original Creator");
+            }
+        }
+
+        List<MediaCreditResponse> credits = selected.values().stream().map(CreditBuilder::toResponse).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        if (mediaType == MediaType.ANIME) {
+            Map<String, Object> studioEdge = asList(asMap(studiosValue).get("edges")).stream()
+                    .map(this::asMap)
+                    .filter(edge -> Boolean.TRUE.equals(edge.get("isMain")))
+                    .findFirst()
+                    .orElseGet(() -> asList(asMap(studiosValue).get("edges")).stream()
+                            .map(this::asMap)
+                            .filter(edge -> Boolean.TRUE.equals(asMap(edge.get("node")).get("isAnimationStudio")))
+                            .findFirst().orElse(Map.of()));
+            Map<String, Object> studio = asMap(studioEdge.get("node"));
+            if (!studio.isEmpty()) {
+                credits.add(new MediaCreditResponse("STUDIO", asInteger(studio.get("id")),
+                        asString(studio.get("name")), null, List.of("Estudio de animación")));
+            }
+        }
+        return credits;
+    }
+
+    private boolean addFirstCredit(Map<Integer, CreditBuilder> selected, List<Map<String, Object>> edges,
+                                   String label, String... preferredRoles) {
+        for (String preferredRole : preferredRoles) {
+            Map<String, Object> match = edges.stream()
+                    .filter(edge -> preferredRole.equalsIgnoreCase(asString(edge.get("role"))))
+                    .findFirst().orElse(null);
+            if (match != null) {
+                addCredit(selected, match, label);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void addCredit(Map<Integer, CreditBuilder> selected, Map<String, Object> edge, String label) {
+        Map<String, Object> person = asMap(edge.get("node"));
+        Integer id = asInteger(person.get("id"));
+        String name = asString(asMap(person.get("name")).get("full"));
+        if (id == null || name == null || label == null) return;
+        CreditBuilder credit = selected.computeIfAbsent(id, ignored -> new CreditBuilder(
+                id, name, asString(asMap(person.get("image")).get("large"))));
+        if (!credit.roles.contains(label)) credit.roles.add(label);
+    }
+
+    private static final class CreditBuilder {
+        private final Integer id;
+        private final String name;
+        private final String image;
+        private final List<String> roles = new ArrayList<>();
+
+        private CreditBuilder(Integer id, String name, String image) {
+            this.id = id;
+            this.name = name;
+            this.image = image;
+        }
+
+        private MediaCreditResponse toResponse() {
+            return new MediaCreditResponse("PERSON", id, name, image, List.copyOf(roles));
+        }
     }
 
     private List<MediaTagResponse> mapTags(Object tagsValue) {

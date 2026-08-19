@@ -41,6 +41,7 @@ export default function App() {
         <Route path="media/:anilistId" element={<MediaDetailView />} />
         <Route path="personajes/:anilistId" element={<CharacterDetailView />} />
         <Route path="seiyuus/:anilistId" element={<StaffDetailView />} />
+        <Route path="profesionales/:anilistId" element={<StaffDetailView />} />
         <Route path="perfil" element={<RequireAuth authenticated={auth.authenticated}><Suspense fallback={<div className="page-state"><ProfileLoader message="Cargando perfil..." /></div>}><ProfileView /></Suspense></RequireAuth>} />
         <Route path="login" element={<LoginRoute authenticated={auth.authenticated} />} />
         <Route path="*" element={<Navigate to="/" replace />} />

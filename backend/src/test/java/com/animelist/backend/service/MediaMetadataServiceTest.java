@@ -107,6 +107,7 @@ class MediaMetadataServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null
         );
     }

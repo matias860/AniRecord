@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -62,6 +62,7 @@ export default function MediaDetailView() {
       {saved && <div className="detail-tracking-row"><SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
+      {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
       {!!detail.relations?.length && <section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations} /></section>}
@@ -69,6 +70,23 @@ export default function MediaDetailView() {
     </div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
+}
+
+function MediaCredits({ credits, mediaType }) {
+  return <section className="media-credits">
+    <div className="media-credits-heading"><span className="eyebrow">Créditos</span><h2>{mediaType === 'ANIME' ? 'Equipo creativo' : 'Autoría'}</h2></div>
+    <div className="media-credits-grid">
+      {credits.map((credit) => {
+        const content = <>{credit.creditType === 'STUDIO'
+          ? <span className="media-credit-studio"><Building2 /></span>
+          : credit.image ? <img src={credit.image} alt={credit.name} /> : <span className="media-credit-studio"><UserRound /></span>}
+          <span><strong>{credit.name}</strong><small>{credit.roles.join(' · ')}</small></span></>
+        return credit.creditType === 'PERSON'
+          ? <Link className="media-credit-card" key={`${credit.creditType}-${credit.anilistId}`} to={`/profesionales/${credit.anilistId}`}>{content}</Link>
+          : <article className="media-credit-card studio" key={`${credit.creditType}-${credit.anilistId}`}>{content}</article>
+      })}
+    </div>
+  </section>
 }
 
 function publicationLabel(media) {

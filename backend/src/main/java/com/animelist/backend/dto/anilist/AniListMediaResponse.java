@@ -24,6 +24,7 @@ public record AniListMediaResponse(
         Integer releaseYear,
         Integer favourites,
         AiringInfoResponse nextAiringEpisode,
+        List<MediaCreditResponse> credits,
         List<MediaRelationResponse> relations,
         List<MediaCharacterResponse> characters,
         List<String> genres,

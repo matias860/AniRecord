@@ -19,6 +19,8 @@ const synchronizationPaths = [
 
 function synchronizationRequired(sha) {
   try {
+    const subject = execFileSync('git', ['show', '-s', '--format=%s', sha], { encoding: 'utf8' }).trim()
+    if (subject.includes('[no-sync]')) return false
     const files = execFileSync('git', ['diff-tree', '--no-commit-id', '--name-only', '-r', sha], { encoding: 'utf8' })
       .trim()
       .split(/\r?\n/)
