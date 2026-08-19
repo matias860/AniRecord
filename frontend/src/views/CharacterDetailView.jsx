@@ -6,7 +6,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import PageState from '../components/common/PageState.jsx'
 import { fetchCharacter } from '../features/people/peopleSlice.js'
 import { addPersonFavorite, fetchPersonFavorites, removePersonFavorite } from '../features/favorites/favoritesSlice.js'
-import { cleanAniListText } from '../lib/media.js'
+import { parseAniListText } from '../lib/media.js'
 import { requestLogin } from '../lib/authNavigation.js'
 
 export default function CharacterDetailView() {
@@ -37,7 +37,7 @@ export function PersonPage({ person, personType, favorites, authenticated, eyebr
       ? dispatch(removePersonFavorite({ anilistId: person.anilistId, personType }))
       : dispatch(addPersonFavorite({ anilistId: person.anilistId, personType, name: person.name, nativeName: person.nativeName, imageUrl: person.image }))
   }
-  return <article className="person-detail"><button className="person-back-link" type="button" onClick={goBack}><ArrowLeft /> Volver</button><header className="person-hero"><img src={person.image} alt={person.name} /><div><span className="eyebrow">{eyebrow}</span><h1>{person.name}</h1>{person.nativeName && <p className="person-native">{person.nativeName}</p>}<div className="person-facts">{facts.filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}{favoriteEnabled && person.favourites != null && <span><Heart /> {person.favourites.toLocaleString('es-ES')} favoritos en AniList</span>}</div>{favoriteEnabled && <button className={`person-favorite-button ${favorite ? 'active' : ''}`} disabled={favorites.mutationStatus === 'loading'} onClick={toggleFavorite}><Heart /> {favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>}</div></header>{person.description && <section className="person-biography"><span className="eyebrow">Biografía</span><p>{cleanAniListText(person.description)}</p></section>}<div className="person-connections">{children}</div></article>
+  return <article className="person-detail"><button className="person-back-link" type="button" onClick={goBack}><ArrowLeft /> Volver</button><header className="person-hero"><img src={person.image} alt={person.name} /><div><span className="eyebrow">{eyebrow}</span><h1>{person.name}</h1>{person.nativeName && <p className="person-native">{person.nativeName}</p>}<div className="person-facts">{facts.filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}{favoriteEnabled && person.favourites != null && <span><Heart /> {person.favourites.toLocaleString('es-ES')} favoritos en AniList</span>}</div>{favoriteEnabled && <button className={`person-favorite-button ${favorite ? 'active' : ''}`} disabled={favorites.mutationStatus === 'loading'} onClick={toggleFavorite}><Heart /> {favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>}</div></header>{person.description && <section className="person-biography"><span className="eyebrow">Biografía</span><p>{parseAniListText(person.description).map((segment, index) => segment.href ? <a key={`${segment.href}-${index}`} href={segment.href} target="_blank" rel="noreferrer">{segment.text}</a> : segment.text)}</p></section>}<div className="person-connections">{children}</div></article>
 }
 
 export function MediaConnections({ items = [], expanded = false }) {

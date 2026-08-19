@@ -3,16 +3,32 @@ export const STATUS_LABELS = {
   COMPLETED: 'Completado', DROPPED: 'Abandonado',
 }
 
-export const cleanAniListText = (value) => (value ?? '')
+const normalizeAniListText = (value) => (value ?? '')
   .replace(/<br\s*\/?\s*>/gi, '\n')
   .replace(/<[^>]*>/g, '')
   .replace(/~!([\s\S]*?)!~/g, '$1')
-  .replace(/\[([^\]]+)]\([^\s)]+\)/g, '$1')
   .replace(/(__|\*\*)(.*?)\1/g, '$2')
   .replace(/^\s*[-*]\s+/gm, '• ')
   .replace(/[ \t]+\n/g, '\n')
   .replace(/\n{3,}/g, '\n\n')
   .trim()
+
+export const cleanAniListText = (value) => normalizeAniListText(value)
+  .replace(/\[([^\]]+)]\([^\s)]+\)/g, '$1')
+
+export const parseAniListText = (value) => {
+  const text = normalizeAniListText(value)
+  const linkPattern = /\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi
+  const segments = []
+  let cursor = 0
+  for (const match of text.matchAll(linkPattern)) {
+    if (match.index > cursor) segments.push({ text: text.slice(cursor, match.index) })
+    segments.push({ text: match[1], href: match[2] })
+    cursor = match.index + match[0].length
+  }
+  if (cursor < text.length) segments.push({ text: text.slice(cursor) })
+  return segments
+}
 
 export const cleanSynopsis = (value = '') => cleanAniListText(value).replace(/\s*\n\s*/g, ' ')
 
