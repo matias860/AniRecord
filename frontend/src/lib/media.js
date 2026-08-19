@@ -23,11 +23,29 @@ export const parseAniListText = (value) => {
   let cursor = 0
   for (const match of text.matchAll(linkPattern)) {
     if (match.index > cursor) segments.push({ text: text.slice(cursor, match.index) })
-    segments.push({ text: match[1], href: match[2] })
+    const href = match[2]
+    const to = aniListInternalPath(href)
+    segments.push(to ? { text: match[1], to } : { text: match[1], href })
     cursor = match.index + match[0].length
   }
   if (cursor < text.length) segments.push({ text: text.slice(cursor) })
   return segments
+}
+
+const aniListInternalPath = (href) => {
+  try {
+    const url = new URL(href)
+    if (!['anilist.co', 'www.anilist.co'].includes(url.hostname.toLowerCase())) return null
+    const [, resource, rawId] = url.pathname.split('/')
+    const id = Number(rawId)
+    if (!Number.isInteger(id) || id <= 0) return null
+    if (resource === 'character') return `/personajes/${id}`
+    if (resource === 'staff') return `/profesionales/${id}`
+    if (resource === 'anime' || resource === 'manga') return `/media/${id}`
+    return null
+  } catch {
+    return null
+  }
 }
 
 export const cleanSynopsis = (value = '') => cleanAniListText(value).replace(/\s*\n\s*/g, ' ')
