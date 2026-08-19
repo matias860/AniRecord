@@ -100,7 +100,7 @@ function MediaCredits({ credits, mediaType }) {
 }
 
 function publicationLabel(media) {
-  if (media.mediaFormat === 'MUSIC') return 'Video musical'
+  if (media.mediaFormat === 'MUSIC') return 'Music video'
   if (media.mediaType === 'ANIME') return 'Anime'
   if (media.mediaFormat === 'NOVEL') return 'Light novel'
   if (media.mediaFormat === 'ONE_SHOT') return 'One-shot'
@@ -112,7 +112,7 @@ function RelationCarousel({ relations }) {
   const pages = Math.ceil(relations.length / 5)
   const visible = relations.slice(page * 5, page * 5 + 5)
   return <div className="relation-carousel">
-    <AnimatePresence mode="wait" initial={false}><motion.div className="relation-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((relation) => <Link key={`${relation.anilistId}-${relation.relationType}`} to={`/media/${relation.anilistId}`}><img src={relation.coverImage} alt={`Portada de ${relation.title}`} /><span><small>{relationLabels[relation.relationType] || relation.relationType?.replaceAll('_', ' ')}{relation.format === 'MUSIC' ? ' · Video musical' : ''}</small>{relation.title}</span></Link>)}</motion.div></AnimatePresence>
+    <AnimatePresence mode="wait" initial={false}><motion.div className="relation-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((relation) => <Link key={`${relation.anilistId}-${relation.relationType}`} to={`/media/${relation.anilistId}`}><img src={relation.coverImage} alt={`Portada de ${relation.title}`} /><span><small>{relationLabels[relation.relationType] || relation.relationType?.replaceAll('_', ' ')}{relation.format === 'MUSIC' ? ' · Music video' : ''}</small>{relation.title}</span></Link>)}</motion.div></AnimatePresence>
     {pages > 1 && <div className="relation-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Relaciones anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Relaciones siguientes"><ChevronRight /></button></div>}
   </div>
 }
