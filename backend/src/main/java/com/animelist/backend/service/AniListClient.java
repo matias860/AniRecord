@@ -85,6 +85,8 @@ public class AniListClient {
                 title { romaji english native }
                 coverImage { extraLarge large }
                 bannerImage
+                externalLinks { site url type isDisabled }
+                trailer { id site }
                 description
                 genres
                 episodes
@@ -221,8 +223,6 @@ public class AniListClient {
                 title { romaji english native }
                 coverImage { extraLarge large }
                 bannerImage
-                externalLinks { site url type isDisabled }
-                trailer { id site }
                 description
                 genres
                 tags { name rank description category isMediaSpoiler }
