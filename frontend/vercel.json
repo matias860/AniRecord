@@ -35,6 +35,17 @@
       "destination": "/api/person-preview?id=:id&kind=staff"
     },
     {
+      "source": "/profesionales/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Discordbot|discordbot|Twitterbot|facebookexternalhit|Facebot|WhatsApp|TelegramBot|Slackbot|LinkedInBot).*"
+        }
+      ],
+      "destination": "/api/person-preview?id=:id&kind=professional"
+    },
+    {
       "source": "/api/:path*",
       "destination": "https://p01--anime-list--244mm2wyvsvc.code.run/api/:path*"
     },

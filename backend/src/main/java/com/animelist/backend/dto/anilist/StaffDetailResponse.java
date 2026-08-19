@@ -15,6 +15,7 @@ public record StaffDetailResponse(
         String birthday,
         String homeTown,
         Integer favourites,
-        List<StaffCharacterResponse> characters
+        List<StaffCharacterResponse> characters,
+        List<PersonMediaResponse> works
 ) {
 }

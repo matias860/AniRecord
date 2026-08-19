@@ -24,6 +24,10 @@ const STAFF_QUERY = `
       description
       age
       gender
+      primaryOccupations
+      staffMedia(page: 1, perPage: 1, sort: POPULARITY_DESC) {
+        edges { staffRole node { type format title { english romaji } } }
+      }
     }
   }
 `
@@ -31,14 +35,17 @@ const STAFF_QUERY = `
 export default async function handler(request) {
   const url = new URL(request.url)
   const id = Number(url.searchParams.get('id'))
-  const kind = url.searchParams.get('kind') === 'staff' ? 'staff' : 'character'
+  const requestedKind = url.searchParams.get('kind')
+  const kind = requestedKind === 'staff' || requestedKind === 'professional' ? requestedKind : 'character'
   if (!Number.isInteger(id) || id <= 0) return new Response('Persona no válida', { status: 400 })
 
   const person = await fetchPerson(id, kind)
-  const isStaff = kind === 'staff'
-  const route = isStaff ? 'seiyuus' : 'personajes'
-  const label = isStaff ? 'Seiyū' : 'Personaje'
-  const media = isStaff ? null : person?.media?.nodes?.[0]
+  const isStaff = kind === 'staff' || kind === 'professional'
+  const isProfessional = kind === 'professional'
+  const route = isProfessional ? 'profesionales' : isStaff ? 'seiyuus' : 'personajes'
+  const label = isProfessional ? 'Profesional' : isStaff ? 'Seiyū' : 'Personaje'
+  const professionalMedia = person?.staffMedia?.edges?.[0]
+  const media = isProfessional ? professionalMedia?.node : isStaff ? null : person?.media?.nodes?.[0]
   const name = person?.name?.full || `${label} #${id}`
   const origin = media?.title?.english || media?.title?.romaji || ''
   const originType = mediaType(media)
@@ -48,17 +55,19 @@ export default async function handler(request) {
   const imageUrl = new URL('/api/og-person-image', url.origin)
   imageUrl.searchParams.set('name', name)
   imageUrl.searchParams.set('kind', label)
-  if (isStaff) {
+  if (kind === 'staff') {
     if (person?.age) imageUrl.searchParams.set('age', String(person.age))
     if (person?.gender) imageUrl.searchParams.set('gender', genderLabel(person.gender))
   } else {
     if (origin) imageUrl.searchParams.set('origin', origin)
-    if (originType) imageUrl.searchParams.set('originType', originType)
+    if (isProfessional && professionalMedia?.staffRole) imageUrl.searchParams.set('originType', professionalRoleLabel(professionalMedia.staffRole))
+    else if (originType) imageUrl.searchParams.set('originType', originType)
   }
   if (person?.image?.large) imageUrl.searchParams.set('image', person.image.large)
 
-  const detailText = isStaff
+  const detailText = kind === 'staff'
     ? staffDetails(person)
+    : isProfessional ? professionalDetails(person, professionalMedia, origin)
     : origin ? `De ${origin}${originType ? ` · ${originType}` : ''}` : label
   const html = `<!doctype html>
 <html lang="es">
@@ -99,7 +108,7 @@ export default async function handler(request) {
 
 async function fetchPerson(id, kind) {
   try {
-    const query = kind === 'staff' ? STAFF_QUERY : CHARACTER_QUERY
+    const query = kind === 'character' ? CHARACTER_QUERY : STAFF_QUERY
     const response = await fetch(ANILIST_ENDPOINT, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
@@ -108,7 +117,7 @@ async function fetchPerson(id, kind) {
     })
     if (!response.ok) return null
     const data = (await response.json())?.data
-    return kind === 'staff' ? data?.Staff : data?.Character
+    return kind === 'character' ? data?.Character : data?.Staff
   } catch {
     return null
   }
@@ -125,6 +134,20 @@ function staffDetails(person) {
   if (person?.age) details.push(`${person.age} años`)
   if (person?.gender) details.push(genderLabel(person.gender))
   return details.join(' · ') || 'Seiyū en Anime List'
+}
+
+function professionalDetails(person, mediaEdge, origin) {
+  const occupation = person?.primaryOccupations?.[0]
+  return [professionalRoleLabel(occupation), professionalRoleLabel(mediaEdge?.staffRole), origin].filter(Boolean).join(' · ') || 'Profesional en Anime List'
+}
+
+function professionalRoleLabel(role) {
+  return {
+    Director: 'Dirección', Writer: 'Guion', Illustrator: 'Ilustración', Mangaka: 'Mangaka',
+    'Original Creator': 'Obra original', 'Original Story': 'Historia original',
+    'Series Composition': 'Composición de serie', 'Character Design': 'Diseño de personajes',
+    Story: 'Historia', Art: 'Dibujo', 'Story & Art': 'Historia y dibujo',
+  }[role] || role || ''
 }
 
 function genderLabel(gender) {

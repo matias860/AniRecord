@@ -24,7 +24,7 @@ export default function CharacterDetailView() {
   </PersonPage>
 }
 
-export function PersonPage({ person, personType, favorites, authenticated, eyebrow, facts, children }) {
+export function PersonPage({ person, personType, favorites, authenticated, eyebrow, facts, favoriteEnabled = true, children }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,9 +36,19 @@ export function PersonPage({ person, personType, favorites, authenticated, eyebr
       ? dispatch(removePersonFavorite({ anilistId: person.anilistId, personType }))
       : dispatch(addPersonFavorite({ anilistId: person.anilistId, personType, name: person.name, nativeName: person.nativeName, imageUrl: person.image }))
   }
-  return <article className="person-detail"><button className="person-back-link" type="button" onClick={goBack}><ArrowLeft /> Volver</button><header className="person-hero"><img src={person.image} alt={person.name} /><div><span className="eyebrow">{eyebrow}</span><h1>{person.name}</h1>{person.nativeName && <p className="person-native">{person.nativeName}</p>}<div className="person-facts">{facts.filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}{person.favourites != null && <span><Heart /> {person.favourites.toLocaleString('es-ES')} favoritos en AniList</span>}</div><button className={`person-favorite-button ${favorite ? 'active' : ''}`} disabled={favorites.mutationStatus === 'loading'} onClick={toggleFavorite}><Heart /> {favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button></div></header>{person.description && <section className="person-biography"><span className="eyebrow">Biografía</span><p>{cleanAniListText(person.description)}</p></section>}<div className="person-connections">{children}</div></article>
+  return <article className="person-detail"><button className="person-back-link" type="button" onClick={goBack}><ArrowLeft /> Volver</button><header className="person-hero"><img src={person.image} alt={person.name} /><div><span className="eyebrow">{eyebrow}</span><h1>{person.name}</h1>{person.nativeName && <p className="person-native">{person.nativeName}</p>}<div className="person-facts">{facts.filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}{favoriteEnabled && person.favourites != null && <span><Heart /> {person.favourites.toLocaleString('es-ES')} favoritos en AniList</span>}</div>{favoriteEnabled && <button className={`person-favorite-button ${favorite ? 'active' : ''}`} disabled={favorites.mutationStatus === 'loading'} onClick={toggleFavorite}><Heart /> {favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>}</div></header>{person.description && <section className="person-biography"><span className="eyebrow">Biografía</span><p>{cleanAniListText(person.description)}</p></section>}<div className="person-connections">{children}</div></article>
 }
 
 export function MediaConnections({ items = [] }) {
-  return !!items.length && <section className="person-section"><span className="eyebrow">Conexiones</span><h2>Obras</h2><div className="person-media-grid">{items.map((media) => <Link key={`${media.anilistId}-${media.role}`} to={`/media/${media.anilistId}`}><img src={media.coverImage} alt={`Portada de ${media.title}`} /><span><strong>{media.title}</strong><small>{media.role === 'MAIN' ? 'Principal' : 'Secundario'}</small></span></Link>)}</div></section>
+  return !!items.length && <section className="person-section"><span className="eyebrow">Conexiones</span><h2>Obras</h2><div className="person-media-grid">{items.map((media) => <Link key={`${media.anilistId}-${media.role}`} to={`/media/${media.anilistId}`}><img src={media.coverImage} alt={`Portada de ${media.title}`} /><span><strong>{media.title}</strong><small>{roleLabel(media.role)}</small></span></Link>)}</div></section>
+}
+
+function roleLabel(role) {
+  if (role === 'MAIN') return 'Principal'
+  if (role === 'SUPPORTING') return 'Secundario'
+  return {
+    Director: 'Dirección', 'Original Creator': 'Obra original', 'Original Story': 'Historia original',
+    'Series Composition': 'Composición de serie', 'Character Design': 'Diseño de personajes',
+    Story: 'Historia', Art: 'Dibujo', 'Story & Art': 'Historia y dibujo',
+  }[role] || role?.replaceAll('_', ' ') || 'Participación'
 }

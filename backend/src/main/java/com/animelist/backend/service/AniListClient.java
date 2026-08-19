@@ -277,6 +277,12 @@ public class AniListClient {
                 id name { full native } image { large } description languageV2
                 primaryOccupations gender age dateOfBirth { year month day }
                 homeTown favourites
+                staffMedia(page: 1, perPage: 50, sort: [POPULARITY_DESC]) {
+                  edges {
+                    staffRole
+                    node { id type title { english romaji native } coverImage { large } }
+                  }
+                }
                 characters(page: 1, perPage: 30, sort: [FAVOURITES_DESC]) {
                   edges {
                     role
@@ -390,6 +396,7 @@ public class AniListClient {
                 asInteger(character.get("favourites")), voiceActors, media);
     }
 
+    @Cacheable("staffDetails")
     public StaffDetailResponse getStaff(Integer anilistId) {
         Map<String, Object> staff = asMap(execute(STAFF_DETAIL_QUERY, Map.of("id", anilistId)).get("Staff"));
         if (staff.isEmpty()) throw new AniListClientException("AniList no encontró al profesional solicitado");
@@ -399,12 +406,21 @@ public class AniListClient {
             return new StaffCharacterResponse(asInteger(node.get("id")), asString(asMap(node.get("name")).get("full")),
                     asString(asMap(node.get("image")).get("large")), asString(edge.get("role")), media);
         }).toList();
+        List<PersonMediaResponse> works = new ArrayList<>(asList(asMap(staff.get("staffMedia")).get("edges")).stream()
+                .map(this::asMap)
+                .filter(edge -> asInteger(asMap(edge.get("node")).get("id")) != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        edge -> asInteger(asMap(edge.get("node")).get("id")),
+                        edge -> mapPersonMedia(asMap(edge.get("node")), asString(edge.get("staffRole"))),
+                        (first, ignored) -> first,
+                        LinkedHashMap::new))
+                .values()).stream().limit(30).toList();
         Map<String, Object> name = asMap(staff.get("name"));
         return new StaffDetailResponse(asInteger(staff.get("id")), asString(name.get("full")), asString(name.get("native")),
                 asString(asMap(staff.get("image")).get("large")), asString(staff.get("description")), asString(staff.get("languageV2")),
                 asList(staff.get("primaryOccupations")).stream().map(String::valueOf).toList(), asString(staff.get("gender")),
                 asInteger(staff.get("age")), formatFuzzyDate(staff.get("dateOfBirth")), asString(staff.get("homeTown")),
-                asInteger(staff.get("favourites")), characters);
+                asInteger(staff.get("favourites")), characters, works);
     }
 
     public List<AniListMediaResponse> getAiringMedia(List<Integer> anilistIds) {
