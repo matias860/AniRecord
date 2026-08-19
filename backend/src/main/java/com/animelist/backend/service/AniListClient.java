@@ -221,6 +221,8 @@ public class AniListClient {
                 title { romaji english native }
                 coverImage { extraLarge large }
                 bannerImage
+                externalLinks { site url type isDisabled }
+                trailer { id site }
                 description
                 genres
                 tags { name rank description category isMediaSpoiler }
@@ -773,6 +775,7 @@ public class AniListClient {
                 asString(titles.get("romaji")),
                 cover,
                 asString(media.get("bannerImage")),
+                resolveMusicVideoUrl(mediaFormat, media.get("externalLinks"), media.get("trailer")),
                 asString(media.get("description")),
                 totalUnits,
                 mapDate(media.get("startDate")),
@@ -788,6 +791,25 @@ public class AniListClient {
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
                 mapTags(media.get("tags"))
         );
+    }
+
+    private String resolveMusicVideoUrl(String mediaFormat, Object externalLinksValue, Object trailerValue) {
+        if (!"MUSIC".equals(mediaFormat)) return null;
+        String streamingUrl = asList(externalLinksValue).stream()
+                .map(this::asMap)
+                .filter(link -> !Boolean.TRUE.equals(link.get("isDisabled")))
+                .filter(link -> "STREAMING".equalsIgnoreCase(asString(link.get("type"))))
+                .filter(link -> "YouTube".equalsIgnoreCase(asString(link.get("site"))))
+                .map(link -> asString(link.get("url")))
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+        if (streamingUrl != null) return streamingUrl;
+        Map<String, Object> trailer = asMap(trailerValue);
+        String trailerId = asString(trailer.get("id"));
+        return trailerId != null && "youtube".equalsIgnoreCase(asString(trailer.get("site")))
+                ? "https://www.youtube.com/watch?v=" + trailerId
+                : null;
     }
 
     private List<MediaCreditResponse> mapCredits(MediaType mediaType, Object staffValue, Object studiosValue) {

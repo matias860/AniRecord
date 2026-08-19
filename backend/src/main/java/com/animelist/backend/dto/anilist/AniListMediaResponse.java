@@ -15,6 +15,7 @@ public record AniListMediaResponse(
         String romajiTitle,
         String coverImage,
         String bannerImage,
+        String musicVideoUrl,
         String synopsis,
         Integer totalUnits,
         LocalDate releaseStartDate,

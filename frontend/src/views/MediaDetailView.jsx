@@ -72,6 +72,7 @@ export default function MediaDetailView() {
       {saved && <div className="detail-tracking-row"><SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
+      {detail.musicVideoUrl && <MusicVideoPlayer url={detail.musicVideoUrl} title={detail.title} />}
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
@@ -80,6 +81,23 @@ export default function MediaDetailView() {
     </div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
+}
+
+function MusicVideoPlayer({ url, title }) {
+  const embedUrl = youtubeEmbedUrl(url)
+  if (!embedUrl) return null
+  return <section className="music-video-player"><div><span className="eyebrow">Video oficial</span><h2>Music video</h2></div><div className="music-video-frame"><iframe src={embedUrl} title={`Video musical de ${title}`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div></section>
+}
+
+function youtubeEmbedUrl(value) {
+  try {
+    const url = new URL(value)
+    const host = url.hostname.replace(/^www\./, '')
+    const id = host === 'youtu.be' ? url.pathname.split('/').filter(Boolean)[0]
+      : ['youtube.com', 'm.youtube.com'].includes(host) ? url.searchParams.get('v') || url.pathname.match(/^\/(?:embed|shorts)\/([^/?]+)/)?.[1]
+        : null
+    return id && /^[\w-]{6,}$/.test(id) ? `https://www.youtube-nocookie.com/embed/${id}` : null
+  } catch { return null }
 }
 
 function MediaCredits({ credits, mediaType }) {

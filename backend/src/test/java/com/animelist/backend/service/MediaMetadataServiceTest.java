@@ -96,6 +96,7 @@ class MediaMetadataServiceTest {
                 null,
                 null,
                 null,
+                null,
                 12,
                 releaseDate,
                 null,
