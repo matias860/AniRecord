@@ -1,5 +1,5 @@
-import { useEffect } from 'react'
-import { ArrowLeft, Heart, Mic2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Mic2 } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import PageState from '../components/common/PageState.jsx'
@@ -40,7 +40,12 @@ export function PersonPage({ person, personType, favorites, authenticated, eyebr
 }
 
 export function MediaConnections({ items = [], expanded = false }) {
-  return !!items.length && <section className={`person-section${expanded ? ' person-section--expanded' : ''}`}><span className="eyebrow">Conexiones</span><h2>Obras</h2><div className="person-media-grid">{items.map((media) => <Link key={`${media.anilistId}-${media.role}`} to={`/media/${media.anilistId}`}><img src={media.coverImage} alt={`Portada de ${media.title}`} /><span><strong>{media.title}</strong><small>{roleLabel(media.role)}</small></span></Link>)}</div></section>
+  const pageSize = expanded ? 12 : items.length
+  const pageCount = Math.max(1, Math.ceil(items.length / pageSize))
+  const [page, setPage] = useState(0)
+  const currentPage = Math.min(page, pageCount - 1)
+  const visibleItems = expanded ? items.slice(currentPage * pageSize, currentPage * pageSize + pageSize) : items
+  return !!items.length && <section className={`person-section${expanded ? ' person-section--expanded' : ''}`}><span className="eyebrow">Conexiones</span><div className="person-media-heading"><h2>Obras</h2>{expanded && pageCount > 1 && <span>{currentPage + 1} / {pageCount}</span>}</div><div className="person-media-grid">{visibleItems.map((media) => <Link key={`${media.anilistId}-${media.role}`} to={`/media/${media.anilistId}`}><img src={media.coverImage} alt={`Portada de ${media.title}`} /><span><strong>{media.title}</strong><small>{roleLabel(media.role)}</small></span></Link>)}</div>{expanded && pageCount > 1 && <div className="person-media-controls"><button type="button" disabled={currentPage === 0} onClick={() => setPage((value) => Math.max(0, value - 1))} aria-label="Obras anteriores"><ChevronLeft /></button><button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage((value) => Math.min(pageCount - 1, value + 1))} aria-label="Obras siguientes"><ChevronRight /></button></div>}</section>
 }
 
 function roleLabel(role) {
