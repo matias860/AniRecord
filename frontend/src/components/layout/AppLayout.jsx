@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { BookOpen, Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
@@ -16,10 +16,12 @@ const links = [
 
 export default function AppLayout() {
   const [hovered, setHovered] = useState(null)
+  const { pathname } = useLocation()
   const dispatch = useDispatch()
   const profile = useSelector((state) => state.profile)
   const accountType = useSelector((state) => state.auth.accountType)
   const authenticated = useSelector((state) => state.auth.authenticated)
+  useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) }, [pathname])
   const signOut = async () => { await dispatch(logout()); window.localStorage.removeItem('persist:anime-list'); window.localStorage.removeItem('persist:anime-list-v2'); window.location.replace('/') }
   useEffect(() => { if (authenticated && profile.status === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profile.status])
   const themeStyle = {
