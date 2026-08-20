@@ -7,8 +7,6 @@ import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
 import { logout } from '../../features/auth/authSlice.js'
-import { SANJI_PRANK_USER_ID } from '../../config/temporaryFeatures.js'
-import SanjiPrank from '../common/SanjiPrank.jsx'
 
 const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
@@ -24,7 +22,6 @@ export default function AppLayout() {
   const profile = useSelector((state) => state.profile)
   const accountType = useSelector((state) => state.auth.accountType)
   const authenticated = useSelector((state) => state.auth.authenticated)
-  const userId = useSelector((state) => state.auth.userId)
   useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) }, [pathname])
   const signOut = async () => { await dispatch(logout()); window.localStorage.removeItem('persist:anime-list'); window.localStorage.removeItem('persist:anime-list-v2'); window.location.replace('/') }
   useEffect(() => { if (authenticated && profile.status === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profile.status])
@@ -67,7 +64,6 @@ export default function AppLayout() {
         </div>
       </header>
       <main className="page"><AnimatePresence mode="wait" initial={false}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: .22, ease: 'easeOut' }}>{outlet}</motion.div></AnimatePresence></main>
-      {authenticated && Number(userId) === SANJI_PRANK_USER_ID && <SanjiPrank userId={userId} />}
       <ToastViewport />
     </div>
   )
