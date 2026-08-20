@@ -54,8 +54,8 @@ export default function SanjiPrank() {
               <img src="/pranks/sanji-mantecas.jpg" alt="Vinsmoke Sanji" />
               <div className="sanji-prank-shade" />
               <div className="sanji-prank-copy">
-                <span>Recomendación prioritaria</span>
-                <h2 id="sanji-prank-title">Sanii besto mugi</h2>
+                <span>Chupala mantetas</span>
+                <h2 id="sanji-prank-title">Sanji besto mugi</h2>
               </div>
               <button className="sanji-prank-close" type="button" onClick={() => setOpen(false)} aria-label="Cerrar"><X /></button>
             </motion.section>
