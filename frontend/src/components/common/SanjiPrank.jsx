@@ -2,8 +2,16 @@ import { useEffect, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { X } from 'lucide-react'
 
-export default function SanjiPrank() {
+export default function SanjiPrank({ userId }) {
   const [open, setOpen] = useState(false)
+  const seenKey = `anime-list:sanji-prank-seen:v1:${userId}`
+  const [seen, setSeen] = useState(() => window.localStorage.getItem(seenKey) === 'true')
+
+  const reveal = () => {
+    window.localStorage.setItem(seenKey, 'true')
+    setSeen(true)
+    setOpen(true)
+  }
 
   useEffect(() => {
     if (!open) return undefined
@@ -15,11 +23,11 @@ export default function SanjiPrank() {
   return (
     <>
       <AnimatePresence>
-        {!open && (
+        {!open && !seen && (
           <motion.button
             className="sanji-prank-trigger"
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={reveal}
             initial={{ opacity: 0, scale: .82, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: .88 }}

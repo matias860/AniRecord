@@ -67,7 +67,7 @@ export default function AppLayout() {
         </div>
       </header>
       <main className="page"><AnimatePresence mode="wait" initial={false}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: .22, ease: 'easeOut' }}>{outlet}</motion.div></AnimatePresence></main>
-      {authenticated && Number(userId) === SANJI_PRANK_USER_ID && <SanjiPrank />}
+      {authenticated && Number(userId) === SANJI_PRANK_USER_ID && <SanjiPrank userId={userId} />}
       <ToastViewport />
     </div>
   )
