@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { BookOpen, Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
@@ -17,6 +17,7 @@ const links = [
 export default function AppLayout() {
   const [hovered, setHovered] = useState(null)
   const { pathname } = useLocation()
+  const outlet = useOutlet()
   const dispatch = useDispatch()
   const profile = useSelector((state) => state.profile)
   const accountType = useSelector((state) => state.auth.accountType)
@@ -62,7 +63,7 @@ export default function AppLayout() {
           {authenticated && <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>}
         </div>
       </header>
-      <main className="page"><Outlet /></main>
+      <main className="page"><AnimatePresence mode="wait" initial={false}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: .22, ease: 'easeOut' }}>{outlet}</motion.div></AnimatePresence></main>
       <ToastViewport />
     </div>
   )
