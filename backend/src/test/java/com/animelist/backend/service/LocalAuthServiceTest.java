@@ -10,6 +10,7 @@ import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.repository.AppSessionRepository;
 import com.animelist.backend.repository.AppUserRepository;
+import com.animelist.backend.security.TokenSecurity;
 import org.junit.jupiter.api.Test;
 
 class LocalAuthServiceTest {
@@ -30,6 +31,7 @@ class LocalAuthServiceTest {
         assertFalse(result.status().needsImport());
         verify(users).save(argThat(user -> user.getAccountType() == AccountType.LOCAL
                 && user.getAnilistUserId() == null && !user.getPasswordHash().equals("contraseña-segura")));
-        verify(sessions).save(any(AppSession.class));
+        verify(sessions).save(argThat(session -> session.getToken().equals(TokenSecurity.digest(result.sessionToken()))
+                && !session.getToken().equals(result.sessionToken())));
     }
 }

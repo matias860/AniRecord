@@ -6,6 +6,7 @@ const apiClient = axios.create({
   // take well over a minute. Keep the first request alive while it wakes up.
   timeout: 180000,
   withCredentials: true,
+  headers: { 'X-Anime-List-Request': '1' },
 })
 
 apiClient.interceptors.response.use(
@@ -23,6 +24,7 @@ apiClient.interceptors.response.use(
     const wrappedError = new Error(message, { cause: error })
     wrappedError.status = error.response?.status
     wrappedError.code = error.code
+    wrappedError.response = error.response
     return Promise.reject(wrappedError)
   },
 )

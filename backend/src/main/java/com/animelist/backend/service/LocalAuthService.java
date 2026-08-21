@@ -6,9 +6,9 @@ import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.exception.UnauthorizedException;
 import com.animelist.backend.repository.*;
+import com.animelist.backend.security.TokenSecurity;
 import java.time.LocalDateTime;
 import java.util.Locale;
-import java.util.UUID;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,12 +56,14 @@ public class LocalAuthService {
     }
 
     private String newSession(AppUser user) {
+        sessions.deleteByExpiresAtBefore(LocalDateTime.now());
+        String rawToken = TokenSecurity.randomToken();
         AppSession session = new AppSession();
-        session.setToken(UUID.randomUUID().toString().replace("-", ""));
+        session.setToken(TokenSecurity.digest(rawToken));
         session.setUser(user);
         session.setExpiresAt(LocalDateTime.now().plusDays(30));
         sessions.save(session);
-        return session.getToken();
+        return rawToken;
     }
 
     private LoginResult result(AppUser user, String token) {

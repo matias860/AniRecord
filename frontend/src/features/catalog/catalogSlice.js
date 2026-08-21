@@ -21,17 +21,17 @@ export const fetchCatalog = createAsyncThunk(
   },
 )
 
-export const fetchCatalogGenres = createAsyncThunk('catalog/genres', async (_, { rejectWithValue }) => {
+export const fetchCatalogGenres = createAsyncThunk('catalog/genres', async (_, { rejectWithValue, signal }) => {
   if (isAniListTemporarilyUnavailable()) return rejectWithValue(cachedAniListError())
   try {
-    const { data } = await apiClient.get('/anilist/catalog/genres')
+    const { data } = await apiClient.get('/anilist/catalog/genres', { signal })
     clearAniListOutage()
     return data
   } catch (error) {
     if (error.status === 502) rememberAniListOutage()
     return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
   }
-})
+}, { condition: (_, { getState }) => !['loading', 'succeeded'].includes(getState().catalog.genresStatus) })
 
 const catalogSlice = createSlice({
   name: 'catalog',

@@ -11,6 +11,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
 class ProfileAssetServiceTest {
+    @Test void publicAssetsDoNotRequireAViewerSession() {
+        UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        var asset = new com.animelist.backend.entity.UserProfileAsset();
+        asset.setContentType("image/png");
+        asset.setData(new byte[] {1, 2, 3});
+        when(repository.findByUserIdAndAssetType(8L, ProfileAssetType.AVATAR)).thenReturn(Optional.of(asset));
+
+        new ProfileAssetService(repository, currentUser).getForUser(8L, ProfileAssetType.AVATAR);
+
+        verify(currentUser, never()).require();
+    }
+
     @Test void acceptsARealPngForLocalAccounts() {
         UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
         CurrentUserService currentUser = mock(CurrentUserService.class);

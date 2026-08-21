@@ -54,7 +54,6 @@ public class ProfileAssetService {
 
     @Transactional(readOnly = true)
     public AssetData getForUser(Long userId, ProfileAssetType type) {
-        currentUser.require();
         UserProfileAsset asset = repository.findByUserIdAndAssetType(userId, type)
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la imagen"));
         return new AssetData(asset.getContentType(), asset.getData());

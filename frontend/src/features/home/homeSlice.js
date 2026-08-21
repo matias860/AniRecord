@@ -2,22 +2,22 @@ import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
 import { cachedAniListError, clearAniListOutage, isAniListTemporarilyUnavailable, rememberAniListOutage } from '../../api/anilistAvailability.js'
 
-export const fetchAiringSchedule = createAsyncThunk('home/airing', async (_, { rejectWithValue }) => {
+export const fetchAiringSchedule = createAsyncThunk('home/airing', async (_, { rejectWithValue, signal }) => {
   if (isAniListTemporarilyUnavailable()) return rejectWithValue(cachedAniListError())
   try {
-    const { data } = await apiClient.get('/library/airing')
+    const { data } = await apiClient.get('/library/airing', { signal })
     clearAniListOutage()
     return data
   } catch (error) {
     if (error.status === 502) rememberAniListOutage()
     return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
   }
-})
+}, { condition: (_, { getState }) => getState().home.status !== 'loading' })
 
 export const fetchSeason = createAsyncThunk(
   'home/season',
-  async ({ season, year }) => {
-    const { data } = await apiClient.get('/anilist/season', { params: { season, year, limit: 50 } })
+  async ({ season, year }, { signal }) => {
+    const { data } = await apiClient.get('/anilist/season', { params: { season, year, limit: 50 }, signal })
     return { entries: data, season, year }
   },
   {
@@ -42,9 +42,10 @@ const homeSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchAiringSchedule.pending, (state) => { state.status = 'loading'; state.error = null; state.unavailable = false })
-      .addCase(fetchAiringSchedule.fulfilled, (state, action) => { state.status = 'succeeded'; state.airing = action.payload; state.unavailable = false })
+      .addCase(fetchAiringSchedule.pending, (state, action) => { state.status = 'loading'; state.error = null; state.unavailable = false; state.airingRequestId = action.meta.requestId })
+      .addCase(fetchAiringSchedule.fulfilled, (state, action) => { if (state.airingRequestId === action.meta.requestId) { state.status = 'succeeded'; state.airing = action.payload; state.unavailable = false } })
       .addCase(fetchAiringSchedule.rejected, (state, action) => {
+        if (state.airingRequestId !== action.meta.requestId || action.meta.aborted) return
         state.status = 'failed'; state.error = action.payload?.message || action.error.message; state.unavailable = Boolean(action.payload?.unavailable)
       })
       .addCase(fetchSeason.pending, (state, action) => {
@@ -60,8 +61,9 @@ const homeSlice = createSlice({
         state.seasonRequestKey = null
       })
       .addCase(fetchSeason.rejected, (state, action) => {
+        if (state.seasonRequestKey !== `${action.meta.arg.season}-${action.meta.arg.year}` || action.meta.aborted) return
         state.seasonStatus = 'failed'
-        state.seasonRequestKey = `${action.meta.arg.season}-${action.meta.arg.year}`
+        state.seasonRequestKey = null
       })
   },
 })

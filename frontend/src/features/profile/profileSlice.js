@@ -9,10 +9,10 @@ const defaults = {
 }
 const editableKeys = ['displayName', 'bio', 'avatarUrl', 'bannerUrl', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled']
 
-export const fetchProfile = createAsyncThunk('profile/fetch', async () => {
-  const { data } = await apiClient.get('/profile')
+export const fetchProfile = createAsyncThunk('profile/fetch', async (_, { signal }) => {
+  const { data } = await apiClient.get('/profile', { signal })
   return data
-})
+}, { condition: (_, { getState }) => !['loading', 'succeeded'].includes(getState().profile.status) })
 
 export const saveProfile = createAsyncThunk('profile/save', async (_, { getState }) => {
   const current = getState().profile

@@ -5,12 +5,12 @@ import com.animelist.backend.entity.*;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.repository.*;
+import com.animelist.backend.security.SecretCipher;
+import com.animelist.backend.security.TokenSecurity;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -22,18 +22,22 @@ public class AniListAuthService {
     private final AniListConnectionRepository connections;
     private final AppUserRepository users;
     private final AppSessionRepository sessions;
+    private final OAuthStateRepository oauthStates;
     private final CurrentUserService currentUser;
     private final RestClient client = RestClient.create();
     private final String clientId, clientSecret, redirectUri;
-    private final Map<String, LocalDateTime> pending = new ConcurrentHashMap<>();
+    private final SecretCipher tokenCipher;
 
     public AniListAuthService(AniListConnectionRepository connections, AppUserRepository users,
-            AppSessionRepository sessions, CurrentUserService currentUser,
+            AppSessionRepository sessions, OAuthStateRepository oauthStates, CurrentUserService currentUser,
             @Value("${anilist.oauth.client-id:}") String clientId,
             @Value("${anilist.oauth.client-secret:}") String clientSecret,
-            @Value("${anilist.oauth.redirect-uri:http://localhost:8080/api/auth/callback}") String redirectUri) {
-        this.connections=connections; this.users=users; this.sessions=sessions; this.currentUser=currentUser;
+            @Value("${anilist.oauth.redirect-uri:http://localhost:8080/api/auth/callback}") String redirectUri,
+            @Value("${app.token-encryption-key:}") String tokenEncryptionKey) {
+        this.connections=connections; this.users=users; this.sessions=sessions; this.oauthStates=oauthStates; this.currentUser=currentUser;
         this.clientId=clientId; this.clientSecret=clientSecret; this.redirectUri=redirectUri;
+        String encryptionSecret = tokenEncryptionKey.isBlank() ? clientSecret : tokenEncryptionKey;
+        this.tokenCipher = new SecretCipher(encryptionSecret.isBlank() ? "local-development-only" : encryptionSecret);
     }
 
     public AuthStatusResponse status() { return currentUser.optional()
@@ -41,17 +45,23 @@ public class AniListAuthService {
                     u.getAvatarUrl(), u.getAccountType().name(), u.getAccountType() == AccountType.ANILIST && u.getLastAniListSyncAt()==null))
             .orElseGet(() -> new AuthStatusResponse(false, null, null, null, null, false)); }
 
+    @Transactional
     public String authorizationUrl() {
         if (clientId.isBlank() || clientSecret.isBlank()) throw new BusinessException("Faltan las credenciales OAuth de AniList");
-        pending.entrySet().removeIf(e -> e.getValue().isBefore(LocalDateTime.now()));
-        String state=UUID.randomUUID().toString(); pending.put(state, LocalDateTime.now().plusMinutes(10));
+        oauthStates.deleteByExpiresAtBefore(LocalDateTime.now());
+        String state=TokenSecurity.randomToken();
+        OAuthState pending = new OAuthState();
+        pending.setStateHash(TokenSecurity.digest(state));
+        pending.setExpiresAt(LocalDateTime.now().plusMinutes(10));
+        oauthStates.save(pending);
         return "https://anilist.co/api/v2/oauth/authorize?client_id="+enc(clientId)+"&redirect_uri="+enc(redirectUri)+"&response_type=code&state="+enc(state);
     }
 
     @Transactional @SuppressWarnings("unchecked")
     public LoginResult exchangeCode(String code, String state) {
-        LocalDateTime expiry=pending.remove(state);
-        if (expiry==null || expiry.isBefore(LocalDateTime.now())) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
+        OAuthState pending=oauthStates.findById(TokenSecurity.digest(state)).orElseThrow(() -> new BusinessException("La autorización venció. Vuelve a iniciar sesión."));
+        oauthStates.delete(pending);
+        if (pending.getExpiresAt().isBefore(LocalDateTime.now())) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
         Map<String,Object> token=client.post().uri("https://anilist.co/api/v2/oauth/token").contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("grant_type","authorization_code","client_id",clientId,"client_secret",clientSecret,"redirect_uri",redirectUri,"code",code))
                 .retrieve().body(Map.class);
@@ -62,20 +72,41 @@ public class AniListAuthService {
         AppUser user=users.findByAnilistUserId(externalId).orElseGet(AppUser::new);
         user.setAccountType(AccountType.ANILIST); user.setAnilistUserId(externalId); user.setAnilistUsername(name); user.setDisplayName(name); updateImages(user, viewer); user=users.save(user);
         AniListConnection connection=connections.findById(user.getId()).orElseGet(AniListConnection::new);
-        connection.setUser(user); connection.setAccessToken(accessToken);
+        connection.setUser(user); connection.setAccessToken(tokenCipher.encrypt(accessToken));
         Number seconds=(Number)token.getOrDefault("expires_in",31536000); connection.setTokenExpiresAt(LocalDateTime.now().plusSeconds(seconds.longValue())); connections.save(connection);
-        AppSession session=new AppSession(); session.setToken(UUID.randomUUID().toString().replace("-","")); session.setUser(user); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
-        return new LoginResult(session.getToken(), user.getId(), user.getAnilistUsername(), user.getLastAniListSyncAt()==null);
+        sessions.deleteByExpiresAtBefore(LocalDateTime.now());
+        String rawSession = TokenSecurity.randomToken();
+        AppSession session=new AppSession(); session.setToken(TokenSecurity.digest(rawSession)); session.setUser(user); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
+        return new LoginResult(rawSession, user.getId(), user.getAnilistUsername(), user.getLastAniListSyncAt()==null);
     }
 
-    public String validToken() { return validToken(currentUser.require()); }
-    public String validToken(AppUser user) { return connections.findById(user.getId()).filter(c -> c.getTokenExpiresAt()==null || c.getTokenExpiresAt().isAfter(LocalDateTime.now())).map(AniListConnection::getAccessToken).orElse(null); }
-    @Transactional public void logout(String sessionToken) { if (sessionToken!=null) sessions.deleteById(sessionToken); }
+    @Transactional public String validToken() { return validToken(currentUser.require()); }
+    @Transactional public String validToken(AppUser user) {
+        return connections.findById(user.getId())
+                .filter(connection -> connection.getTokenExpiresAt()==null || connection.getTokenExpiresAt().isAfter(LocalDateTime.now()))
+                .map(connection -> {
+                    String stored = connection.getAccessToken();
+                    String plain = tokenCipher.decrypt(stored);
+                    if (!tokenCipher.isEncrypted(stored)) {
+                        connection.setAccessToken(tokenCipher.encrypt(plain));
+                        connections.save(connection);
+                    }
+                    return plain;
+                }).orElse(null);
+    }
+    @Transactional public void logout(String sessionToken) {
+        if (sessionToken==null) return;
+        sessions.deleteById(TokenSecurity.digest(sessionToken));
+        if (sessionToken.length() <= 64) sessions.deleteById(sessionToken);
+    }
     @Transactional public String claim(String ticket) {
-        AppSession pendingSession=sessions.findByTokenAndExpiresAtAfter(ticket, LocalDateTime.now()).orElseThrow(() -> new BusinessException("El acceso venció"));
+        AppSession pendingSession=sessions.findByTokenAndExpiresAtAfter(TokenSecurity.digest(ticket), LocalDateTime.now())
+                .or(() -> sessions.findByTokenAndExpiresAtAfter(ticket, LocalDateTime.now()))
+                .orElseThrow(() -> new BusinessException("El acceso venció"));
         sessions.delete(pendingSession);
-        AppSession session=new AppSession(); session.setToken(UUID.randomUUID().toString().replace("-","")); session.setUser(pendingSession.getUser()); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
-        return session.getToken();
+        String rawSession=TokenSecurity.randomToken();
+        AppSession session=new AppSession(); session.setToken(TokenSecurity.digest(rawSession)); session.setUser(pendingSession.getUser()); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
+        return rawSession;
     }
     @Transactional public void refreshProfile() { AppUser user=currentUser.require(); updateImages(user, fetchViewer(validToken(user))); users.save(user); }
 

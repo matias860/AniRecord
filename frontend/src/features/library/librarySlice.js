@@ -4,11 +4,11 @@ import { fetchPersonFavorites } from '../favorites/favoritesSlice.js'
 
 export const fetchLibrary = createAsyncThunk(
   'library/fetchAll',
-  async (filters = {}) => {
+  async (filters = {}, { signal }) => {
     const params = Object.fromEntries(
       Object.entries(filters).filter(([, value]) => value),
     )
-    const { data } = await apiClient.get('/library', { params })
+    const { data } = await apiClient.get('/library', { params, signal })
     return data
   },
   {
@@ -87,15 +87,18 @@ const librarySlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchLibrary.pending, (state) => {
+      .addCase(fetchLibrary.pending, (state, action) => {
         state.status = 'loading'
         state.error = null
+        state.requestId = action.meta.requestId
       })
       .addCase(fetchLibrary.fulfilled, (state, action) => {
+        if (state.requestId !== action.meta.requestId) return
         state.status = 'succeeded'
         state.items = action.payload
       })
       .addCase(fetchLibrary.rejected, (state, action) => {
+        if (state.requestId !== action.meta.requestId || action.meta.aborted) return
         state.status = 'failed'
         state.error = action.error.message
       })

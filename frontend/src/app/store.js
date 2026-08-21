@@ -1,5 +1,5 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit'
-import { persistReducer, persistStore } from 'redux-persist'
+import { FLUSH, PAUSE, PERSIST, PURGE, REGISTER, REHYDRATE, createTransform, persistReducer, persistStore } from 'redux-persist'
 import libraryReducer from '../features/library/librarySlice.js'
 import searchReducer from '../features/search/searchSlice.js'
 import homeReducer from '../features/home/homeSlice.js'
@@ -14,7 +14,7 @@ import peopleReducer from '../features/people/peopleSlice.js'
 import favoritesReducer from '../features/favorites/favoritesSlice.js'
 import recommendationsReducer from '../features/recommendations/recommendationsSlice.js'
 
-const rootReducer = combineReducers({
+const appReducer = combineReducers({
   library: libraryReducer,
   search: searchReducer,
   home: homeReducer,
@@ -29,21 +29,31 @@ const rootReducer = combineReducers({
   recommendations: recommendationsReducer,
 })
 
+const rootReducer = (state, action) => appReducer(action.type === 'auth/logout/fulfilled' ? undefined : state, action)
+
 const storage = {
   getItem: (key) => Promise.resolve(window.localStorage.getItem(key)),
   setItem: (key, value) => Promise.resolve(window.localStorage.setItem(key, value)),
   removeItem: (key) => Promise.resolve(window.localStorage.removeItem(key)),
 }
 
+const searchPreferences = createTransform(
+  (state) => ({ query: state.query, type: state.type }),
+  (state) => state,
+  { whitelist: ['search'] },
+)
+
 const persistedReducer = persistReducer(
-  { key: 'anime-list-v2', storage, whitelist: ['search'] },
+  { key: 'anime-list-v2', storage, whitelist: ['search'], transforms: [searchPreferences] },
   rootReducer,
 )
 
 export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({ serializableCheck: false }).concat(toastMiddleware),
+    getDefaultMiddleware({
+      serializableCheck: { ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER] },
+    }).concat(toastMiddleware),
 })
 
 export const persistor = persistStore(store)

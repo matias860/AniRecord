@@ -7,7 +7,12 @@ export const fetchWeeklyRecommendations = createAsyncThunk(
     const { data } = await apiClient.get('/recommendations')
     return data
   },
-  { condition: (_, { getState }) => getState().recommendations.status !== 'loading' },
+  {
+    condition: (_, { getState }) => {
+      const state = getState().recommendations
+      return state.status !== 'loading' && (!state.fetchedAt || Date.now() - state.fetchedAt > 5 * 60 * 1000)
+    },
+  },
 )
 
 export const fetchMediaRecommendations = createAsyncThunk(
@@ -35,7 +40,7 @@ export const createWeeklyRecommendation = createAsyncThunk(
 const recommendationsSlice = createSlice({
   name: 'recommendations',
   initialState: {
-    items: [], status: 'idle', createStatus: 'idle', error: null, byMedia: {},
+    items: [], status: 'idle', createStatus: 'idle', error: null, byMedia: {}, fetchedAt: null,
   },
   reducers: {},
   extraReducers: (builder) => {
@@ -44,6 +49,7 @@ const recommendationsSlice = createSlice({
       .addCase(fetchWeeklyRecommendations.fulfilled, (state, action) => {
         state.status = 'succeeded'
         state.items = action.payload
+        state.fetchedAt = Date.now()
       })
       .addCase(fetchWeeklyRecommendations.rejected, (state, action) => {
         state.status = 'failed'
@@ -59,6 +65,7 @@ const recommendationsSlice = createSlice({
       .addCase(createWeeklyRecommendation.fulfilled, (state, action) => {
         state.createStatus = 'succeeded'
         state.items.unshift(action.payload)
+        state.fetchedAt = Date.now()
         state.byMedia[action.payload.anilistId] = {
           entries: [action.payload, ...(state.byMedia[action.payload.anilistId]?.entries ?? [])],
           fetchedAt: Date.now(),
