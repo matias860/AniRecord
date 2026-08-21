@@ -6,6 +6,7 @@ import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.repository.*;
 import com.animelist.backend.security.SecretCipher;
+import com.animelist.backend.security.OAuthStateToken;
 import com.animelist.backend.security.TokenSecurity;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -22,22 +23,23 @@ public class AniListAuthService {
     private final AniListConnectionRepository connections;
     private final AppUserRepository users;
     private final AppSessionRepository sessions;
-    private final OAuthStateRepository oauthStates;
     private final CurrentUserService currentUser;
     private final RestClient client = RestClient.create();
     private final String clientId, clientSecret, redirectUri;
     private final SecretCipher tokenCipher;
+    private final OAuthStateToken oauthStateToken;
 
     public AniListAuthService(AniListConnectionRepository connections, AppUserRepository users,
-            AppSessionRepository sessions, OAuthStateRepository oauthStates, CurrentUserService currentUser,
+            AppSessionRepository sessions, CurrentUserService currentUser,
             @Value("${anilist.oauth.client-id:}") String clientId,
             @Value("${anilist.oauth.client-secret:}") String clientSecret,
             @Value("${anilist.oauth.redirect-uri:http://localhost:8080/api/auth/callback}") String redirectUri,
             @Value("${app.token-encryption-key:}") String tokenEncryptionKey) {
-        this.connections=connections; this.users=users; this.sessions=sessions; this.oauthStates=oauthStates; this.currentUser=currentUser;
+        this.connections=connections; this.users=users; this.sessions=sessions; this.currentUser=currentUser;
         this.clientId=clientId; this.clientSecret=clientSecret; this.redirectUri=redirectUri;
         String encryptionSecret = tokenEncryptionKey.isBlank() ? clientSecret : tokenEncryptionKey;
         this.tokenCipher = new SecretCipher(encryptionSecret.isBlank() ? "local-development-only" : encryptionSecret);
+        this.oauthStateToken = new OAuthStateToken(clientSecret.isBlank() ? "local-development-oauth-state" : clientSecret);
     }
 
     public AuthStatusResponse status() { return currentUser.optional()
@@ -45,23 +47,15 @@ public class AniListAuthService {
                     u.getAvatarUrl(), u.getAccountType().name(), u.getAccountType() == AccountType.ANILIST && u.getLastAniListSyncAt()==null))
             .orElseGet(() -> new AuthStatusResponse(false, null, null, null, null, false)); }
 
-    @Transactional
     public String authorizationUrl() {
         if (clientId.isBlank() || clientSecret.isBlank()) throw new BusinessException("Faltan las credenciales OAuth de AniList");
-        oauthStates.deleteByExpiresAtBefore(LocalDateTime.now());
-        String state=TokenSecurity.randomToken();
-        OAuthState pending = new OAuthState();
-        pending.setStateHash(TokenSecurity.digest(state));
-        pending.setExpiresAt(LocalDateTime.now().plusMinutes(10));
-        oauthStates.save(pending);
+        String state=oauthStateToken.create();
         return "https://anilist.co/api/v2/oauth/authorize?client_id="+enc(clientId)+"&redirect_uri="+enc(redirectUri)+"&response_type=code&state="+enc(state);
     }
 
     @Transactional @SuppressWarnings("unchecked")
     public LoginResult exchangeCode(String code, String state) {
-        OAuthState pending=oauthStates.findById(TokenSecurity.digest(state)).orElseThrow(() -> new BusinessException("La autorización venció. Vuelve a iniciar sesión."));
-        oauthStates.delete(pending);
-        if (pending.getExpiresAt().isBefore(LocalDateTime.now())) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
+        if (!oauthStateToken.isValid(state)) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
         Map<String,Object> token=client.post().uri("https://anilist.co/api/v2/oauth/token").contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("grant_type","authorization_code","client_id",clientId,"client_secret",clientSecret,"redirect_uri",redirectUri,"code",code))
                 .retrieve().body(Map.class);

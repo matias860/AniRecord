@@ -25,4 +25,12 @@ class TokenSecurityTest {
         var cipher = new SecretCipher("test-key");
         assertEquals("legacy-token", cipher.decrypt("legacy-token"));
     }
+
+    @Test void createsSelfContainedTamperProofOAuthStates() {
+        var states = new OAuthStateToken("oauth-test-secret");
+        String state = states.create();
+        assertTrue(states.isValid(state));
+        assertFalse(states.isValid(state + "alterado"));
+        assertFalse(new OAuthStateToken("different-secret").isValid(state));
+    }
 }
