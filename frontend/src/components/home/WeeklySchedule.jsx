@@ -57,7 +57,8 @@ function FutureSeason({ entries }) {
 }
 
 function ScheduleDay({ group, unknown = false }) {
-  return <section className={`compact-schedule-day ${unknown ? 'unknown' : ''}`}><span className="day-dot">{group.label}</span><strong>{group.name}</strong><small>{group.entries.length} {group.entries.length === 1 ? 'anime' : 'animes'}</small><div className="compact-day-media future-covers">{group.entries.map((entry) => <Link className="future-cover" to={`/media/${entry.anilistId}`} key={entry.id} title={entry.title}><img src={entry.coverImage} alt={entry.title} /><small>{formatShortDate(entry.releaseStartDate)}</small></Link>)}</div></section>
+  const singleUnknown = unknown && group.entries.length === 1
+  return <section className={`compact-schedule-day ${unknown ? 'unknown' : ''} ${singleUnknown ? 'single-entry' : ''}`}><span className="day-dot">{group.label}</span><strong>{group.name}</strong><small>{group.entries.length} {group.entries.length === 1 ? 'anime' : 'animes'}</small><div className="compact-day-media future-covers">{group.entries.map((entry) => <Link className="future-cover" to={`/media/${entry.anilistId}`} key={entry.id} title={entry.title}><img src={entry.coverImage} alt={entry.title} /><small>{formatShortDate(entry.releaseStartDate)}</small></Link>)}</div></section>
 }
 
 function formatShortDate(date) {
