@@ -49,7 +49,8 @@ function FutureSeason({ entries }) {
   const knownGroups = days.map((item) => ({ ...item, entries: entries.filter((entry) => entry.day === item.day) })).filter((item) => item.entries.length)
   const unknownEntries = entries.filter((entry) => entry.day == null)
   if (!entries.length) return <div className="schedule-preview-empty">No tienes anime planeado para esta temporada.</div>
-  return <div className="future-schedule-scroll"><div className="future-schedule">
+  const layout = knownGroups.length && unknownEntries.length ? 'mixed' : knownGroups.length ? 'only-known' : 'only-unknown'
+  return <div className="future-schedule-scroll"><div className={`future-schedule ${layout}`}>
     {!!knownGroups.length && <div className="known-days-track" style={{ '--known-days': knownGroups.length }}><div className="compact-schedule-line" />{knownGroups.map((group) => <ScheduleDay key={group.name} group={group} />)}</div>}
     {!!unknownEntries.length && <ScheduleDay unknown group={{ label: '?', name: 'Día por confirmar', entries: unknownEntries }} />}
   </div></div>
