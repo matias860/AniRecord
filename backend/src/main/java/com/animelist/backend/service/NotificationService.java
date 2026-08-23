@@ -3,6 +3,7 @@ package com.animelist.backend.service;
 import com.animelist.backend.dto.notification.NotificationResponse;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.enums.NotificationType;
+import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.repository.AppNotificationRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -48,7 +49,11 @@ public class NotificationService {
     }
 
     public int syncSafely() {
-        try { return repository.countByUserId(currentUser.require().getId()) == 0 ? initialSync() : sync(); }
+        try {
+            var user = currentUser.require();
+            if (user.getAccountType() == AccountType.LOCAL) return 0;
+            return repository.countByUserId(user.getId()) == 0 ? initialSync() : sync();
+        }
         catch (RuntimeException exception) {
             LOGGER.warn("No se pudieron sincronizar las notificaciones de AniList; se conserva el historial local", exception);
             return 0;

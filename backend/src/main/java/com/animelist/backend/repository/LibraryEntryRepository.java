@@ -1,6 +1,8 @@
 package com.animelist.backend.repository;
 
 import com.animelist.backend.entity.LibraryEntry;
+import com.animelist.backend.entity.AppUser;
+import com.animelist.backend.entity.Media;
 import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
@@ -44,4 +46,10 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
             Long userId, MediaType mediaType,
             TrackingStatus trackingStatus
     );
+
+    @Query("select distinct entry.media from LibraryEntry entry")
+    List<Media> findDistinctTrackedMedia();
+
+    @Query("select distinct entry.user from LibraryEntry entry where entry.media.id = :mediaId")
+    List<AppUser> findDistinctUsersByMediaId(@Param("mediaId") Long mediaId);
 }

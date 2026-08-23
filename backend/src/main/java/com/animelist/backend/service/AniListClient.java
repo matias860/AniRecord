@@ -7,6 +7,7 @@ import com.animelist.backend.dto.anilist.AniListLibraryItem;
 import com.animelist.backend.dto.anilist.AniListPersonFavorite;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.MediaRelationResponse;
+import com.animelist.backend.dto.anilist.MediaRelationsResponse;
 import com.animelist.backend.dto.anilist.MediaCharacterResponse;
 import com.animelist.backend.dto.anilist.MediaCreditResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
@@ -42,6 +43,28 @@ import org.springframework.web.client.RestClientException;
 
 @Service
 public class AniListClient {
+
+    private static final String RELATIONS_QUERY = """
+            query MediaRelations($ids: [Int!]!, $perPage: Int!) {
+              Page(page: 1, perPage: $perPage) {
+                media(id_in: $ids) {
+                  id
+                  relations {
+                    edges {
+                      relationType(version: 2)
+                      node {
+                        id
+                        type
+                        format
+                        title { romaji english native }
+                        coverImage { large }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            """;
 
     private static final String SEARCH_QUERY = """
             query SearchMedia($search: String!, $type: MediaType!, $page: Int!, $perPage: Int!) {
@@ -443,6 +466,23 @@ public class AniListClient {
                     .map(this::asMap)
                     .map(this::mapMedia)
                     .filter(media -> media.nextAiringEpisode() != null)
+                    .forEach(result::add);
+        }
+        return result;
+    }
+
+    public List<MediaRelationsResponse> getMediaRelations(List<Integer> anilistIds) {
+        if (anilistIds == null || anilistIds.isEmpty()) return List.of();
+
+        List<MediaRelationsResponse> result = new ArrayList<>();
+        for (int start = 0; start < anilistIds.size(); start += 50) {
+            List<Integer> batch = anilistIds.subList(start, Math.min(start + 50, anilistIds.size()));
+            Map<String, Object> data = execute(RELATIONS_QUERY, Map.of("ids", batch, "perPage", batch.size()));
+            asList(asMap(data.get("Page")).get("media")).stream()
+                    .map(this::asMap)
+                    .map(media -> new MediaRelationsResponse(
+                            asInteger(media.get("id")),
+                            mapRelations(media.get("relations"))))
                     .forEach(result::add);
         }
         return result;

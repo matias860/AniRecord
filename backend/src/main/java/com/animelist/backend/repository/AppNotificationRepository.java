@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface AppNotificationRepository extends JpaRepository<AppNotification, Long> {
     boolean existsByUserIdAndAnilistNotificationId(Long userId, Integer id);
+    boolean existsByUserIdAndSourceKey(Long userId, String sourceKey);
     List<AppNotification> findByUserIdOrderByOccurredAtDesc(Long userId, Pageable pageable);
     long countByUserIdAndReadFalse(Long userId);
     long countByUserId(Long userId);
