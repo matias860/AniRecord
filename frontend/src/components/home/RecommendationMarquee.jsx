@@ -10,8 +10,6 @@ function RecommendationSlide({ recommendation, entriesCount }) {
   const preferredArtwork = recommendation.bannerImage || recommendation.coverImage || FALLBACK_ARTWORK
   const [artwork, setArtwork] = useState(preferredArtwork)
 
-  useEffect(() => setArtwork(preferredArtwork), [preferredArtwork])
-
   const useFallback = () => setArtwork((current) => {
     if (current !== recommendation.coverImage && recommendation.coverImage) return recommendation.coverImage
     return FALLBACK_ARTWORK
