@@ -70,8 +70,10 @@ export default function MediaDetailView() {
         <div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>
       </div>
       {saved && <div className="detail-tracking-row"><SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
-      {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
-      {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
+      {(!!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
+        {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
+        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
+      </div>}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
       {detail.musicVideoUrl && <MusicVideoPlayer url={detail.musicVideoUrl} title={detail.title} />}
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
@@ -86,7 +88,7 @@ export default function MediaDetailView() {
 
 function StreamingLinks({ links }) {
   return <section className="streaming-links">
-    <div className="streaming-links-heading"><span className="eyebrow">Disponibilidad oficial</span><h2>Dónde ver</h2></div>
+    <span className="eyebrow">Dónde ver</span>
     <div className="streaming-links-grid">{links.map((link) => {
       const details = [link.site || 'Ver online', link.notes, link.language].filter(Boolean).join(' · ')
       return <a
