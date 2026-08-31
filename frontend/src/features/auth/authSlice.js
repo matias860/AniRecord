@@ -40,9 +40,14 @@ export const registerLocal = createAsyncThunk('auth/registerLocal', async (profi
   }
 })
 
+export const acknowledgeSyncPrompt = createAsyncThunk('auth/acknowledgeSyncPrompt', async (commit) => {
+  const { data } = await apiClient.patch('/auth/sync-prompt', { commit })
+  return data.lastSyncPromptCommit
+})
+
 const slice = createSlice({
   name: 'auth',
-  initialState: { authenticated: false, userId: null, username: null, avatarUrl: null, accountType: null, needsImport: false, status: 'idle', mutationStatus: 'idle', error: null },
+  initialState: { authenticated: false, userId: null, username: null, avatarUrl: null, accountType: null, needsImport: false, lastSyncPromptCommit: null, status: 'idle', mutationStatus: 'idle', error: null },
   reducers: { clearAuthError: (state) => { state.error = null } },
   extraReducers: (builder) => builder
     .addCase(fetchAuth.pending, (state) => { state.status = 'loading' })
@@ -54,7 +59,8 @@ const slice = createSlice({
     .addCase(localLogin.rejected, (state, action) => { state.mutationStatus = 'idle'; state.error = action.payload })
     .addCase(registerLocal.pending, (state) => { state.mutationStatus = 'loading'; state.error = null })
     .addCase(registerLocal.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.mutationStatus = 'idle' })
-    .addCase(registerLocal.rejected, (state, action) => { state.mutationStatus = 'idle'; state.error = action.payload }),
+    .addCase(registerLocal.rejected, (state, action) => { state.mutationStatus = 'idle'; state.error = action.payload })
+    .addCase(acknowledgeSyncPrompt.fulfilled, (state, action) => { state.lastSyncPromptCommit = action.payload }),
 })
 export const { clearAuthError } = slice.actions
 export default slice.reducer

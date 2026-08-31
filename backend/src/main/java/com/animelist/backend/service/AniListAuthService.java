@@ -44,8 +44,17 @@ public class AniListAuthService {
 
     public AuthStatusResponse status() { return currentUser.optional()
             .map(u -> new AuthStatusResponse(true, u.getId(), u.getAccountType() == AccountType.ANILIST ? u.getAnilistUsername() : u.getLocalUsername(),
-                    u.getAvatarUrl(), u.getAccountType().name(), u.getAccountType() == AccountType.ANILIST && u.getLastAniListSyncAt()==null))
-            .orElseGet(() -> new AuthStatusResponse(false, null, null, null, null, false)); }
+                    u.getAvatarUrl(), u.getAccountType().name(), u.getAccountType() == AccountType.ANILIST && u.getLastAniListSyncAt()==null,
+                    u.getLastSyncPromptCommit()))
+            .orElseGet(() -> new AuthStatusResponse(false, null, null, null, null, false, null)); }
+
+    @Transactional
+    public String acknowledgeSyncPrompt(String commit) {
+        AppUser user = currentUser.require();
+        user.setLastSyncPromptCommit(commit);
+        users.save(user);
+        return commit;
+    }
 
     public String authorizationUrl() {
         if (clientId.isBlank() || clientSecret.isBlank()) throw new BusinessException("Faltan las credenciales OAuth de AniList");

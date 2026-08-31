@@ -68,7 +68,7 @@ public class LocalAuthService {
 
     private LoginResult result(AppUser user, String token) {
         return new LoginResult(token, new AuthStatusResponse(true, user.getId(), user.getLocalUsername(),
-                null, AccountType.LOCAL.name(), false));
+                null, AccountType.LOCAL.name(), false, user.getLastSyncPromptCommit()));
     }
 
     public record LoginResult(String sessionToken, AuthStatusResponse status) {}

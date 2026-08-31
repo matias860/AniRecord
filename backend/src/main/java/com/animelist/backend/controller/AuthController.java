@@ -3,6 +3,7 @@ package com.animelist.backend.controller;
 import com.animelist.backend.dto.auth.AuthStatusResponse;
 import com.animelist.backend.dto.auth.LocalLoginRequest;
 import com.animelist.backend.dto.auth.LocalRegisterRequest;
+import com.animelist.backend.dto.auth.SyncPromptAcknowledgementRequest;
 import com.animelist.backend.service.*;
 import jakarta.servlet.http.*;
 import jakarta.validation.Valid;
@@ -33,6 +34,9 @@ public class AuthController {
     @PostMapping("/local-login") public ResponseEntity<AuthStatusResponse> localLogin(@Valid @RequestBody LocalLoginRequest request) {
         var result = localAuth.login(request);
         return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie(result.sessionToken()).toString()).body(result.status());
+    }
+    @PatchMapping("/sync-prompt") public Map<String,String> acknowledgeSyncPrompt(@Valid @RequestBody SyncPromptAcknowledgementRequest request) {
+        return Map.of("lastSyncPromptCommit", auth.acknowledgeSyncPrompt(request.commit()));
     }
     @PostMapping("/logout") public ResponseEntity<Void> logout(HttpServletRequest request){String token=cookie(request);auth.logout(token);return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE,expired().toString()).build();}
     private ResponseEntity<Void> redirect(String result,String token){String fragment=token==null?"":"&ticket="+token;return ResponseEntity.status(302).location(URI.create(frontendUrl+"/#auth="+result+fragment)).build();}

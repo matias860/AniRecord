@@ -15,6 +15,7 @@ import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../f
 import { addToast } from '../features/toast/toastSlice.js'
 import { fetchWeeklyRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
+import { acknowledgeSyncPrompt } from '../features/auth/authSlice.js'
 
 const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
@@ -48,7 +49,10 @@ export default function HomeView() {
   const recommendations = useSelector((state) => state.recommendations)
   const [recommendationModal, setRecommendationModal] = useState(false)
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
-  const [dismissedCommit, setDismissedCommit] = useState(() => window.localStorage.getItem(syncPromptKey))
+  const [optimisticDismissal, setOptimisticDismissal] = useState(null)
+  const localDismissedCommit = window.localStorage.getItem(syncPromptKey)
+  const optimisticCommit = optimisticDismissal?.userId === auth.userId ? optimisticDismissal.commit : null
+  const dismissedCommit = optimisticCommit || auth.lastSyncPromptCommit || localDismissedCommit
   const pendingCommits = commitsSince(dismissedCommit)
   const synchronizationRecommended = pendingCommits.some((entry) => entry.recommended)
   const visibleCommits = pendingCommits.slice(0, 6).map((entry) => entry.commit.slice(0, 7))
@@ -61,6 +65,20 @@ export default function HomeView() {
   useEffect(() => {
     if (auth.authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [auth.authenticated, dispatch, library.status])
+
+  useEffect(() => {
+    if (!auth.authenticated || !auth.userId) return
+    const localCommit = window.localStorage.getItem(syncPromptKey)
+    if (auth.lastSyncPromptCommit) {
+      window.localStorage.removeItem(syncPromptKey)
+      return
+    }
+    if (auth.accountType === 'ANILIST' && localCommit) {
+      dispatch(acknowledgeSyncPrompt(localCommit)).unwrap()
+        .then(() => window.localStorage.removeItem(syncPromptKey))
+        .catch(() => {})
+    }
+  }, [auth.accountType, auth.authenticated, auth.lastSyncPromptCommit, auth.userId, dispatch, syncPromptKey])
 
   useEffect(() => {
     if (auth.authenticated && library.status === 'succeeded' && home.status === 'idle') dispatch(fetchAiringSchedule())
@@ -117,8 +135,21 @@ export default function HomeView() {
     })
 
   const closeSyncPrompt = () => {
+    const previousCommit = dismissedCommit
     window.localStorage.setItem(syncPromptKey, appCommit)
-    setDismissedCommit(appCommit)
+    setOptimisticDismissal({ userId: auth.userId, commit: appCommit })
+    dispatch(acknowledgeSyncPrompt(appCommit)).unwrap()
+      .then(() => window.localStorage.removeItem(syncPromptKey))
+      .catch(() => {
+        if (previousCommit) window.localStorage.setItem(syncPromptKey, previousCommit)
+        else window.localStorage.removeItem(syncPromptKey)
+        setOptimisticDismissal(previousCommit ? { userId: auth.userId, commit: previousCommit } : null)
+        dispatch(addToast({
+          type: 'error',
+          title: 'No se guardó entre dispositivos',
+          message: 'No pudimos registrar esta decisión en tu cuenta. Inténtalo nuevamente.',
+        }))
+      })
   }
 
   const synchronize = async () => {
