@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ExternalLink, ListPlus, Play, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Play, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -87,18 +87,21 @@ export default function MediaDetailView() {
 function StreamingLinks({ links }) {
   return <section className="streaming-links">
     <div className="streaming-links-heading"><span className="eyebrow">Disponibilidad oficial</span><h2>Dónde ver</h2></div>
-    <div className="streaming-links-grid">{links.map((link) => <a
-      className="streaming-link-card"
-      href={link.url}
-      key={`${link.site}-${link.url}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{ '--streaming-color': link.color || 'var(--accent)' }}
-    >
-      <span className="streaming-link-icon">{link.icon ? <img src={link.icon} alt="" /> : <Play />}</span>
-      <span><strong>{link.site || 'Ver online'}</strong>{(link.notes || link.language) && <small>{[link.notes, link.language].filter(Boolean).join(' · ')}</small>}</span>
-      <ExternalLink />
-    </a>)}</div>
+    <div className="streaming-links-grid">{links.map((link) => {
+      const details = [link.site || 'Ver online', link.notes, link.language].filter(Boolean).join(' · ')
+      return <a
+        className="streaming-link-logo"
+        href={link.url}
+        key={`${link.site}-${link.url}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label={`Ver en ${details}`}
+        data-label={details}
+        style={{ '--streaming-color': link.color || 'var(--accent)' }}
+      >
+        {link.icon ? <img src={link.icon} alt="" /> : <Play />}
+      </a>
+    })}</div>
   </section>
 }
 

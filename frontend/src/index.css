@@ -790,14 +790,13 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
 /* Official streaming providers from AniList. */
 .streaming-links{grid-column:1/-1;padding:26px 0 30px;border-bottom:1px solid var(--line)}
 .streaming-links-heading{margin-bottom:15px}.streaming-links-heading h2{margin:5px 0 0}
-.streaming-links-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
-.streaming-link-card{min-width:0;display:grid;grid-template-columns:42px minmax(0,1fr) 17px;align-items:center;gap:11px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--streaming-color) 28%,var(--line));border-radius:14px;color:var(--text);background:linear-gradient(145deg,color-mix(in srgb,var(--streaming-color) 9%,var(--user-surface,#171b29)),color-mix(in srgb,var(--user-bg,#0a0c14) 78%,var(--user-surface,#171b29)));box-shadow:0 12px 28px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.025);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
-.streaming-link-card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--streaming-color) 68%,var(--line));box-shadow:0 16px 34px rgba(0,0,0,.28),0 0 24px color-mix(in srgb,var(--streaming-color) 13%,transparent)}
-.streaming-link-icon{width:42px;height:42px;display:grid;place-items:center;overflow:hidden;border-radius:11px;color:#fff;background:color-mix(in srgb,var(--streaming-color) 22%,var(--user-bg,#0a0c14))}.streaming-link-icon img{width:100%;height:100%;object-fit:cover}.streaming-link-icon svg{width:18px;fill:currentColor}
-.streaming-link-card>span:nth-child(2){min-width:0}.streaming-link-card strong,.streaming-link-card small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.streaming-link-card strong{font-size:11px}.streaming-link-card small{margin-top:4px;color:var(--muted);font-size:8px}.streaming-link-card>svg{width:15px;color:color-mix(in srgb,var(--streaming-color) 72%,#fff)}
-@media(max-width:1000px){.streaming-links-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:700px){.streaming-links-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:430px){.streaming-links-grid{grid-template-columns:1fr}}
+.streaming-links-grid{display:flex;align-items:center;flex-wrap:wrap;gap:18px}
+.streaming-link-logo{position:relative;width:56px;height:56px;display:grid;place-items:center;border:0;border-radius:15px;color:#fff;background:transparent;transition:transform .2s ease,filter .2s ease}
+.streaming-link-logo img{width:100%;height:100%;display:block;object-fit:contain;border-radius:13px;filter:drop-shadow(0 8px 13px rgba(0,0,0,.3));transition:filter .2s ease}
+.streaming-link-logo>svg{width:27px;height:27px;padding:6px;border-radius:12px;fill:currentColor;background:var(--streaming-color);box-sizing:content-box}
+.streaming-link-logo::after{content:attr(data-label);position:absolute;left:50%;bottom:-31px;z-index:4;max-width:180px;padding:5px 8px;border:1px solid color-mix(in srgb,var(--streaming-color) 32%,var(--line));border-radius:7px;opacity:0;transform:translate(-50%,-4px);pointer-events:none;color:var(--text);background:color-mix(in srgb,var(--user-surface,#171b29) 94%,var(--user-bg,#0a0c14));box-shadow:0 9px 24px rgba(0,0,0,.35);font-size:8px;font-weight:750;white-space:nowrap;transition:opacity .16s ease,transform .16s ease}
+.streaming-link-logo:hover,.streaming-link-logo:focus-visible{transform:translateY(-5px) scale(1.08);filter:drop-shadow(0 0 12px color-mix(in srgb,var(--streaming-color) 48%,transparent));outline:none}.streaming-link-logo:hover img,.streaming-link-logo:focus-visible img{filter:drop-shadow(0 11px 16px rgba(0,0,0,.38)) drop-shadow(0 0 8px color-mix(in srgb,var(--streaming-color) 48%,transparent))}.streaming-link-logo:hover::after,.streaming-link-logo:focus-visible::after{opacity:1;transform:translate(-50%,0)}
+@media(max-width:620px){.streaming-links-grid{gap:15px}.streaming-link-logo{width:50px;height:50px}}
 
 /* Keep the series artwork visible on phones; desktop retains the stronger cinematic shade. */
 .detail-banner-shade{position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(90deg,rgba(10,12,20,.82),rgba(10,12,20,.3))}
