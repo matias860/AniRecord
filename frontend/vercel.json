@@ -1,5 +1,51 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "www.anirecord.com.ar"
+        }
+      ],
+      "destination": "https://anirecord.com.ar/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "anime-list-alca.vercel.app"
+        }
+      ],
+      "destination": "https://anirecord.com.ar/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "anime-list-matias.vercel.app"
+        }
+      ],
+      "destination": "https://anirecord.com.ar/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "anirecord.vercel.app"
+        }
+      ],
+      "destination": "https://anirecord.com.ar/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/media/:id",

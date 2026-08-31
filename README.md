@@ -4,8 +4,8 @@ Aplicación personal para registrar anime y manga con datos obtenidos desde AniL
 
 ## Producción
 
-- Frontend (Vercel): https://anirecord.vercel.app
-- API pública (proxy de AniRecord): https://anirecord.vercel.app/api
+- Sitio: https://anirecord.com.ar
+- API pública (proxy de AniRecord): https://anirecord.com.ar/api
 - Base de datos: PostgreSQL administrado por Neon
 
 El backend gratuito se suspende después de un período sin tráfico. La primera
