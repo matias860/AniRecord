@@ -12,7 +12,7 @@ start "AniRecord - Frontend" cmd /k "cd /d ""%~dp0frontend"" && (if not exist no
 
 echo AniRecord se esta iniciando.
 echo Frontend local: http://localhost:5173
-echo Backend remoto: https://p01--anime-list--244mm2wyvsvc.code.run
+echo Backend remoto: https://anirecord.vercel.app/api
 echo La primera carga puede tardar unos segundos mientras el servicio responde.
 
 powershell -NoProfile -ExecutionPolicy Bypass -Command "$limit = (Get-Date).AddSeconds(120); while ((Get-Date) -lt $limit) { try { $frontend = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:5173' -TimeoutSec 3; if ($frontend.StatusCode -eq 200) { exit 0 } } catch {}; Start-Sleep -Seconds 1 }; exit 1"
