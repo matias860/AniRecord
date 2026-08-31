@@ -14,7 +14,7 @@ services:
       - key: DATABASE_PASSWORD
         sync: false
       - key: FRONTEND_URL
-        value: https://anime-list-alca.vercel.app
+        value: https://anirecord.vercel.app
       - key: ANILIST_CLIENT_ID
         sync: false
       - key: ANILIST_CLIENT_SECRET
