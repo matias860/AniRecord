@@ -1,4 +1,4 @@
-# Anime List
+# AniRecord
 
 Aplicación personal para registrar anime y manga con datos obtenidos desde AniList.
 
@@ -59,5 +59,5 @@ Flyway las aplica automáticamente sin borrar los datos existentes.
 Los cambios enviados a `main` se despliegan automáticamente:
 
 - Vercel reconstruye el frontend.
-- Render reconstruye el backend cuando cambia la carpeta `backend`.
+- Northflank reconstruye el backend cuando cambia la carpeta `backend`.
 - Flyway aplica las nuevas migraciones en Neon al iniciar el backend.

@@ -1,5 +1,5 @@
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
-const SITE_NAME = 'Anime List'
+const SITE_NAME = 'AniRecord'
 
 export const config = { runtime: 'edge' }
 
@@ -30,7 +30,7 @@ export default async function handler(request) {
   const title = media?.title?.english || media?.title?.romaji || `Serie #${id}`
   const type = mediaTypeLabel(media)
   const status = statusLabel(media?.status)
-  const description = plainText(media?.description) || `Consulta ${title} en tu biblioteca de Anime List.`
+  const description = plainText(media?.description) || `Consulta ${title} en tu biblioteca de AniRecord.`
   const imageUrl = new URL('/api/og-image', siteOrigin)
   imageUrl.searchParams.set('title', title)
   imageUrl.searchParams.set('type', type)
@@ -56,7 +56,7 @@ export default async function handler(request) {
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Tarjeta de ${escapeHtml(title)} en Anime List">
+    <meta property="og:image:alt" content="Tarjeta de ${escapeHtml(title)} en AniRecord">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${escapeHtml(title)}">
     <meta name="twitter:description" content="${escapeHtml(`${type} · ${status}`)}">
@@ -65,7 +65,7 @@ export default async function handler(request) {
   <body style="font-family:system-ui;background:#0a0c14;color:#eef0f8;padding:40px">
     <h1>${escapeHtml(title)}</h1>
     <p>${escapeHtml(`${type} · ${status}`)}</p>
-    <p><a style="color:#a88bff" href="${canonicalUrl}">Abrir en Anime List</a></p>
+    <p><a style="color:#a88bff" href="${canonicalUrl}">Abrir en AniRecord</a></p>
   </body>
 </html>`
 
@@ -96,7 +96,7 @@ function statusLabel(status) {
   return {
     RELEASING: 'En emisión', FINISHED: 'Finalizado', NOT_YET_RELEASED: 'Próximamente',
     CANCELLED: 'Cancelado', HIATUS: 'En pausa',
-  }[status] || 'En Anime List'
+  }[status] || 'En AniRecord'
 }
 
 function mediaTypeLabel(media) {

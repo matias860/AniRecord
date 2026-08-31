@@ -30,7 +30,7 @@ export default function LoginView() {
   }
   return <main className="login-page dot-background">
     <section className={`login-card ${mode !== 'options' ? 'with-local-form' : ''}`}>
-      <div className="login-brand"><span><BookOpen /></span>Anime<strong>List</strong></div>
+      <div className="login-brand"><span><BookOpen /></span>Ani<strong>Record</strong></div>
       {mode === 'options' ? <>
         <div className="login-art"><Sparkles /><img src={anilistLogo} alt="AniList" /></div>
         <span className="eyebrow">Tu biblioteca personal</span>

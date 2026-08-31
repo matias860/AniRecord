@@ -45,7 +45,7 @@ export default function AppLayout() {
     <div className={`app-shell ${profile.dotsEnabled ? 'dot-background' : ''}`} style={themeStyle}>
       <header className="topbar-wrap">
         <div className="topbar">
-          <NavLink className="brand" to="/"><span className="brand-mark"><BookOpen size={20} /></span><span>Anime<span>List</span></span></NavLink>
+          <NavLink className="brand" to="/"><span className="brand-mark"><BookOpen size={20} /></span><span>Ani<span>Record</span></span></NavLink>
           <nav className="main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
             {links.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} onMouseEnter={() => setHovered(to)} className={({ isActive }) => isActive ? 'active' : ''}>

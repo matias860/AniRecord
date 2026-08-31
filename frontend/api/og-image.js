@@ -8,9 +8,9 @@ const HEIGHT = 630
 
 export default function handler(request) {
   const params = new URL(request.url).searchParams
-  const title = limit(params.get('title'), 110) || 'Anime List'
+  const title = limit(params.get('title'), 110) || 'AniRecord'
   const type = limit(params.get('type'), 30) || 'Serie'
-  const status = limit(params.get('status'), 36) || 'En Anime List'
+  const status = limit(params.get('status'), 36) || 'En AniRecord'
   const cover = safeImage(params.get('cover'))
   const banner = safeImage(params.get('banner'))
   const backdrop = banner || cover

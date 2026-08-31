@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: anime-list-backend
+    name: anirecord-backend
     runtime: docker
     plan: free
     rootDir: backend

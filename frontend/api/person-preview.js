@@ -1,5 +1,5 @@
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
-const SITE_NAME = 'Anime List'
+const SITE_NAME = 'AniRecord'
 
 export const config = { runtime: 'edge' }
 
@@ -51,7 +51,7 @@ export default async function handler(request) {
   const originType = mediaType(media)
   const canonicalUrl = `${url.origin}/${route}/${id}`
   const description = plainText(person?.description)
-    || (origin ? `${name}, personaje de ${origin}.` : `Consulta a ${name} en Anime List.`)
+    || (origin ? `${name}, personaje de ${origin}.` : `Consulta a ${name} en AniRecord.`)
   const imageUrl = new URL('/api/og-person-image', url.origin)
   imageUrl.searchParams.set('name', name)
   imageUrl.searchParams.set('kind', label)
@@ -87,7 +87,7 @@ export default async function handler(request) {
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Tarjeta de ${escapeHtml(name)} en Anime List">
+    <meta property="og:image:alt" content="Tarjeta de ${escapeHtml(name)} en AniRecord">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="${escapeHtml(name)}">
     <meta name="twitter:description" content="${escapeHtml(detailText)}">
@@ -96,7 +96,7 @@ export default async function handler(request) {
   <body style="font-family:system-ui;background:#0a0c14;color:#eef0f8;padding:40px">
     <h1>${escapeHtml(name)}</h1>
     <p>${escapeHtml(detailText)}</p>
-    <p><a style="color:#a88bff" href="${canonicalUrl}">Abrir en Anime List</a></p>
+    <p><a style="color:#a88bff" href="${canonicalUrl}">Abrir en AniRecord</a></p>
   </body>
 </html>`
 
@@ -133,12 +133,12 @@ function staffDetails(person) {
   const details = []
   if (person?.age) details.push(`${person.age} años`)
   if (person?.gender) details.push(genderLabel(person.gender))
-  return details.join(' · ') || 'Seiyū en Anime List'
+  return details.join(' · ') || 'Seiyū en AniRecord'
 }
 
 function professionalDetails(person, mediaEdge, origin) {
   const occupation = person?.primaryOccupations?.[0]
-  return [professionalRoleLabel(occupation), professionalRoleLabel(mediaEdge?.staffRole), origin].filter(Boolean).join(' · ') || 'Profesional en Anime List'
+  return [professionalRoleLabel(occupation), professionalRoleLabel(mediaEdge?.staffRole), origin].filter(Boolean).join(' · ') || 'Profesional en AniRecord'
 }
 
 function professionalRoleLabel(role) {

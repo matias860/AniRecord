@@ -5,7 +5,7 @@ export const config = { runtime: 'edge' }
 
 export default function handler(request) {
   const params = new URL(request.url).searchParams
-  const name = limit(params.get('name'), 90) || 'Anime List'
+  const name = limit(params.get('name'), 90) || 'AniRecord'
   const kind = limit(params.get('kind'), 24) || 'Persona'
   const origin = limit(params.get('origin'), 90)
   const originType = limit(params.get('originType'), 24)
