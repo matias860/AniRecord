@@ -16,6 +16,7 @@ public record AniListMediaResponse(
         String coverImage,
         String bannerImage,
         String musicVideoUrl,
+        List<MediaStreamingLinkResponse> streamingLinks,
         String synopsis,
         Integer totalUnits,
         LocalDate releaseStartDate,

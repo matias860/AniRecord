@@ -11,6 +11,7 @@ import com.animelist.backend.dto.anilist.MediaRelationsResponse;
 import com.animelist.backend.dto.anilist.MediaCharacterResponse;
 import com.animelist.backend.dto.anilist.MediaCreditResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
+import com.animelist.backend.dto.anilist.MediaStreamingLinkResponse;
 import com.animelist.backend.dto.anilist.CharacterDetailResponse;
 import com.animelist.backend.dto.anilist.PersonMediaResponse;
 import com.animelist.backend.dto.anilist.StaffCharacterResponse;
@@ -108,7 +109,7 @@ public class AniListClient {
                 title { romaji english native }
                 coverImage { extraLarge large }
                 bannerImage
-                externalLinks { site url type isDisabled }
+                externalLinks { site url type language color icon notes isDisabled }
                 trailer { id site }
                 description
                 genres
@@ -816,6 +817,7 @@ public class AniListClient {
                 cover,
                 asString(media.get("bannerImage")),
                 resolveMusicVideoUrl(mediaFormat, media.get("externalLinks"), media.get("trailer")),
+                mapStreamingLinks(mediaType, media.get("externalLinks")),
                 asString(media.get("description")),
                 totalUnits,
                 mapDate(media.get("startDate")),
@@ -850,6 +852,33 @@ public class AniListClient {
         return trailerId != null && "youtube".equalsIgnoreCase(asString(trailer.get("site")))
                 ? "https://www.youtube.com/watch?v=" + trailerId
                 : null;
+    }
+
+    private List<MediaStreamingLinkResponse> mapStreamingLinks(MediaType mediaType, Object externalLinksValue) {
+        if (mediaType != MediaType.ANIME) return List.of();
+        return asList(externalLinksValue).stream()
+                .map(this::asMap)
+                .filter(link -> !Boolean.TRUE.equals(link.get("isDisabled")))
+                .filter(link -> "STREAMING".equalsIgnoreCase(asString(link.get("type"))))
+                .filter(link -> isHttpUrl(asString(link.get("url"))))
+                .map(link -> new MediaStreamingLinkResponse(
+                        asString(link.get("site")),
+                        asString(link.get("url")),
+                        asString(link.get("language")),
+                        safeHexColor(asString(link.get("color"))),
+                        isHttpUrl(asString(link.get("icon"))) ? asString(link.get("icon")) : null,
+                        asString(link.get("notes"))
+                ))
+                .distinct()
+                .toList();
+    }
+
+    private boolean isHttpUrl(String value) {
+        return value != null && (value.startsWith("https://") || value.startsWith("http://"));
+    }
+
+    private String safeHexColor(String value) {
+        return value != null && value.matches("#[0-9a-fA-F]{6}") ? value : null;
     }
 
     private List<MediaCreditResponse> mapCredits(MediaType mediaType, Object staffValue, Object studiosValue) {

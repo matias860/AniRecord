@@ -786,3 +786,23 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
 .music-video-frame{position:relative;overflow:hidden;aspect-ratio:16/9;border:1px solid color-mix(in srgb,var(--accent) 25%,var(--line));border-radius:20px;background:linear-gradient(145deg,color-mix(in srgb,var(--user-surface,#171b29) 92%,var(--accent) 8%),var(--user-bg,#0a0c14));box-shadow:0 22px 55px rgba(0,0,0,.38),0 0 38px color-mix(in srgb,var(--accent) 9%,transparent)}
 .music-video-frame iframe{width:100%;height:100%;display:block;border:0}
 @media(max-width:620px){.music-video-player{padding:22px 0 28px}.music-video-frame{border-radius:14px}}
+
+/* Official streaming providers from AniList. */
+.streaming-links{grid-column:1/-1;padding:26px 0 30px;border-bottom:1px solid var(--line)}
+.streaming-links-heading{margin-bottom:15px}.streaming-links-heading h2{margin:5px 0 0}
+.streaming-links-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.streaming-link-card{min-width:0;display:grid;grid-template-columns:42px minmax(0,1fr) 17px;align-items:center;gap:11px;padding:10px 12px;border:1px solid color-mix(in srgb,var(--streaming-color) 28%,var(--line));border-radius:14px;color:var(--text);background:linear-gradient(145deg,color-mix(in srgb,var(--streaming-color) 9%,var(--user-surface,#171b29)),color-mix(in srgb,var(--user-bg,#0a0c14) 78%,var(--user-surface,#171b29)));box-shadow:0 12px 28px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.025);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+.streaming-link-card:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--streaming-color) 68%,var(--line));box-shadow:0 16px 34px rgba(0,0,0,.28),0 0 24px color-mix(in srgb,var(--streaming-color) 13%,transparent)}
+.streaming-link-icon{width:42px;height:42px;display:grid;place-items:center;overflow:hidden;border-radius:11px;color:#fff;background:color-mix(in srgb,var(--streaming-color) 22%,var(--user-bg,#0a0c14))}.streaming-link-icon img{width:100%;height:100%;object-fit:cover}.streaming-link-icon svg{width:18px;fill:currentColor}
+.streaming-link-card>span:nth-child(2){min-width:0}.streaming-link-card strong,.streaming-link-card small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.streaming-link-card strong{font-size:11px}.streaming-link-card small{margin-top:4px;color:var(--muted);font-size:8px}.streaming-link-card>svg{width:15px;color:color-mix(in srgb,var(--streaming-color) 72%,#fff)}
+@media(max-width:1000px){.streaming-links-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:700px){.streaming-links-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:430px){.streaming-links-grid{grid-template-columns:1fr}}
+
+/* Keep the series artwork visible on phones; desktop retains the stronger cinematic shade. */
+.detail-banner-shade{position:absolute;inset:0;z-index:0;pointer-events:none;background:linear-gradient(90deg,rgba(10,12,20,.82),rgba(10,12,20,.3))}
+@media(max-width:620px){
+  .detail-banner{height:300px;background-position:center 20%;background-repeat:no-repeat}
+  .detail-banner-shade{background:linear-gradient(180deg,rgba(10,12,20,.32),rgba(10,12,20,.08) 42%,rgba(10,12,20,.58))}
+  .detail-banner::before{height:42px}.detail-banner::after{height:68px}
+}

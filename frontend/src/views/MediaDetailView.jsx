@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ExternalLink, ListPlus, Play, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -58,7 +58,7 @@ export default function MediaDetailView() {
   }))
 
   return <article className="detail-page">
-    <div className="detail-banner" style={{ backgroundImage: `linear-gradient(90deg, rgba(10,12,20,.96), rgba(10,12,20,.48)), url(${detail.bannerImage || detail.coverImage})` }}><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
+    <div className="detail-banner" style={{ backgroundImage: `url(${detail.bannerImage || detail.coverImage})` }}><span className="detail-banner-shade" /><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
     <div className="detail-content">
       <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
       <div className="detail-copy">
@@ -71,6 +71,7 @@ export default function MediaDetailView() {
       </div>
       {saved && <div className="detail-tracking-row"><SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
       {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
+      {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
       {detail.musicVideoUrl && <MusicVideoPlayer url={detail.musicVideoUrl} title={detail.title} />}
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
@@ -81,6 +82,24 @@ export default function MediaDetailView() {
     </div>}
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
+}
+
+function StreamingLinks({ links }) {
+  return <section className="streaming-links">
+    <div className="streaming-links-heading"><span className="eyebrow">Disponibilidad oficial</span><h2>Dónde ver</h2></div>
+    <div className="streaming-links-grid">{links.map((link) => <a
+      className="streaming-link-card"
+      href={link.url}
+      key={`${link.site}-${link.url}`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{ '--streaming-color': link.color || 'var(--accent)' }}
+    >
+      <span className="streaming-link-icon">{link.icon ? <img src={link.icon} alt="" /> : <Play />}</span>
+      <span><strong>{link.site || 'Ver online'}</strong>{(link.notes || link.language) && <small>{[link.notes, link.language].filter(Boolean).join(' · ')}</small>}</span>
+      <ExternalLink />
+    </a>)}</div>
+  </section>
 }
 
 function MusicVideoPlayer({ url, title }) {
