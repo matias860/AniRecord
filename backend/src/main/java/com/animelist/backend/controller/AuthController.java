@@ -15,10 +15,11 @@ import java.util.Map;
 
 @RestController @RequestMapping({"/api/auth", "/api/anilist/oauth"})
 public class AuthController {
+    private static final String PUBLIC_FRONTEND_URL = "https://anirecord.com.ar";
     private final AniListAuthService auth; private final LocalAuthService localAuth; private final String frontendUrl; private final boolean secure;
     public AuthController(AniListAuthService auth, LocalAuthService localAuth,
             @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl,
-            @Value("${app.cookie-secure:true}") boolean secure){this.auth=auth;this.localAuth=localAuth;this.frontendUrl=frontendUrl.split(",")[0].trim();this.secure=secure;}
+            @Value("${app.cookie-secure:true}") boolean secure){this.auth=auth;this.localAuth=localAuth;this.frontendUrl=canonicalFrontendUrl(frontendUrl);this.secure=secure;}
     @GetMapping("/status") public AuthStatusResponse status(){return auth.status();}
     @GetMapping({"/login", "/connect"}) public ResponseEntity<Void> login(){return ResponseEntity.status(302).location(URI.create(auth.authorizationUrl())).build();}
     @GetMapping("/callback") public ResponseEntity<Void> callback(@RequestParam(required=false) String code,@RequestParam(required=false) String state,@RequestParam(required=false) String error){
@@ -43,4 +44,10 @@ public class AuthController {
     private ResponseCookie cookie(String token){return ResponseCookie.from(CurrentUserService.COOKIE,token).httpOnly(true).secure(secure).sameSite(secure?"None":"Lax").path("/").maxAge(java.time.Duration.ofDays(30)).build();}
     private ResponseCookie expired(){return ResponseCookie.from(CurrentUserService.COOKIE,"").httpOnly(true).secure(secure).sameSite(secure?"None":"Lax").path("/").maxAge(0).build();}
     private String cookie(HttpServletRequest r){if(r.getCookies()==null)return null;for(Cookie c:r.getCookies())if(CurrentUserService.COOKIE.equals(c.getName()))return c.getValue();return null;}
+    static String canonicalFrontendUrl(String configuredUrls) {
+        String configured = configuredUrls.split(",")[0].trim().replaceAll("/+$", "");
+        return configured.matches("https://(anime-list-alca|anime-list-matias|anirecord)\\.vercel\\.app")
+                ? PUBLIC_FRONTEND_URL
+                : configured;
+    }
 }
