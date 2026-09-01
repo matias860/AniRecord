@@ -1,5 +1,7 @@
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const SITE_NAME = 'AniRecord'
+const SITE_ORIGIN = 'https://anirecord.com.ar'
+const OG_VERSION = '20260901'
 
 export const config = { runtime: 'edge' }
 
@@ -49,10 +51,11 @@ export default async function handler(request) {
   const name = person?.name?.full || `${label} #${id}`
   const origin = media?.title?.english || media?.title?.romaji || ''
   const originType = mediaType(media)
-  const canonicalUrl = `${url.origin}/${route}/${id}`
+  const canonicalUrl = `${SITE_ORIGIN}/${route}/${id}`
   const description = plainText(person?.description)
     || (origin ? `${name}, personaje de ${origin}.` : `Consulta a ${name} en AniRecord.`)
   const imageUrl = new URL('/api/og-person-image', url.origin)
+  imageUrl.searchParams.set('v', OG_VERSION)
   imageUrl.searchParams.set('name', name)
   imageUrl.searchParams.set('kind', label)
   if (kind === 'staff') {

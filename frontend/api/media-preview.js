@@ -1,5 +1,7 @@
 const ANILIST_ENDPOINT = 'https://graphql.anilist.co'
 const SITE_NAME = 'AniRecord'
+const SITE_ORIGIN = 'https://anirecord.com.ar'
+const OG_VERSION = '20260901'
 
 export const config = { runtime: 'edge' }
 
@@ -21,8 +23,7 @@ const MEDIA_QUERY = `
 export default async function handler(request) {
   const url = new URL(request.url)
   const id = Number(url.searchParams.get('id'))
-  const siteOrigin = url.origin
-  const canonicalUrl = `${siteOrigin}/media/${id}`
+  const canonicalUrl = `${SITE_ORIGIN}/media/${id}`
 
   if (!Number.isInteger(id) || id <= 0) return new Response('Serie no válida', { status: 400 })
 
@@ -31,7 +32,8 @@ export default async function handler(request) {
   const type = mediaTypeLabel(media)
   const status = statusLabel(media?.status)
   const description = plainText(media?.description) || `Consulta ${title} en tu biblioteca de AniRecord.`
-  const imageUrl = new URL('/api/og-image', siteOrigin)
+  const imageUrl = new URL('/api/og-image', url.origin)
+  imageUrl.searchParams.set('v', OG_VERSION)
   imageUrl.searchParams.set('title', title)
   imageUrl.searchParams.set('type', type)
   imageUrl.searchParams.set('status', status)
