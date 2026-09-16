@@ -21,10 +21,11 @@ export const fetchSeason = createAsyncThunk(
     return { entries: data, season, year }
   },
   {
-    condition: ({ season, year }, { getState }) => {
+    condition: ({ season, year, retry = false }, { getState }) => {
       const home = getState().home
       const requestKey = `${season}-${year}`
-      return !home.seasonCache[requestKey] && home.seasonRequestKey !== requestKey
+      return !home.seasonCache[requestKey] && home.seasonStatus !== 'loading'
+        && (retry || !home.seasonErrors[requestKey])
     },
   },
 )
@@ -33,6 +34,7 @@ const homeSlice = createSlice({
   name: 'home',
   initialState: {
     airing: [], season: [], seasonCache: {}, status: 'idle', seasonStatus: 'idle', error: null, unavailable: false,
+    seasonErrors: {}, seasonRequestKey: null, seasonRequestId: null,
     seasonOffset: 0, loadedSeason: null, loadedYear: null, watchingPage: 0, readingPage: 0,
   },
   reducers: {
@@ -50,9 +52,12 @@ const homeSlice = createSlice({
       })
       .addCase(fetchSeason.pending, (state, action) => {
         state.seasonStatus = 'loading'
+        state.seasonRequestId = action.meta.requestId
+        delete state.seasonErrors[`${action.meta.arg.season}-${action.meta.arg.year}`]
         state.seasonRequestKey = `${action.meta.arg.season}-${action.meta.arg.year}`
       })
       .addCase(fetchSeason.fulfilled, (state, action) => {
+        if (state.seasonRequestId !== action.meta.requestId) return
         state.seasonStatus = 'succeeded'
         state.season = action.payload.entries
         state.seasonCache[`${action.payload.season}-${action.payload.year}`] = action.payload.entries
@@ -61,7 +66,8 @@ const homeSlice = createSlice({
         state.seasonRequestKey = null
       })
       .addCase(fetchSeason.rejected, (state, action) => {
-        if (state.seasonRequestKey !== `${action.meta.arg.season}-${action.meta.arg.year}` || action.meta.aborted) return
+        if (state.seasonRequestId !== action.meta.requestId) return
+        state.seasonErrors[`${action.meta.arg.season}-${action.meta.arg.year}`] = 'No pudimos cargar esta temporada. Podés volver a intentarlo.'
         state.seasonStatus = 'failed'
         state.seasonRequestKey = null
       })

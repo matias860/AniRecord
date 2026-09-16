@@ -91,10 +91,10 @@ export default function HomeView() {
   }, [dispatch, recommendations.status])
 
   useEffect(() => {
-    if (!home.seasonCache[selectedSeasonKey] && home.seasonRequestKey !== selectedSeasonKey) {
+    if (!home.seasonCache[selectedSeasonKey] && !home.seasonErrors[selectedSeasonKey] && home.seasonStatus !== 'loading') {
       dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear }))
     }
-  }, [dispatch, home.seasonCache, home.seasonRequestKey, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
+  }, [dispatch, home.seasonCache, home.seasonErrors, home.seasonStatus, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
   const airingWithCurrentProgress = home.airing.map((entry) => ({
     ...entry,
@@ -209,15 +209,17 @@ export default function HomeView() {
       {home.status === 'failed' && !home.unavailable && <PageState error={home.error} />}
       {auth.authenticated && libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
-      {home.seasonStatus !== 'failed' && <SeasonMarquee
+      <SeasonMarquee
         entries={selectedSeasonEntries}
+        error={home.seasonErrors[selectedSeasonKey]}
+        onRetry={() => dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear, retry: true }))}
         loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'}
         label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`}
         canGoPrevious={home.seasonOffset > 0}
         canGoNext={home.seasonOffset < 3}
         onPrevious={() => dispatch(setSeasonOffset(home.seasonOffset - 1))}
         onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
-      />}
+      />
 
       {auth.authenticated && <><LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
       <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} /></>}
