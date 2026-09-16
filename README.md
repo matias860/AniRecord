@@ -54,6 +54,24 @@ Las modificaciones de la base se agregan como nuevas migraciones en
 `backend/src/main/resources/db/migration` (`V2__...sql`, `V3__...sql`, etc.).
 Flyway las aplica automáticamente sin borrar los datos existentes.
 
+## Sincronización manual hacia AniList
+
+Las cuentas conectadas con AniList tienen en su perfil una sección para revisar y
+enviar animes de AniRecord a AniList. Se comparan estado, episodios y puntuación
+(convertida a la escala de 100 de AniList), y se pueden seleccionar las entradas
+a enviar. No se eliminan entradas ni se exportan manga, notas, fechas o favoritos.
+
+La vista previa es privada por usuario, dura dos horas y se invalida si el backend
+se reinicia. Cada envío vuelve a comprobar los valores locales y remotos. Si hay
+un cambio posterior, un error o una interrupción, se detiene el proceso y se debe
+revisar otra vez; los cambios ya aplicados permanecen en AniList y no se duplican.
+Mantener la página abierta durante el envío. No hay sincronización al iniciar sesión.
+
+El token OAuth permanece cifrado en el servidor. Las escrituras no tienen reintentos
+automáticos y las peticiones de exportación se espacian al menos 2,5 segundos por
+instancia. No se requiere una migración de base de datos. La compatibilidad técnica
+con la API no sustituye las condiciones de uso de AniList aplicables al proyecto.
+
 ## Despliegue continuo
 
 Los cambios enviados a `main` se despliegan automáticamente:

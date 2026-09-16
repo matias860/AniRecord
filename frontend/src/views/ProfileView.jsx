@@ -8,6 +8,7 @@ import ImageCropModal from '../components/profile/ImageCropModal.jsx'
 import { prepareImageForCrop } from '../lib/profileImage.js'
 import ProfileAnalytics from '../components/profile/ProfileAnalytics.jsx'
 import ActivityTimeline from '../components/profile/ActivityTimeline.jsx'
+import AniListExportPanel from '../components/profile/AniListExportPanel.jsx'
 import { fetchLibrary } from '../features/library/librarySlice.js'
 import { selectTopRatedAnime, selectTopRatedManga } from '../features/library/librarySelectors.js'
 import { fetchHistory } from '../features/history/historySlice.js'
@@ -39,6 +40,7 @@ export default function ProfileView() {
         <section className="profile-highlights"><div className="section-heading"><div><span className="eyebrow">Tu selección</span><h2><Trophy /> Tus mejores puntuados</h2></div></div><div className="top-rated-grid"><TopRated title="Top 5 anime" icon={<Clapperboard />} entries={topAnime} /><TopRated title="Top 5 manga" icon={<BookOpen />} entries={topManga} /></div></section>
       </div>
       <FavoritePeople entries={favorites.people} />
+      <AniListExportPanel />
       <div className="profile-layout">
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => dispatch(resetTheme())}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={profile.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>

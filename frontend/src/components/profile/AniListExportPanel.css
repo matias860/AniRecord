@@ -1,0 +1,16 @@
+.anilist-export-panel { margin: 1.5rem 0; padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--line); border-radius: 1.25rem; background: var(--surface); }
+.anilist-export-panel p { line-height: 1.6; margin: .75rem 0; }
+.anilist-export-note { font-size: .9rem; opacity: .75; }
+.anilist-export-error { color: #fb7185; }
+.anilist-export-selection, .anilist-export-entry { display: flex; gap: .8rem; align-items: flex-start; cursor: pointer; }
+.anilist-export-selection { margin: 1rem 0; }
+.anilist-export-panel input[type="checkbox"] { flex: 0 0 auto; margin-top: .25rem; accent-color: var(--accent); width: 1.1rem; height: 1.1rem; }
+.anilist-export-changes { max-height: 25rem; overflow-y: auto; border: 1px solid var(--line); border-radius: .75rem; }
+.anilist-export-entry { padding: .85rem 1rem; border-bottom: 1px solid var(--line); }
+.anilist-export-entry:last-child { border-bottom: 0; }
+.anilist-export-entry span { min-width: 0; overflow-wrap: anywhere; }
+.anilist-export-entry small { display: block; opacity: .8; line-height: 1.6; }
+.anilist-export-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
+.anilist-export-actions button { min-height: 44px; padding: .6rem 1rem; font-size: .875rem; }
+.anilist-export-panel progress { width: 100%; accent-color: var(--accent); }
+
