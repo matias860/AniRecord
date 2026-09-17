@@ -9,10 +9,14 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /** Authenticated, bounded requests for the explicit export flow. Never retries writes. */
 @Service
 public class AniListExportClient {
+    private static final Logger log = LoggerFactory.getLogger(AniListExportClient.class);
     private final RestClient client;
     private long nextRequest;
     public record State(String status, int progress, int score) {}
@@ -90,12 +94,40 @@ public class AniListExportClient {
             Map<?, ?> body = client.post().header("Authorization", "Bearer " + token)
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .body(Map.of("query", query, "variables", variables)).retrieve().body(Map.class);
-            if (body == null || body.get("errors") instanceof List<?> errors && !errors.isEmpty()
-                    || !(body.get("data") instanceof Map<?, ?>)) throw invalid();
+            if (body != null && body.get("errors") instanceof List<?> errors && !errors.isEmpty()) {
+                for (Object error : errors) {
+                    if (error instanceof Map<?, ?> detail && detail.get("status") instanceof Number status) {
+                        log.warn("AniList export GraphQL failure: status={}, media={}", status, variables.get("media"));
+                        throw upstreamFailure(status.intValue(), null);
+                    }
+                }
+                log.warn("AniList export GraphQL failure without status: media={}", variables.get("media"));
+                throw invalid();
+            }
+            if (body == null || !(body.get("data") instanceof Map<?, ?>)) throw invalid();
             return (Map<String, Object>) body.get("data");
+        } catch (RestClientResponseException exception) {
+            int status = exception.getStatusCode().value();
+            log.warn("AniList export HTTP failure: status={}, media={}", status, variables.get("media"));
+            String retryAfter = exception.getResponseHeaders() == null ? null : exception.getResponseHeaders().getFirst("Retry-After");
+            throw upstreamFailure(status, retryAfter);
         } catch (RestClientException exception) {
-            throw new BusinessException("AniList no pudo completar la solicitud. Espera un minuto y vuelve a revisar los cambios; si persiste, inicia sesión de nuevo con AniList.");
+            log.warn("AniList export connection failure: type={}, media={}", exception.getClass().getSimpleName(), variables.get("media"));
+            throw new BusinessException("Se interrumpió la comunicación con AniList. La última operación puede haberse guardado: revisa los cambios de nuevo antes de continuar.");
         }
+    }
+
+    private static BusinessException upstreamFailure(int status, String retryAfter) {
+        if (status == 429) {
+            long seconds = 60;
+            try { if (retryAfter != null) seconds = Math.max(1, Long.parseLong(retryAfter)); }
+            catch (NumberFormatException ignored) { /* Use the default AniList cooldown. */ }
+            return new BusinessException("AniList alcanzó su límite de solicitudes. Espera " + seconds + " segundos y revisa los cambios de nuevo para continuar con los pendientes.");
+        }
+        if (status == 401) return new BusinessException("AniList rechazó la autorización. Inicia sesión de nuevo con AniList y vuelve a revisar los cambios.");
+        if (status == 403) return new BusinessException("AniList denegó esta solicitud (403). Revisa el acceso a tu cuenta antes de volver a intentarlo.");
+        if (status >= 500) return new BusinessException("AniList tiene un problema temporal (" + status + "). Espera un minuto y revisa los cambios de nuevo; la última operación puede haberse guardado.");
+        return new BusinessException("AniList rechazó la solicitud (" + status + "). Revisa los datos del anime indicado antes de continuar.");
     }
 
     private synchronized void reserveRequest() {

@@ -45,16 +45,18 @@ export default function AniListExportPanel() {
     const changes = preview.changes.filter((entry) => selected.has(entry.entryId))
     setError(''); setPhase('sending'); setCompleted(0); setTotal(changes.length)
     let count = 0
+    let currentEntry = null
     try {
       for (const entry of changes) {
         if (stop.current) break
+        currentEntry = entry
         await apiClient.post(`/library/export/anilist/${preview.id}/entries/${entry.entryId}`)
         count += 1
         if (mounted.current) setCompleted(count)
       }
       if (mounted.current) setPhase(count === changes.length ? 'done' : 'stopped')
     } catch (reason) {
-      if (mounted.current) { setError(reason.message); setPhase('stopped') }
+      if (mounted.current) { setError(`${currentEntry ? `${currentEntry.title}: ` : ''}${reason.message}`); setPhase('stopped') }
     } finally { busy.current = false }
   }
 
@@ -72,7 +74,7 @@ export default function AniListExportPanel() {
       {phase === 'loading' && <p>Comparando tu biblioteca con AniList… Puede tardar si tu lista es grande.</p>}
       {(phase === 'sending' || phase === 'stopping') && <><p>{phase === 'stopping' ? 'Deteniendo después de la entrada actual…' : 'Enviando cambios… Mantén esta página abierta.'} {completed} de {total} confirmados.</p><progress value={completed} max={total} aria-label="Cambios enviados a AniList" /></>}
       {phase === 'done' && <p>Sincronización completada: {completed} {completed === 1 ? 'entrada confirmada' : 'entradas confirmadas'} en AniList.</p>}
-      {phase === 'stopped' && <p>Envío detenido. {completed} {completed === 1 ? 'entrada confirmada' : 'entradas confirmadas'}. Los cambios ya enviados se conservan; revisa de nuevo para ver qué queda pendiente.</p>}
+      {phase === 'stopped' && <p>Envío detenido. {completed} {completed === 1 ? 'entrada confirmada' : 'entradas confirmadas'} en este intento. Los cambios ya enviados se conservan; revisa de nuevo para ver qué queda pendiente.</p>}
     </div>
     {reviewing && preview && <>
       <p><strong>Destino: {preview.username}</strong> · {additions} para agregar · {preview.changes.length - additions} para actualizar · {preview.unchanged} sin cambios.</p>
