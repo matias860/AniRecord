@@ -108,12 +108,35 @@ public class AniListExportClient {
             return (Map<String, Object>) body.get("data");
         } catch (RestClientResponseException exception) {
             int status = exception.getStatusCode().value();
-            log.warn("AniList export HTTP failure: status={}, media={}", status, variables.get("media"));
+            String detail = validationDetail(exception, token);
+            log.warn("AniList export HTTP failure: status={}, operation={}, media={}, detail={}", status,
+                    query.stripLeading().startsWith("mutation") ? "save" : "read", variables.get("media"), detail);
+            if (status == 400 && !detail.isBlank())
+                throw new BusinessException("AniList rechazó esta entrada (400): " + detail);
             String retryAfter = exception.getResponseHeaders() == null ? null : exception.getResponseHeaders().getFirst("Retry-After");
             throw upstreamFailure(status, retryAfter);
         } catch (RestClientException exception) {
             log.warn("AniList export connection failure: type={}, media={}", exception.getClass().getSimpleName(), variables.get("media"));
             throw new BusinessException("Se interrumpió la comunicación con AniList. La última operación puede haberse guardado: revisa los cambios de nuevo antes de continuar.");
+        }
+    }
+
+    private static String validationDetail(RestClientResponseException exception, String token) {
+        if (exception.getStatusCode().value() != 400) return "";
+        try {
+            Map<?, ?> body = exception.getResponseBodyAs(Map.class);
+            if (body == null || !(body.get("errors") instanceof List<?> errors)) return "";
+            List<String> messages = new ArrayList<>();
+            for (Object error : errors) {
+                if (error instanceof Map<?, ?> detail && detail.get("message") instanceof String message) {
+                    String safe = message.replace(token, "[redacted]").replaceAll("[\\p{Cntrl}]", " ");
+                    messages.add(safe.substring(0, Math.min(300, safe.length())));
+                    if (messages.size() == 3) break;
+                }
+            }
+            return String.join("; ", messages);
+        } catch (RuntimeException ignored) {
+            return ""; // Non-JSON responses must not hide the original HTTP status.
         }
     }
 
