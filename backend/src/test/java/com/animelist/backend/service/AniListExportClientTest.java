@@ -10,6 +10,46 @@ import static org.junit.jupiter.api.Assertions.*;
 import static com.animelist.backend.service.AniListExportClient.State;
 
 class AniListExportClientTest {
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {200, 400})
+    void nestedValidationIdentifiesRejectedField(int httpStatus) throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = "{\"errors\":[{\"message\":\"validation\",\"status\":400,\"validation\":{\"id\":[\"The selected id is invalid.\"],\"score\":[\"Invalid score test-token\"]}}]}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(httpStatus, response.length);
+            exchange.getResponseBody().write(response); exchange.close();
+        });
+        server.start();
+        try {
+            var client = new AniListExportClient("http://127.0.0.1:" + server.getAddress().getPort());
+            var error = assertThrows(BusinessException.class, () -> client.save("test-token", 10, 100, new State("PLANNING", 0, 0)));
+            assertTrue(error.getMessage().contains("id: The selected id is invalid."));
+            assertTrue(error.getMessage().contains("score: Invalid score"));
+            assertFalse(error.getMessage().contains("test-token"));
+        } finally { server.stop(0); }
+    }
+
+    @Test void newEntryOmitsUpdateIdEntirely() throws Exception {
+        var requestBody = new java.util.concurrent.atomic.AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] response = "{\"data\":{\"SaveMediaListEntry\":{\"mediaId\":143103,\"status\":\"PLANNING\",\"progress\":0,\"score\":0}}}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response); exchange.close();
+        });
+        server.start();
+        try {
+            new AniListExportClient("http://127.0.0.1:" + server.getAddress().getPort()).save("test-token", 143103, null, new State("PLANNING", 0, 0));
+            assertFalse(requestBody.get().contains("$id"));
+            assertFalse(requestBody.get().contains("\"id\""));
+            assertTrue(requestBody.get().contains("mediaId: $media"));
+        } finally { server.stop(0); }
+    }
+
     @Test void validationResponsePreservesReasonButRedactsToken() throws Exception {
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {

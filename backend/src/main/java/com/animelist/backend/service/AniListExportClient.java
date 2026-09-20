@@ -64,14 +64,15 @@ public class AniListExportClient {
 
     public void save(String token, int mediaId, Integer entryId, State value) {
         Map<String, Object> variables = new HashMap<>(Map.of("media", mediaId, "status", value.status(), "progress", value.progress(), "score", value.score()));
-        variables.put("id", entryId);
-        Map<String, Object> data = request(token, """
-            mutation($id: Int, $media: Int!, $status: MediaListStatus!, $progress: Int!, $score: Int!) {
-              SaveMediaListEntry(id: $id, mediaId: $media, status: $status, progress: $progress, scoreRaw: $score) {
+        if (entryId != null) variables.put("id", entryId);
+        String mutation = """
+            mutation(%s$media: Int!, $status: MediaListStatus!, $progress: Int!, $score: Int!) {
+              SaveMediaListEntry(%smediaId: $media, status: $status, progress: $progress, scoreRaw: $score) {
                 mediaId status progress score(format: POINT_100)
               }
             }
-            """, variables);
+            """.formatted(entryId == null ? "" : "$id: Int!, ", entryId == null ? "" : "id: $id, ");
+        Map<String, Object> data = request(token, mutation, variables);
         if (!(data.get("SaveMediaListEntry") instanceof Map<?, ?> saved)
                 || !Objects.equals(saved.get("mediaId"), mediaId) || !value.equals(state(saved))) throw invalid();
     }
@@ -95,6 +96,10 @@ public class AniListExportClient {
                     .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                     .body(Map.of("query", query, "variables", variables)).retrieve().body(Map.class);
             if (body != null && body.get("errors") instanceof List<?> errors && !errors.isEmpty()) {
+                String validation = validationDetail(body, token);
+                if (errors.stream().anyMatch(error -> error instanceof Map<?, ?> detail
+                        && ("validation".equals(detail.get("message")) || detail.get("status") instanceof Number status && status.intValue() == 400)))
+                    throw new BusinessException("AniList rechazó esta entrada (400): " + validation);
                 for (Object error : errors) {
                     if (error instanceof Map<?, ?> detail && detail.get("status") instanceof Number status) {
                         log.warn("AniList export GraphQL failure: status={}, media={}", status, variables.get("media"));
@@ -125,19 +130,40 @@ public class AniListExportClient {
         if (exception.getStatusCode().value() != 400) return "";
         try {
             Map<?, ?> body = exception.getResponseBodyAs(Map.class);
-            if (body == null || !(body.get("errors") instanceof List<?> errors)) return "";
-            List<String> messages = new ArrayList<>();
-            for (Object error : errors) {
-                if (error instanceof Map<?, ?> detail && detail.get("message") instanceof String message) {
-                    String safe = message.replace(token, "[redacted]").replaceAll("[\\p{Cntrl}]", " ");
-                    messages.add(safe.substring(0, Math.min(300, safe.length())));
-                    if (messages.size() == 3) break;
-                }
-            }
-            return String.join("; ", messages);
+            return validationDetail(body, token);
         } catch (RuntimeException ignored) {
             return ""; // Non-JSON responses must not hide the original HTTP status.
         }
+    }
+
+    private static String validationDetail(Map<?, ?> body, String token) {
+        if (body == null || !(body.get("errors") instanceof List<?> errors)) return "";
+        List<String> messages = new ArrayList<>();
+        for (Object error : errors) {
+            if (!(error instanceof Map<?, ?> detail)) continue;
+            Object validation = detail.get("validation");
+            if (validation == null && detail.get("extensions") instanceof Map<?, ?> extensions)
+                validation = extensions.get("validation");
+            if (validation instanceof Map<?, ?> fields) {
+                for (var field : fields.entrySet()) {
+                    if (!(field.getKey() instanceof String name)) continue;
+                    List<?> reasons = field.getValue() instanceof List<?> list ? list : Collections.singletonList(field.getValue());
+                    for (Object reason : reasons) {
+                        if (reason instanceof String message && messages.size() < 5)
+                            messages.add(safeDetail(name + ": " + message, token));
+                    }
+                }
+            } else if (detail.get("message") instanceof String message && messages.size() < 5) {
+                messages.add(safeDetail(message, token));
+            }
+            if (messages.size() >= 5) break;
+        }
+        return String.join("; ", messages);
+    }
+
+    private static String safeDetail(String message, String token) {
+        String safe = message.replace(token, "[redacted]").replaceAll("[\\p{Cntrl}]", " ");
+        return safe.substring(0, Math.min(300, safe.length()));
     }
 
     private static BusinessException upstreamFailure(int status, String retryAfter) {
