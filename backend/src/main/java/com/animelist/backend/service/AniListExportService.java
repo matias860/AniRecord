@@ -24,7 +24,7 @@ public class AniListExportService {
     private final Cache<UUID, Plan> plans = Caffeine.newBuilder().maximumSize(100).expireAfterWrite(Duration.ofHours(2)).build();
     private final Object[] writeLocks = java.util.stream.IntStream.range(0, 64).mapToObj(i -> new Object()).toArray();
 
-    public record Change(Long entryId, int anilistId, String title, State before, State after) {}
+    public record Change(Long entryId, int anilistId, String title, String coverImage, State before, State after) {}
     public record Preview(UUID id, String username, Instant expiresAt, List<Change> changes, int unchanged) {}
     private record Plan(Long userId, List<Change> changes) {}
 
@@ -40,7 +40,7 @@ public class AniListExportService {
         List<Change> changes = new ArrayList<>();
         for (var entry : local) {
             State after = desired(entry), before = remote.containsKey(entry.anilistId()) ? remote.get(entry.anilistId()).value() : null;
-            if (!after.equals(before)) changes.add(new Change(entry.id(), entry.anilistId(), entry.title(), before, after));
+            if (!after.equals(before)) changes.add(new Change(entry.id(), entry.anilistId(), entry.title(), entry.coverImage(), before, after));
         }
         UUID id = UUID.randomUUID();
         List<Change> immutable = List.copyOf(changes);

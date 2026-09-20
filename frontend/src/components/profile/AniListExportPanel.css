@@ -1,16 +1,45 @@
-.anilist-export-panel { margin: 1.5rem 0; padding: clamp(1rem, 3vw, 1.75rem); border: 1px solid var(--line); border-radius: 1.25rem; background: var(--surface); }
-.anilist-export-panel p { line-height: 1.6; margin: .75rem 0; }
-.anilist-export-note { font-size: .9rem; opacity: .75; }
-.anilist-export-error { color: #fb7185; }
-.anilist-export-selection, .anilist-export-entry { display: flex; gap: .8rem; align-items: flex-start; cursor: pointer; }
-.anilist-export-selection { margin: 1rem 0; }
-.anilist-export-panel input[type="checkbox"] { flex: 0 0 auto; margin-top: .25rem; accent-color: var(--accent); width: 1.1rem; height: 1.1rem; }
-.anilist-export-changes { max-height: 25rem; overflow-y: auto; border: 1px solid var(--line); border-radius: .75rem; }
-.anilist-export-entry { padding: .85rem 1rem; border-bottom: 1px solid var(--line); }
+.anilist-export-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--user-surface,var(--surface)); }
+.anilist-export-panel .section-heading { margin-bottom: .4rem; }
+.anilist-export-panel p { line-height: 1.5; margin: .6rem 0; font-size: .85rem; }
+.anilist-export-intro,.anilist-export-note { color: var(--muted); }
+.anilist-export-details { font-size: .78rem; color: var(--muted); }
+.anilist-export-details summary { cursor: pointer; width: fit-content; padding: .25rem 0; }
+.anilist-export-error { color: #fb7185; overflow-wrap: anywhere; }
+.anilist-export-selection,.anilist-export-entry { display: flex; gap: .65rem; align-items: center; cursor: pointer; }
+.anilist-export-selection { margin: .65rem 0; font-size: .8rem; }
+.anilist-export-panel input[type="checkbox"] { flex: 0 0 auto; accent-color: var(--accent); width: 1.1rem; height: 1.1rem; }
+.anilist-export-changes { max-height: 20rem; overflow-y: auto; border: 1px solid var(--line); border-radius: .7rem; }
+.anilist-export-entry { padding: .6rem .75rem; border-bottom: 1px solid var(--line); }
+.anilist-export-entry:hover { background: color-mix(in srgb,var(--accent) 5%,transparent); }
 .anilist-export-entry:last-child { border-bottom: 0; }
-.anilist-export-entry span { min-width: 0; overflow-wrap: anywhere; }
-.anilist-export-entry small { display: block; opacity: .8; line-height: 1.6; }
-.anilist-export-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1rem; }
-.anilist-export-actions button { min-height: 44px; padding: .6rem 1rem; font-size: .875rem; }
-.anilist-export-panel progress { width: 100%; accent-color: var(--accent); }
-
+.anilist-export-entry > span { min-width: 0; overflow-wrap: anywhere; font-size: .82rem; }
+.anilist-export-entry small { display: block; color: var(--muted); line-height: 1.5; font-size: .72rem; }
+.anilist-export-cover { position: relative; flex: 0 0 auto; width: 36px; height: 50px; overflow: hidden; border-radius: 5px; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); }
+.anilist-export-cover img { width: 100%; height: 100%; object-fit: cover; }
+.anilist-export-cover > svg { width: 20px; }
+.anilist-export-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .7rem; }
+.anilist-export-actions button { min-height: 44px; padding: .5rem .8rem; font-size: .8rem; }
+.anilist-export-transfer { display: flex; align-items: center; gap: .85rem; padding: .8rem; margin-top: .85rem; border: 1px solid color-mix(in srgb,var(--accent) 30%,var(--line)); border-radius: .85rem; background: linear-gradient(110deg,color-mix(in srgb,var(--accent) 9%,transparent),transparent); }
+.anilist-export-transfer .anilist-export-cover { width: 60px; height: 84px; border-radius: 7px; box-shadow: 0 4px 14px #0003; }
+.anilist-export-cover-scan { position: absolute; inset: 0; background: linear-gradient(transparent 35%,color-mix(in srgb,var(--accent) 60%,transparent) 90%,#fff9); transform: translateY(-100%); animation: anilist-scan 2.3s ease-in-out infinite; }
+.anilist-export-transfer-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .22rem; }
+.anilist-export-transfer-label { color: var(--accent); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.anilist-export-transfer-copy > strong { font-size: .95rem; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.anilist-export-transfer-meta { font-size: .75rem; color: var(--muted); }
+.anilist-export-transfer-copy > small { font-size: .68rem; color: var(--muted); line-height: 1.4; }
+.anilist-export-meter { flex: 0 0 auto; display: grid; justify-items: center; gap: .25rem; font-size: .72rem; font-variant-numeric: tabular-nums; font-weight: 700; }
+.anilist-export-meter > span > span { color: var(--muted); font-weight: 400; }
+.anilist-export-ring { width: 48px; height: 48px; position: relative; display: grid; place-items: center; color: var(--accent); }
+.anilist-export-ring > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); fill: none; stroke-width: 3; }
+.anilist-export-ring > svg:last-child { width: 18px; height: 18px; }
+.ring-track { stroke: var(--line); }
+.ring-value { stroke: currentColor; stroke-linecap: round; transition: stroke-dasharray .4s ease; }
+.anilist-export-upload-icon { animation: anilist-upload 1.5s ease-in-out infinite; }
+.anilist-export-loading { display: flex; gap: .5rem; align-items: center; color: var(--muted); }
+.anilist-export-loading svg { width: 16px; animation: anilist-spin 1.4s linear infinite; }
+.anilist-export-panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@keyframes anilist-scan { to { transform: translateY(100%); } }
+@keyframes anilist-upload { 50% { transform: translateY(-3px); opacity: .5; } }
+@keyframes anilist-spin { to { transform: rotate(360deg); } }
+@media (max-width: 420px) { .anilist-export-transfer { gap: .6rem; padding: .65rem; } .anilist-export-transfer .anilist-export-cover { width: 48px; height: 68px; } .anilist-export-transfer-copy > strong { font-size: .82rem; } .anilist-export-transfer-label { font-size: .58rem; } .anilist-export-ring { width: 40px; height: 40px; } }
+@media (prefers-reduced-motion: reduce) { .anilist-export-panel *, .anilist-export-panel *::before { animation: none !important; transition: none !important; } .anilist-export-cover-scan { display: none; } }
