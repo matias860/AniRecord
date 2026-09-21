@@ -51,6 +51,8 @@ export default function MediaDetailView() {
 
   if (detailStatus !== 'succeeded') return <PageState loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
+  const titleLength = [...detail.title].length
+  const titleSizeClass = titleLength > 64 ? 'detail-title-extra-long' : titleLength > 38 ? 'detail-title-long' : ''
   const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
     value,
     label: value === 'IN_PROGRESS' ? (detail.mediaType === 'ANIME' ? 'Viendo' : 'Leyendo')
@@ -61,8 +63,8 @@ export default function MediaDetailView() {
     <div className="detail-banner" style={{ backgroundImage: `url(${detail.bannerImage || detail.coverImage})` }}><span className="detail-banner-shade" /><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
     <div className="detail-content">
       <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
-      <div className="detail-copy">
-        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
+      <div className={`detail-copy${titleSizeClass ? ' detail-copy-long-title' : ''}`}>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1 className={titleSizeClass}>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
         <div className="detail-information-strip">
           {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}
           {detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}
