@@ -67,7 +67,7 @@ public class AniListController {
             @RequestParam(required = false)
             @jakarta.validation.constraints.Pattern(regexp = "JP|KR|CN") String country,
             @RequestParam(required = false)
-            @jakarta.validation.constraints.Pattern(regexp = "MANGA|NOVEL|ONE_SHOT") String format,
+            @jakarta.validation.constraints.Pattern(regexp = "TV|TV_SHORT|MOVIE|SPECIAL|OVA|ONA|MUSIC|MANGA|NOVEL|ONE_SHOT") String format,
             @RequestParam(defaultValue = "POPULARITY")
             @jakarta.validation.constraints.Pattern(regexp = "POPULARITY|SCORE|TRENDING|NEWEST") String sort
     ) {
