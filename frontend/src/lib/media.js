@@ -32,6 +32,16 @@ export const parseAniListText = (value) => {
   return segments
 }
 
+export const isUnreleasedAnime = (media) => media.mediaType === 'ANIME' && media.releaseStatus === 'NOT_YET_RELEASED'
+
+export const formatReleaseYears = (media) => {
+  const start = media.releaseYear || media.releaseStartDate?.slice(0, 4)
+  const end = media.releaseEndYear || media.releaseEndDate?.slice(0, 4)
+  if (!start) return 'Sin fecha'
+  return media.mediaType === 'MANGA' && media.releaseStatus === 'FINISHED' && end
+    ? `${start} - ${end}` : String(start)
+}
+
 const aniListInternalPath = (href) => {
   try {
     const url = new URL(href)

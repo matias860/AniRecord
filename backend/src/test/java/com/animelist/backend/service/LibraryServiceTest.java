@@ -96,6 +96,16 @@ class LibraryServiceTest {
     }
 
     @Test
+    void unreleasedAnimeCannotIncrementProgress() {
+        LibraryEntry entry = entry(0, 12, TrackingStatus.PLANNED);
+        entry.getMedia().setReleaseStatus(com.animelist.backend.enums.ReleaseStatus.NOT_YET_RELEASED);
+        mockEntry(1L, entry);
+        assertThrows(BusinessException.class, () -> libraryService.incrementProgress(1L));
+        assertEquals(0, entry.getProgress());
+        verifyNoInteractions(activityHistoryService);
+    }
+
+    @Test
     void completedStatusSetsKnownTotalAsProgress() {
         LibraryEntry entry = entry(4, 12, TrackingStatus.IN_PROGRESS);
         mockEntry(1L, entry);

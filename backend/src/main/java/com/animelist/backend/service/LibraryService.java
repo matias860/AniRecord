@@ -112,6 +112,7 @@ public class LibraryService {
         int previousRewatchCount = entry.getRewatchCount();
 
         if (request.progress() != null) {
+            if (request.progress() > previousProgress) validateReleased(entry);
             validateProgress(request.progress(), entry.getMedia().getTotalUnits());
             entry.setProgress(request.progress());
             if (request.trackingStatus() == null
@@ -153,6 +154,7 @@ public class LibraryService {
         BigDecimal previousScore = entry.getPersonalScore();
         int previousRewatchCount = entry.getRewatchCount();
         int nextProgress = entry.getProgress() + 1;
+        validateReleased(entry);
         validateProgress(nextProgress, entry.getMedia().getTotalUnits());
         entry.setProgress(nextProgress);
         applyAutomaticRules(entry);
@@ -232,6 +234,12 @@ public class LibraryService {
     private LibraryEntry findEntry(Long id) {
         return libraryEntryRepository.findWithMediaByIdAndUserId(id, currentUser.require().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la entrada de biblioteca"));
+    }
+
+    private void validateReleased(LibraryEntry entry) {
+        if (entry.getMedia().getMediaType() == MediaType.ANIME
+                && entry.getMedia().getReleaseStatus() == com.animelist.backend.enums.ReleaseStatus.NOT_YET_RELEASED)
+            throw new BusinessException("Este anime todavía no se estrenó. No se pueden agregar episodios.");
     }
 
     private void validateProgress(int progress, Integer totalUnits) {

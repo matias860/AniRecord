@@ -824,14 +824,16 @@ public class AniListClient {
                 mapDate(media.get("endDate")),
                 enumValue(ReleaseStatus.class, asString(media.get("status"))),
                 enumValue(ReleaseSeason.class, asString(media.get("season"))),
-                asInteger(media.get("seasonYear")),
+                mediaType == MediaType.MANGA ? asInteger(asMap(media.get("startDate")).get("year"))
+                        : asInteger(media.get("seasonYear")),
                 asInteger(media.get("favourites")),
                 mapAiring(media.get("nextAiringEpisode")),
                 mapCredits(mediaType, media.get("staff"), media.get("studios")),
                 mapRelations(media.get("relations")),
                 mapCharacters(media.get("characters")),
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
-                mapTags(media.get("tags"))
+                mapTags(media.get("tags")),
+                asInteger(asMap(media.get("endDate")).get("year"))
         );
     }
 

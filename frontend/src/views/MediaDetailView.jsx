@@ -7,7 +7,7 @@ import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import MediaTags from '../components/media/MediaTags.jsx'
 import { addToLibrary, fetchLibrary, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
-import { cleanSynopsis } from '../lib/media.js'
+import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime } from '../lib/media.js'
 import { clearDetail, fetchMediaDetail } from '../features/search/searchSlice.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
@@ -67,9 +67,9 @@ export default function MediaDetailView() {
       <div className="detail-information-strip">
         {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}
         {detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}
-        <div className="detail-meta"><span><CalendarDays /> {detail.releaseYear || 'Sin fecha'}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>
+        <div className="detail-meta"><span><CalendarDays /> {formatReleaseYears(detail)}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>
       </div>
-      {saved && <div className="detail-tracking-row"><SavedTrackingEditor saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
+      {saved && <div className="detail-tracking-row"><SavedTrackingEditor unreleased={isUnreleasedAnime(detail)} saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
       {(!!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
         {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
         {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
@@ -179,7 +179,7 @@ function CharacterCarousel({ characters }) {
   </section>
 }
 
-function SavedTrackingEditor({ saved, mediaType, unit, total, statusOptions, loading, onRemove }) {
+function SavedTrackingEditor({ unreleased, saved, mediaType, unit, total, statusOptions, loading, onRemove }) {
   const dispatch = useDispatch()
   const [form, setForm] = useState(() => ({
     trackingStatus: saved.trackingStatus,
@@ -203,16 +203,16 @@ function SavedTrackingEditor({ saved, mediaType, unit, total, statusOptions, loa
     } catch { /* El middleware global muestra el error en un toast. */ }
   }
 
-  return <TrackingEditor form={form} setForm={setForm} mediaType={mediaType} unit={unit} total={total} statusOptions={statusOptions} loading={loading} message={message} onSave={saveTracking} onRemove={onRemove} />
+  return <TrackingEditor unreleased={unreleased} form={form} setForm={setForm} mediaType={mediaType} unit={unit} total={total} statusOptions={statusOptions} loading={loading} message={message} onSave={saveTracking} onRemove={onRemove} />
 }
 
-function TrackingEditor({ form, setForm, mediaType, unit, total, statusOptions, loading, message, onSave, onRemove }) {
+function TrackingEditor({ unreleased, form, setForm, mediaType, unit, total, statusOptions, loading, message, onSave, onRemove }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }))
   return <section className="tracking-editor">
     <div className="tracking-editor-heading"><div><span className="eyebrow">Mi biblioteca</span><h2>Seguimiento</h2></div><span className="saved-label">Guardado en tu biblioteca</span></div>
     <div className="tracking-fields">
       <label><span>Estado</span><StyledSelect ariaLabel="Estado de seguimiento" value={form.trackingStatus} onChange={(value) => update('trackingStatus', value)} options={statusOptions} /></label>
-      <label><span>Progreso ({unit})</span><input type="number" min="0" max={total ?? undefined} value={form.progress} onChange={(event) => update('progress', event.target.value)} /></label>
+      <label><span>{unreleased ? "Próximamente · sin episodios disponibles" : `Progreso (${unit})`}</span><input disabled={unreleased} type="number" min="0" max={total ?? undefined} value={form.progress} onChange={(event) => update('progress', event.target.value)} /></label>
       <label className="detail-score-range"><span>Puntaje personal <b>{form.personalScore === '' ? 'Sin puntaje' : `${form.personalScore}/10`}</b></span><div><input aria-label="Puntaje personal" type="range" min="0" max="10" step="0.5" value={form.personalScore === '' ? 0 : form.personalScore} onChange={(event) => update('personalScore', event.target.value)} />{form.personalScore !== '' && <button type="button" onClick={() => update('personalScore', '')}>Quitar</button>}</div></label>
       <label><span><Repeat2 /> {mediaType === 'ANIME' ? 'Rewatches' : 'Releídas'}</span><input type="number" min="0" value={form.rewatchCount} onChange={(event) => update('rewatchCount', event.target.value)} /></label>
     </div>
