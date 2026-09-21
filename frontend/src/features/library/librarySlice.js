@@ -74,9 +74,10 @@ const librarySlice = createSlice({
   },
   reducers: {
     setLibraryMediaType: (state, action) => {
+      if (state.filters.mediaType !== action.payload) state.filters.format = ''
       state.filters.mediaType = action.payload
       if (action.payload === 'MANGA') state.filters.season = ''
-      else { state.filters.country = ''; state.filters.format = '' }
+      else state.filters.country = ''
     },
     setLibraryTrackingStatus: (state, action) => { state.filters.trackingStatus = action.payload },
     setLibraryFilter: (state, action) => { state.filters[action.payload.key] = action.payload.value },
