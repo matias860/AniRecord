@@ -7,7 +7,14 @@
 .anilist-export-error { color: #fb7185; overflow-wrap: anywhere; }
 .anilist-export-selection,.anilist-export-entry { display: flex; gap: .65rem; align-items: center; cursor: pointer; }
 .anilist-export-selection { margin: .65rem 0; font-size: .8rem; }
-.anilist-export-panel input[type="checkbox"] { flex: 0 0 auto; accent-color: var(--accent); width: 1.1rem; height: 1.1rem; }
+.anilist-export-checkbox-input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; clip-path: inset(50%); }
+.anilist-export-checkbox { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; display: grid; place-items: center; border: 1px solid color-mix(in srgb,var(--accent) 32%,var(--line)); border-radius: .38rem; color: #fff; background: color-mix(in srgb,var(--user-bg,#0a0c14) 78%,var(--user-surface,var(--surface))); box-shadow: inset 0 1px 0 rgba(255,255,255,.04),0 4px 12px rgba(0,0,0,.15); transition: border-color .18s,background .18s,box-shadow .18s,transform .18s; }
+.anilist-export-checkbox svg { width: .82rem; height: .82rem; stroke-width: 3; opacity: 0; transform: scale(.55); transition: opacity .15s,transform .18s; }
+.anilist-export-checkbox-input:checked + .anilist-export-checkbox,.anilist-export-checkbox.is-partial { border-color: color-mix(in srgb,var(--accent) 78%,#fff); background: linear-gradient(145deg,color-mix(in srgb,var(--accent) 92%,#fff),color-mix(in srgb,var(--accent) 76%,#171124)); box-shadow: 0 5px 16px color-mix(in srgb,var(--accent) 25%,transparent),inset 0 1px 0 rgba(255,255,255,.2); }
+.anilist-export-checkbox-input:checked + .anilist-export-checkbox svg,.anilist-export-checkbox.is-partial svg { opacity: 1; transform: scale(1); }
+.anilist-export-selection:hover .anilist-export-checkbox,.anilist-export-entry:hover .anilist-export-checkbox { border-color: color-mix(in srgb,var(--accent) 70%,#fff); transform: translateY(-1px); }
+.anilist-export-checkbox-input:focus-visible + .anilist-export-checkbox { outline: 2px solid color-mix(in srgb,var(--accent) 75%,#fff); outline-offset: 3px; }
+.anilist-export-checkbox-input:disabled + .anilist-export-checkbox { opacity: .45; cursor: not-allowed; }
 .anilist-export-changes { max-height: 20rem; overflow-y: auto; border: 1px solid var(--line); border-radius: .7rem; }
 .anilist-export-entry { padding: .6rem .75rem; border-bottom: 1px solid var(--line); }
 .anilist-export-entry:hover { background: color-mix(in srgb,var(--accent) 5%,transparent); }

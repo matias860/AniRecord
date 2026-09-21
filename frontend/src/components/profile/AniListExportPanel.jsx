@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { ArrowUpRight, RefreshCw, Upload, Check, Pause, Image as ImageIcon } from 'lucide-react'
+import { ArrowUpRight, RefreshCw, Upload, Check, Minus, Pause, Image as ImageIcon } from 'lucide-react'
 import apiClient from '../../api/apiClient.js'
 import './AniListExportPanel.css'
 
@@ -15,6 +15,15 @@ function Cover({ entry, uploading = false }) {
     {entry?.coverImage && !failed ? <img src={entry.coverImage} alt="" onError={() => setFailed(true)} /> : <ImageIcon />}
     {uploading && <span className="anilist-export-cover-scan" />}
   </div>
+}
+
+function SelectionCheckbox({ checked, partial = false, onChange }) {
+  return <>
+    <input className="anilist-export-checkbox-input" type="checkbox" checked={checked} onChange={onChange} />
+    <span className={`anilist-export-checkbox${partial ? ' is-partial' : ''}`} aria-hidden="true">
+      {partial ? <Minus /> : <Check />}
+    </span>
+  </>
 }
 
 export default function AniListExportPanel() {
@@ -106,10 +115,10 @@ export default function AniListExportPanel() {
       <p><strong>Destino: {preview.username}</strong> · {additions} para agregar · {preview.changes.length - additions} para actualizar · {preview.unchanged} sin cambios.</p>
       {preview.changes.length ? <>
         <p>Los valores de AniRecord reemplazarán los de AniList en las entradas seleccionadas, incluso si el progreso o la puntuación son menores.</p>
-        <label className="anilist-export-selection"><input type="checkbox" checked={selected.size === preview.changes.length} onChange={(event) => setSelected(new Set(event.target.checked ? preview.changes.map((entry) => entry.entryId) : []))} /> Seleccionar todos los cambios</label>
+        <label className="anilist-export-selection"><SelectionCheckbox checked={selected.size === preview.changes.length} partial={selected.size > 0 && selected.size < preview.changes.length} onChange={(event) => setSelected(new Set(event.target.checked ? preview.changes.map((entry) => entry.entryId) : []))} /> Seleccionar todos los cambios</label>
         <div className="anilist-export-changes" role="region" aria-label="Vista previa de cambios" tabIndex={0}>
           {preview.changes.map((entry) => <label key={entry.entryId} className="anilist-export-entry">
-            <input type="checkbox" checked={selected.has(entry.entryId)} onChange={(event) => setSelected((previous) => {
+            <SelectionCheckbox checked={selected.has(entry.entryId)} onChange={(event) => setSelected((previous) => {
               const next = new Set(previous)
               if (event.target.checked) next.add(entry.entryId); else next.delete(entry.entryId)
               return next
