@@ -10,6 +10,23 @@ import static org.junit.jupiter.api.Assertions.*;
 import static com.animelist.backend.service.AniListExportClient.State;
 
 class AniListExportClientTest {
+    @Test void readIncludesTheAccountsScoreFormat() throws Exception {
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            exchange.getRequestBody().readAllBytes();
+            byte[] response = "{\"data\":{\"User\":{\"mediaListOptions\":{\"scoreFormat\":\"POINT_10\"}},\"Page\":{\"pageInfo\":{\"hasNextPage\":false},\"mediaList\":[{\"id\":100,\"mediaId\":10,\"status\":\"COMPLETED\",\"progress\":12,\"score\":90}]}}}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response); exchange.close();
+        });
+        server.start();
+        try {
+            var snapshot = new AniListExportClient("http://127.0.0.1:" + server.getAddress().getPort()).read("test-token", 42);
+            assertEquals("POINT_10", snapshot.scoreFormat());
+            assertEquals(new State("COMPLETED", 12, 90), snapshot.entries().get(10).value());
+        } finally { server.stop(0); }
+    }
+
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(ints = {200, 400})
     void nestedValidationIdentifiesRejectedField(int httpStatus) throws Exception {

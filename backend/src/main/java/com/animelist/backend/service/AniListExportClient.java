@@ -21,6 +21,7 @@ public class AniListExportClient {
     private long nextRequest;
     public record State(String status, int progress, int score) {}
     public record Remote(int id, State value) {}
+    public record Snapshot(Map<Integer, Remote> entries, String scoreFormat) {}
 
     public AniListExportClient(@Value("${anilist.api.url:https://graphql.anilist.co}") String url) {
         var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
@@ -28,24 +29,28 @@ public class AniListExportClient {
         client = RestClient.builder().baseUrl(url).requestFactory(factory).build();
     }
 
-    public Map<Integer, Remote> read(String token, Integer userId) {
+    public Snapshot read(String token, Integer userId) {
         Map<Integer, Remote> result = new HashMap<>();
+        String scoreFormat = null;
         for (int page = 1; page <= 200; page++) {
             Map<String, Object> data = request(token, """
                 query($user: Int!, $page: Int!) {
+                  User(id: $user) { mediaListOptions { scoreFormat } }
                   Page(page: $page, perPage: 50) {
                     pageInfo { hasNextPage }
                     mediaList(userId: $user, type: ANIME) { id mediaId status progress score(format: POINT_100) }
                   }
                 }
                 """, Map.of("user", userId, "page", page));
+            if (scoreFormat == null) scoreFormat = scoreFormat(data);
             Map<?, ?> response = (Map<?, ?>) data.get("Page");
             if (response == null || !(response.get("mediaList") instanceof List<?> entries)) throw invalid();
             for (Object entry : entries) {
                 Map<?, ?> item = (Map<?, ?>) entry;
                 result.put(((Number) item.get("mediaId")).intValue(), remote(item));
             }
-            if (response.get("pageInfo") instanceof Map<?, ?> info && Boolean.FALSE.equals(info.get("hasNextPage"))) return result;
+            if (response.get("pageInfo") instanceof Map<?, ?> info && Boolean.FALSE.equals(info.get("hasNextPage")))
+                return new Snapshot(Map.copyOf(result), scoreFormat);
         }
         throw new BusinessException("La lista supera el tamaño admitido para esta sincronización.");
     }
@@ -73,8 +78,22 @@ public class AniListExportClient {
             }
             """.formatted(entryId == null ? "" : "$id: Int!, ", entryId == null ? "" : "id: $id, ");
         Map<String, Object> data = request(token, mutation, variables);
-        if (!(data.get("SaveMediaListEntry") instanceof Map<?, ?> saved)
-                || !Objects.equals(saved.get("mediaId"), mediaId) || !value.equals(state(saved))) throw invalid();
+        if (!(data.get("SaveMediaListEntry") instanceof Map<?, ?> saved) || !Objects.equals(saved.get("mediaId"), mediaId)) {
+            log.warn("AniList export save response was incomplete: media={}", mediaId);
+            throw invalid();
+        }
+        State confirmed = state(saved);
+        if (!value.equals(confirmed)) {
+            log.warn("AniList export save mismatch: media={}, expected={}, confirmed={}", mediaId, value, confirmed);
+            throw invalid();
+        }
+    }
+
+    private static String scoreFormat(Map<String, Object> data) {
+        if (!(data.get("User") instanceof Map<?, ?> user)
+                || !(user.get("mediaListOptions") instanceof Map<?, ?> options)
+                || !(options.get("scoreFormat") instanceof String format)) throw invalid();
+        return format;
     }
 
     private static State state(Map<?, ?> value) {

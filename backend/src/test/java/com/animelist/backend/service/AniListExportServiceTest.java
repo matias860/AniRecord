@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static com.animelist.backend.service.AniListExportClient.State;
 import static com.animelist.backend.service.AniListExportClient.Remote;
+import static com.animelist.backend.service.AniListExportClient.Snapshot;
 
 class AniListExportServiceTest {
     final CurrentUserService current = mock(CurrentUserService.class);
@@ -27,11 +28,11 @@ class AniListExportServiceTest {
         user.setId(1L); user.setAccountType(AccountType.ANILIST); user.setAnilistUserId(42); user.setAnilistUsername("test");
         when(current.require()).thenReturn(user); when(auth.validToken(user)).thenReturn("test-token");
         when(entries.findSummaries(1L, MediaType.ANIME, null)).thenReturn(List.of(entry(TrackingStatus.COMPLETED, new BigDecimal("8.5"))));
-        when(client.read("test-token", 42)).thenReturn(Map.of());
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(), "POINT_100"));
     }
 
     @Test void previewIsReadOnlyAndIgnoresRemoteOnlyEntries() {
-        when(client.read("test-token", 42)).thenReturn(Map.of(99, new Remote(999, new State("CURRENT", 2, 70))));
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(99, new Remote(999, new State("CURRENT", 2, 70))), "POINT_100"));
         var preview = service.preview();
         assertEquals(1, preview.changes().size()); assertNull(preview.changes().get(0).before());
         assertEquals(desired, preview.changes().get(0).after());
@@ -39,7 +40,7 @@ class AniListExportServiceTest {
     }
 
     @Test void unchangedEntriesAreNotExported() {
-        when(client.read("test-token", 42)).thenReturn(Map.of(10, new Remote(100, desired)));
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(10, new Remote(100, desired)), "POINT_100"));
         var preview = service.preview(); assertTrue(preview.changes().isEmpty()); assertEquals(1, preview.unchanged());
     }
 
@@ -51,6 +52,16 @@ class AniListExportServiceTest {
             assertEquals(remote, result.status()); assertEquals(0, result.score());
         });
         assertEquals(88, AniListExportService.desired(entry(TrackingStatus.COMPLETED, new BigDecimal("8.75"))).score());
+    }
+
+    @Test void adaptsScoresToTheConnectedAniListAccountsScoringSystem() {
+        var entry = entry(TrackingStatus.COMPLETED, new BigDecimal("8.5"));
+        assertEquals(85, AniListExportService.desired(entry, "POINT_100").score());
+        assertEquals(85, AniListExportService.desired(entry, "POINT_10_DECIMAL").score());
+        assertEquals(90, AniListExportService.desired(entry, "POINT_10").score());
+        assertEquals(80, AniListExportService.desired(entry, "POINT_5").score());
+        assertEquals(85, AniListExportService.desired(entry, "POINT_3").score());
+        assertEquals(0, AniListExportService.desired(entry(TrackingStatus.COMPLETED, null), "POINT_5").score());
     }
 
     @Test void sendsOnlyApprovedEntryAndRepeatedRequestsDoNotWriteAgain() {
@@ -69,7 +80,7 @@ class AniListExportServiceTest {
 
     @Test void updatesExistingEntryUsingItsAniListEntryId() {
         State before = new State("CURRENT", 5, 60);
-        when(client.read("test-token", 42)).thenReturn(Map.of(10, new Remote(100, before)));
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(10, new Remote(100, before)), "POINT_100"));
         var preview = service.preview();
         when(client.readEntry("test-token", 42, 10)).thenReturn(new Remote(100, before));
         service.apply(preview.id(), 7L);

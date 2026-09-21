@@ -14,6 +14,7 @@ import java.util.*;
 import org.springframework.stereotype.Service;
 import static com.animelist.backend.service.AniListExportClient.State;
 import static com.animelist.backend.service.AniListExportClient.Remote;
+import static com.animelist.backend.service.AniListExportClient.Snapshot;
 
 @Service
 public class AniListExportService {
@@ -26,7 +27,7 @@ public class AniListExportService {
 
     public record Change(Long entryId, int anilistId, String title, String coverImage, State before, State after) {}
     public record Preview(UUID id, String username, Instant expiresAt, List<Change> changes, int unchanged) {}
-    private record Plan(Long userId, List<Change> changes) {}
+    private record Plan(Long userId, String scoreFormat, List<Change> changes) {}
 
     public AniListExportService(CurrentUserService currentUser, AniListAuthService auth, LibraryEntryRepository entries, AniListExportClient client) {
         this.currentUser = currentUser; this.auth = auth; this.entries = entries; this.client = client;
@@ -36,15 +37,16 @@ public class AniListExportService {
         AppUser user = connectedUser();
         String token = token(user);
         List<LibraryEntrySummaryResponse> local = entries.findSummaries(user.getId(), MediaType.ANIME, null);
-        Map<Integer, Remote> remote = client.read(token, user.getAnilistUserId());
+        Snapshot snapshot = client.read(token, user.getAnilistUserId());
+        Map<Integer, Remote> remote = snapshot.entries();
         List<Change> changes = new ArrayList<>();
         for (var entry : local) {
-            State after = desired(entry), before = remote.containsKey(entry.anilistId()) ? remote.get(entry.anilistId()).value() : null;
+            State after = desired(entry, snapshot.scoreFormat()), before = remote.containsKey(entry.anilistId()) ? remote.get(entry.anilistId()).value() : null;
             if (!after.equals(before)) changes.add(new Change(entry.id(), entry.anilistId(), entry.title(), entry.coverImage(), before, after));
         }
         UUID id = UUID.randomUUID();
         List<Change> immutable = List.copyOf(changes);
-        plans.put(id, new Plan(user.getId(), immutable));
+        plans.put(id, new Plan(user.getId(), snapshot.scoreFormat(), immutable));
         return new Preview(id, user.getAnilistUsername(), Instant.now().plus(Duration.ofHours(2)), immutable, local.size() - changes.size());
     }
 
@@ -57,7 +59,7 @@ public class AniListExportService {
                     .orElseThrow(() -> new BusinessException("La entrada no pertenece a esta vista previa."));
             var local = entries.findSummaries(user.getId(), MediaType.ANIME, null).stream().filter(e -> e.id().equals(entryId)).findFirst()
                     .orElseThrow(() -> new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo."));
-            if (!Objects.equals(local.anilistId(), change.anilistId()) || !desired(local).equals(change.after()))
+            if (!Objects.equals(local.anilistId(), change.anilistId()) || !desired(local, plan.scoreFormat()).equals(change.after()))
                 throw new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo.");
             String token = token(user);
             Remote remote = client.readEntry(token, user.getAnilistUserId(), change.anilistId());
@@ -69,6 +71,10 @@ public class AniListExportService {
     }
 
     static State desired(LibraryEntrySummaryResponse entry) {
+        return desired(entry, "POINT_100");
+    }
+
+    static State desired(LibraryEntrySummaryResponse entry, String scoreFormat) {
         String status = switch (entry.trackingStatus()) {
             case IN_PROGRESS -> "CURRENT";
             case COMPLETED -> "COMPLETED";
@@ -76,7 +82,18 @@ public class AniListExportService {
             case PAUSED -> "PAUSED";
             case DROPPED -> "DROPPED";
         };
-        return new State(status, entry.progress(), entry.personalScore() == null ? 0 : entry.personalScore().movePointRight(1).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact());
+        int rawScore = entry.personalScore() == null ? 0 : entry.personalScore().movePointRight(1).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact();
+        return new State(status, entry.progress(), scoreForFormat(rawScore, scoreFormat));
+    }
+
+    static int scoreForFormat(int rawScore, String scoreFormat) {
+        if (rawScore == 0) return 0;
+        return switch (scoreFormat) {
+            case "POINT_10" -> Math.round(rawScore / 10f) * 10;
+            case "POINT_5" -> Math.max(20, Math.round(rawScore / 20f) * 20);
+            case "POINT_3" -> rawScore < 48 ? 35 : rawScore < 73 ? 60 : 85;
+            default -> rawScore; // POINT_100 and POINT_10_DECIMAL preserve AniRecord's tenths.
+        };
     }
 
     private AppUser connectedUser() {
