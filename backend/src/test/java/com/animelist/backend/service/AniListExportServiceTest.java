@@ -80,11 +80,46 @@ class AniListExportServiceTest {
 
     @Test void updatesExistingEntryUsingItsAniListEntryId() {
         State before = new State("CURRENT", 5, 60);
+        State safelyMerged = new State("COMPLETED", 12, 60);
         when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(10, new Remote(100, before)), "POINT_100"));
         var preview = service.preview();
+        assertEquals(safelyMerged, preview.changes().get(0).after());
         when(client.readEntry("test-token", 42, 10)).thenReturn(new Remote(100, before));
         service.apply(preview.id(), 7L);
-        verify(client).save("test-token", 10, 100, desired);
+        verify(client).save("test-token", 10, 100, safelyMerged);
+    }
+
+    @Test void neverRegressesAniListProgressOrReplacesItsScore() {
+        var local = entry(TrackingStatus.IN_PROGRESS, new BigDecimal("6.0"), 4, 12);
+        State remote = new State("CURRENT", 10, 90);
+        when(entries.findSummaries(1L, MediaType.ANIME, null)).thenReturn(List.of(local));
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(10, new Remote(100, remote)), "POINT_100"));
+
+        var preview = service.preview();
+
+        assertTrue(preview.changes().isEmpty());
+        assertEquals(1, preview.unchanged());
+        verify(client, never()).save(any(), anyInt(), any(), any());
+    }
+
+    @Test void advancesProgressAndFillsOnlyAnEmptyAniListScore() {
+        var local = entry(TrackingStatus.IN_PROGRESS, new BigDecimal("8.5"), 8, 12);
+        State remote = new State("CURRENT", 5, 0);
+        when(entries.findSummaries(1L, MediaType.ANIME, null)).thenReturn(List.of(local));
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(10, new Remote(100, remote)), "POINT_100"));
+
+        var change = service.preview().changes().get(0);
+
+        assertEquals(new State("CURRENT", 8, 85), change.after());
+    }
+
+    @Test void preservesExplicitAniListPausedAndDroppedStatuses() {
+        State dropped = new State("DROPPED", 8, 70);
+        when(client.read("test-token", 42)).thenReturn(new Snapshot(Map.of(10, new Remote(100, dropped)), "POINT_100"));
+
+        var change = service.preview().changes().get(0);
+
+        assertEquals(new State("DROPPED", 12, 70), change.after());
     }
 
     @Test void refusesChangesMadeLocallyAfterPreview() {
@@ -111,8 +146,12 @@ class AniListExportServiceTest {
     }
 
     private LibraryEntrySummaryResponse entry(TrackingStatus status, BigDecimal score) {
+        return entry(status, score, 12, 12);
+    }
+
+    private LibraryEntrySummaryResponse entry(TrackingStatus status, BigDecimal score, int progress, Integer totalUnits) {
         return new LibraryEntrySummaryResponse(7L, 10, MediaType.ANIME, "TV", "JP", "Anime de prueba", "Anime", null, null, null,
-                12, ReleaseStatus.FINISHED, null, 2020, 12, score, 0, status, null, null, null, null);
+                totalUnits, ReleaseStatus.FINISHED, null, 2020, progress, score, 0, status, null, null, null, null);
     }
 }
 

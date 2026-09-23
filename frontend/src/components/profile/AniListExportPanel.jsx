@@ -89,8 +89,8 @@ export default function AniListExportPanel() {
 
   return <section className="anilist-export-panel" aria-labelledby="anilist-export-heading">
     <div className="section-heading"><div><span className="eyebrow">Tu biblioteca conectada</span><h2 id="anilist-export-heading"><ArrowUpRight /> Sincronizar con AniList</h2></div></div>
-    <p className="anilist-export-intro">Tu estado, episodios y puntuación, de AniRecord a AniList.</p>
-    <details className="anilist-export-details"><summary>Qué se sincroniza</summary><p>Envío manual de animes, con revisión antes de confirmar. No se borran entradas. Manga, fechas, notas y otros datos se conservan.</p></details>
+    <p className="anilist-export-intro">Combina tu biblioteca sin retroceder el progreso ni reemplazar puntuaciones existentes en AniList.</p>
+    <details className="anilist-export-details"><summary>Qué se sincroniza</summary><p>Los animes nuevos se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniList se conserva; AniRecord completa una puntuación únicamente cuando allí no hay ninguna. Los estados de pausa o abandono de AniList también se respetan. Manga, fechas, notas y otros datos no se modifican.</p></details>
     {error && <p role="alert" className="anilist-export-error">{error}</p>}
     <div aria-live="polite" role="status">
       {phase === 'loading' && <p className="anilist-export-loading"><RefreshCw aria-hidden="true" /> Comparando tu biblioteca…</p>}
@@ -114,7 +114,7 @@ export default function AniListExportPanel() {
     {reviewing && preview && <>
       <p><strong>Destino: {preview.username}</strong> · {additions} para agregar · {preview.changes.length - additions} para actualizar · {preview.unchanged} sin cambios.</p>
       {preview.changes.length ? <>
-        <p>Los valores de AniRecord reemplazarán los de AniList en las entradas seleccionadas, incluso si el progreso o la puntuación son menores.</p>
+        <p>Este es el resultado combinado: AniList conserva sus puntuaciones y nunca recibe un progreso menor.</p>
         <label className="anilist-export-selection"><SelectionCheckbox checked={selected.size === preview.changes.length} partial={selected.size > 0 && selected.size < preview.changes.length} onChange={(event) => setSelected(new Set(event.target.checked ? preview.changes.map((entry) => entry.entryId) : []))} /> Seleccionar todos los cambios</label>
         <div className="anilist-export-changes" role="region" aria-label="Vista previa de cambios" tabIndex={0}>
           {preview.changes.map((entry) => <label key={entry.entryId} className="anilist-export-entry">
@@ -124,7 +124,7 @@ export default function AniListExportPanel() {
               return next
             })} />
             <Cover key={`${entry.entryId}-${entry.coverImage}`} entry={entry} />
-            <span><strong>{entry.title}</strong><small>AniList: {describe(entry.before)}</small><small>AniRecord: {describe(entry.after)}</small></span>
+            <span><strong>{entry.title}</strong><small>AniList: {describe(entry.before)}</small><small>Resultado seguro: {describe(entry.after)}</small></span>
           </label>)}
         </div>
         <p className="anilist-export-note">Se envían gradualmente para respetar los límites de AniList. Puedes detener el proceso entre entradas.</p>

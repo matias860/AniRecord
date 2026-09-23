@@ -41,7 +41,8 @@ public class AniListExportService {
         Map<Integer, Remote> remote = snapshot.entries();
         List<Change> changes = new ArrayList<>();
         for (var entry : local) {
-            State after = desired(entry, snapshot.scoreFormat()), before = remote.containsKey(entry.anilistId()) ? remote.get(entry.anilistId()).value() : null;
+            State before = remote.containsKey(entry.anilistId()) ? remote.get(entry.anilistId()).value() : null;
+            State after = merge(entry, desired(entry, snapshot.scoreFormat()), before);
             if (!after.equals(before)) changes.add(new Change(entry.id(), entry.anilistId(), entry.title(), entry.coverImage(), before, after));
         }
         UUID id = UUID.randomUUID();
@@ -59,7 +60,8 @@ public class AniListExportService {
                     .orElseThrow(() -> new BusinessException("La entrada no pertenece a esta vista previa."));
             var local = entries.findSummaries(user.getId(), MediaType.ANIME, null).stream().filter(e -> e.id().equals(entryId)).findFirst()
                     .orElseThrow(() -> new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo."));
-            if (!Objects.equals(local.anilistId(), change.anilistId()) || !desired(local, plan.scoreFormat()).equals(change.after()))
+            State refreshedAfter = merge(local, desired(local, plan.scoreFormat()), change.before());
+            if (!Objects.equals(local.anilistId(), change.anilistId()) || !refreshedAfter.equals(change.after()))
                 throw new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo.");
             String token = token(user);
             Remote remote = client.readEntry(token, user.getAnilistUserId(), change.anilistId());
@@ -84,6 +86,29 @@ public class AniListExportService {
         };
         int rawScore = entry.personalScore() == null ? 0 : entry.personalScore().movePointRight(1).setScale(0, java.math.RoundingMode.HALF_UP).intValueExact();
         return new State(status, entry.progress(), scoreForFormat(rawScore, scoreFormat));
+    }
+
+    /**
+     * Existing AniList data is authoritative when replacing it would lose information.
+     * AniRecord may advance progress, fill an empty score, and complete an active entry,
+     * but it never lowers progress, replaces a score, or changes an explicit pause/drop.
+     */
+    static State merge(LibraryEntrySummaryResponse entry, State local, State remote) {
+        if (remote == null) return local;
+        int progress = Math.max(remote.progress(), local.progress());
+        int score = remote.score() > 0 ? remote.score() : local.score();
+        String status = mergedStatus(entry, local, remote, progress);
+        return new State(status, progress, score);
+    }
+
+    private static String mergedStatus(LibraryEntrySummaryResponse entry, State local, State remote, int progress) {
+        if ("COMPLETED".equals(remote.status())) return "COMPLETED";
+        boolean activeRemote = "CURRENT".equals(remote.status()) || "PLANNING".equals(remote.status());
+        boolean confirmedLocalCompletion = "COMPLETED".equals(local.status())
+                && entry.totalUnits() != null && progress >= entry.totalUnits();
+        if (activeRemote && confirmedLocalCompletion) return "COMPLETED";
+        if ("PLANNING".equals(remote.status()) && progress > 0) return "CURRENT";
+        return remote.status();
     }
 
     static int scoreForFormat(int rawScore, String scoreFormat) {
