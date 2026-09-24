@@ -1,7 +1,9 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.entity.Media;
+import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.TrackingStatus;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -50,6 +52,15 @@ public final class TopNinePromptCatalog {
     }
 
     public record Prompt(String key, String title, String description, MediaType mediaType, String genre, String format) {
+        public boolean requiresStarted() {
+            return !"MANGAS_PARA_ANIMAR".equals(key);
+        }
+
+        public boolean matches(LibraryEntry entry) {
+            return matches(entry.getMedia())
+                    && (!requiresStarted() || entry.getTrackingStatus() != TrackingStatus.PLANNED);
+        }
+
         public boolean matches(Media media) {
             if (mediaType != null && mediaType != media.getMediaType()) return false;
             if (format != null && (media.getMediaFormat() == null || !format.equalsIgnoreCase(media.getMediaFormat()))) return false;

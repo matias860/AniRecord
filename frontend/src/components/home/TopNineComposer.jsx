@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Image as ImageIcon, Plus, RotateCcw, Search, Send, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -18,13 +18,14 @@ function restoreSlots(library, mine, draftKey) {
 }
 
 function matchesPrompt(entry, prompt) {
+  if (prompt.requiresStarted && entry.trackingStatus === 'PLANNED') return false
   if (prompt.mediaType && entry.mediaType !== prompt.mediaType) return false
   if (prompt.format && entry.mediaFormat?.toUpperCase() !== prompt.format.toUpperCase()) return false
   if (!prompt.genre) return true
   return entry.genres?.split('|').some((genre) => genre.trim().toLowerCase() === prompt.genre.toLowerCase())
 }
 
-function Picker({ entries, slot, pending, onPending, onConfirm }) {
+function Picker({ entries, slot, pending, onPending, onConfirm, pickerRef }) {
   const [search, setSearch] = useState('')
   const query = search.trim().toLocaleLowerCase('es')
   const visible = entries.filter((entry) => !query || entry.title.toLocaleLowerCase('es').includes(query)
@@ -32,11 +33,13 @@ function Picker({ entries, slot, pending, onPending, onConfirm }) {
   const column = slot % 3
   const row = Math.floor(slot / 3)
 
-  return <motion.div className={`top-nine-picker${column === 2 ? ' opens-left' : ''}${row === 2 ? ' opens-up' : ''}`} initial={{ opacity: 0, scale: .94, x: column === 2 ? 12 : -12 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .18, ease: 'easeOut' }}>
+  return <motion.div ref={pickerRef} className={`top-nine-picker${column === 2 ? ' opens-left' : ''}${row === 2 ? ' opens-up' : ''}`} onPointerDown={(event) => {
+    if (!event.target.closest('.top-nine-candidate')) onPending(null)
+  }} initial={{ opacity: 0, scale: .94, x: column === 2 ? 12 : -12 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .18, ease: 'easeOut' }}>
     <label className="top-nine-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar en tu biblioteca…" autoFocus /></label>
     <div className="top-nine-picker-grid">
       {visible.map((entry) => <div className={`top-nine-candidate${pending?.id === entry.id ? ' selected' : ''}`} key={entry.id}>
-        <button type="button" className="top-nine-candidate-cover" title={entry.title} aria-label={`Seleccionar ${entry.title}`} onClick={() => onPending(entry)}>
+        <button type="button" className="top-nine-candidate-cover" title={entry.title} aria-label={`Seleccionar ${entry.title}`} onClick={() => onPending(pending?.id === entry.id ? null : entry)}>
           <img src={entry.coverImage || COVER_FALLBACK} onError={coverError} alt="" />
         </button>
         {pending?.id === entry.id && <button type="button" className="top-nine-confirm-cover" onClick={() => onConfirm(entry)} aria-label={`Confirmar ${entry.title}`}><Check /></button>}
@@ -55,6 +58,7 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
   const [slots, setSlots] = useState(() => restoreSlots(library, mine, draftKey))
   const [activeSlot, setActiveSlot] = useState(null)
   const [pending, setPending] = useState(null)
+  const pickerRef = useRef(null)
 
   useEffect(() => {
     const ids = slots.map((entry) => entry?.id ?? null)
@@ -71,6 +75,17 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [activeSlot, onClose, publishing])
 
+  useEffect(() => {
+    if (activeSlot === null) return undefined
+    const onPointerDown = (event) => {
+      if (pickerRef.current?.contains(event.target) || event.target.closest('.top-nine-slot-shell')) return
+      setActiveSlot(null)
+      setPending(null)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [activeSlot])
+
   const eligible = useMemo(() => library.filter((entry) => matchesPrompt(entry, prompt)), [library, prompt])
   const completed = slots.filter(Boolean).length
   const availableFor = (slot) => {
@@ -78,6 +93,11 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     return eligible.filter((entry) => !used.has(entry.id))
   }
   const openSlot = (index) => {
+    if (activeSlot === index) {
+      setActiveSlot(null)
+      setPending(null)
+      return
+    }
     setActiveSlot(index)
     setPending(slots[index])
   }
@@ -114,12 +134,12 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
           {entry ? <img src={entry.coverImage || COVER_FALLBACK} onError={coverError} alt={entry.title} /> : <><Plus /><span>{index + 1}</span></>}
         </button>
         {entry && <button type="button" className="top-nine-remove" onClick={() => setSlots((current) => current.map((value, position) => position === index ? null : value))} aria-label={`Quitar ${entry.title}`}><X /></button>}
-        <AnimatePresence>{activeSlot === index && <Picker entries={availableFor(index)} slot={index} pending={pending} onPending={setPending} onConfirm={confirm} />}</AnimatePresence>
+        <AnimatePresence>{activeSlot === index && <Picker entries={availableFor(index)} slot={index} pending={pending} onPending={setPending} onConfirm={confirm} pickerRef={pickerRef} />}</AnimatePresence>
       </div>)}
     </div>
     {eligible.length < 9 && <p className="top-nine-warning">Esta consigna necesita nueve obras compatibles y actualmente tenés {eligible.length}.</p>}
     <footer>
-      <button type="button" className="secondary-button" onClick={reset} disabled={!completed || publishing}><RotateCcw /> Resetear</button>
+      <button type="button" className="top-nine-reset" onClick={reset} disabled={!completed || publishing}><RotateCcw /> Resetear</button>
       <span>{completed} / 9</span>
       <button type="button" className="primary-button" onClick={publish} disabled={completed !== 9 || publishing}><Send /> {publishing ? 'Publicando…' : mine ? 'Actualizar publicación' : 'Publicar'}</button>
     </footer>

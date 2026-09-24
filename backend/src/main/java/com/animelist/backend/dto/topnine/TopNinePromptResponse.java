@@ -11,6 +11,7 @@ public record TopNinePromptResponse(
         LocalDate changesAt,
         MediaType mediaType,
         String genre,
-        String format
+        String format,
+        boolean requiresStarted
 ) {
 }

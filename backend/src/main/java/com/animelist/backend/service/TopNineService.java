@@ -81,7 +81,7 @@ public class TopNineService {
                         .orElseThrow(() -> new ResourceNotFoundException("Una de las obras ya no está en tu biblioteca.")))
                 .collect(Collectors.toMap(LibraryEntry::getId, Function.identity()));
         for (LibraryEntry entry : entries.values()) {
-            if (!period.prompt().matches(entry.getMedia())) {
+            if (!period.prompt().matches(entry)) {
                 throw new BusinessException("Una de las obras no cumple los requisitos de esta consigna.");
             }
         }
@@ -115,7 +115,7 @@ public class TopNineService {
     private TopNinePromptResponse promptResponse(TopNinePromptCatalog.Period period) {
         var prompt = period.prompt();
         return new TopNinePromptResponse(prompt.key(), prompt.title(), prompt.description(), period.startsAt(),
-                period.changesAt(), prompt.mediaType(), prompt.genre(), prompt.format());
+                period.changesAt(), prompt.mediaType(), prompt.genre(), prompt.format(), prompt.requiresStarted());
     }
 
     private TopNineSubmissionResponse toResponse(TopNineSubmission submission, AppUser viewer, Map<Integer, Long> ownEntries) {

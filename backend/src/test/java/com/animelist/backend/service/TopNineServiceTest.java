@@ -6,6 +6,7 @@ import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
 import com.animelist.backend.entity.TopNineSubmission;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import com.animelist.backend.repository.TopNineSubmissionRepository;
@@ -70,6 +71,19 @@ class TopNineServiceTest {
         verify(submissions, never()).saveAndFlush(any());
     }
 
+    @Test void rejectsPlannedEntriesWhenThePromptRequiresAStartedTitle() {
+        List<Long> ids = new ArrayList<>();
+        for (long id = 1; id <= 9; id++) {
+            ids.add(id);
+            LibraryEntry entry = entry(id, "Anime " + id, "Drama");
+            if (id == 4) entry.setTrackingStatus(TrackingStatus.PLANNED);
+            when(library.findWithMediaByIdAndUserId(id, 7L)).thenReturn(Optional.of(entry));
+        }
+
+        assertThrows(BusinessException.class, () -> service.publish(new PublishTopNineRequest(ids)));
+        verify(submissions, never()).saveAndFlush(any());
+    }
+
     private LibraryEntry entry(long id, String title, String genres) {
         Media media = new Media();
         media.setId(id);
@@ -81,6 +95,7 @@ class TopNineServiceTest {
         entry.setId(id);
         entry.setUser(user);
         entry.setMedia(media);
+        entry.setTrackingStatus(TrackingStatus.COMPLETED);
         return entry;
     }
 }
