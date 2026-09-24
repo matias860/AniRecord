@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, Image as ImageIcon, Plus, RotateCcw, Search, Send, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -25,17 +26,40 @@ function matchesPrompt(entry, prompt) {
   return entry.genres?.split('|').some((genre) => genre.trim().toLowerCase() === prompt.genre.toLowerCase())
 }
 
-function Picker({ entries, slot, pending, onPending, onConfirm, pickerRef }) {
+function Picker({ anchor, entries, pending, onPending, onConfirm, pickerRef }) {
   const [search, setSearch] = useState('')
+  const [position, setPosition] = useState(null)
   const query = search.trim().toLocaleLowerCase('es')
   const visible = entries.filter((entry) => !query || entry.title.toLocaleLowerCase('es').includes(query)
     || entry.romajiTitle?.toLocaleLowerCase('es').includes(query)).slice(0, 80)
-  const column = slot % 3
-  const row = Math.floor(slot / 3)
 
-  return <motion.div ref={pickerRef} className={`top-nine-picker${column === 2 ? ' opens-left' : ''}${row === 2 ? ' opens-up' : ''}`} onPointerDown={(event) => {
+  useLayoutEffect(() => {
+    const place = () => {
+      if (!anchor) return
+      const rect = anchor.getBoundingClientRect()
+      const width = Math.min(270, window.innerWidth - 24)
+      const height = Math.min(540, window.innerHeight - 24)
+      const gap = 16
+      const margin = 12
+      const opensLeft = rect.right + gap + width > window.innerWidth - margin
+      const left = opensLeft ? Math.max(margin, rect.left - gap - width) : Math.min(window.innerWidth - width - margin, rect.right + gap)
+      const top = Math.max(margin, Math.min(window.innerHeight - height - margin, rect.top + rect.height / 2 - height / 2))
+      const connectorY = Math.max(20, Math.min(height - 20, rect.top + rect.height / 2 - top))
+      setPosition({ height, left, opensLeft, top, width, connectorY })
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [anchor])
+
+  if (!position) return null
+  return createPortal(<motion.div ref={pickerRef} style={{ height: position.height, left: position.left, top: position.top, width: position.width, '--connector-y': `${position.connectorY}px` }} className={`top-nine-picker${position.opensLeft ? ' opens-left' : ''}`} onPointerDown={(event) => {
     if (!event.target.closest('.top-nine-candidate')) onPending(null)
-  }} initial={{ opacity: 0, scale: .94, x: column === 2 ? 12 : -12 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .18, ease: 'easeOut' }}>
+  }} initial={{ opacity: 0, scale: .94, x: position.opensLeft ? 12 : -12 }} animate={{ opacity: 1, scale: 1, x: 0 }} exit={{ opacity: 0, scale: .95 }} transition={{ duration: .18, ease: 'easeOut' }}>
     <label className="top-nine-search"><Search /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar en tu biblioteca…" autoFocus /></label>
     <div className="top-nine-picker-grid">
       {visible.map((entry) => <div className={`top-nine-candidate${pending?.id === entry.id ? ' selected' : ''}`} key={entry.id}>
@@ -46,7 +70,7 @@ function Picker({ entries, slot, pending, onPending, onConfirm, pickerRef }) {
       </div>)}
       {!visible.length && <div className="top-nine-picker-empty"><ImageIcon /><span>No hay obras que coincidan.</span></div>}
     </div>
-  </motion.div>
+  </motion.div>, document.body)
 }
 
 export default function TopNineComposer({ prompt, mine, onClose }) {
@@ -57,6 +81,7 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
   const draftKey = `anirecord:top-nine:${userId}:${prompt.key}`
   const [slots, setSlots] = useState(() => restoreSlots(library, mine, draftKey))
   const [activeSlot, setActiveSlot] = useState(null)
+  const [activeAnchor, setActiveAnchor] = useState(null)
   const [pending, setPending] = useState(null)
   const pickerRef = useRef(null)
 
@@ -69,7 +94,7 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
   useEffect(() => {
     const onKeyDown = (event) => {
       if (event.key !== 'Escape' || publishing) return
-      if (activeSlot !== null) { setActiveSlot(null); setPending(null) } else onClose()
+      if (activeSlot !== null) { setActiveSlot(null); setActiveAnchor(null); setPending(null) } else onClose()
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
@@ -80,6 +105,7 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     const onPointerDown = (event) => {
       if (pickerRef.current?.contains(event.target) || event.target.closest('.top-nine-slot-shell')) return
       setActiveSlot(null)
+      setActiveAnchor(null)
       setPending(null)
     }
     document.addEventListener('pointerdown', onPointerDown)
@@ -92,23 +118,27 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     const used = new Set(slots.map((entry, index) => index === slot ? null : entry?.id).filter(Boolean))
     return eligible.filter((entry) => !used.has(entry.id))
   }
-  const openSlot = (index) => {
+  const openSlot = (index, anchor) => {
     if (activeSlot === index) {
       setActiveSlot(null)
+      setActiveAnchor(null)
       setPending(null)
       return
     }
     setActiveSlot(index)
+    setActiveAnchor(anchor)
     setPending(slots[index])
   }
   const confirm = (entry) => {
     setSlots((current) => current.map((value, index) => index === activeSlot ? entry : value))
     setActiveSlot(null)
+    setActiveAnchor(null)
     setPending(null)
   }
   const reset = () => {
     setSlots(EMPTY)
     setActiveSlot(null)
+    setActiveAnchor(null)
     setPending(null)
   }
   const publish = async () => {
@@ -130,11 +160,15 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     </header>
     <div className="top-nine-builder">
       {slots.map((entry, index) => <div className={`top-nine-slot-shell${activeSlot === index ? ' active' : ''}`} key={index}>
-        <button type="button" className={`top-nine-slot${entry ? ' filled' : ''}`} onClick={() => openSlot(index)} aria-label={entry ? `Cambiar ${entry.title}` : `Elegir obra para el espacio ${index + 1}`}>
-          {entry ? <img src={entry.coverImage || COVER_FALLBACK} onError={coverError} alt={entry.title} /> : <><Plus /><span>{index + 1}</span></>}
+        <button type="button" className={`top-nine-slot${entry ? ' filled' : ''}`} onClick={(event) => openSlot(index, event.currentTarget)} aria-label={entry ? `Cambiar ${entry.title}` : `Elegir obra para el espacio ${index + 1}`}>
+          <AnimatePresence mode="wait" initial={false}>
+            {entry
+              ? <motion.img key={entry.id} src={entry.coverImage || COVER_FALLBACK} onError={coverError} alt={entry.title} initial={{ opacity: 0, scale: .88 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .76, y: 18, rotate: -3 }} transition={{ duration: .24, ease: 'easeInOut' }} />
+              : <motion.span className="top-nine-empty" key="empty" initial={{ opacity: 0, scale: .8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: .8 }} transition={{ duration: .2 }}><Plus /><small>{index + 1}</small></motion.span>}
+          </AnimatePresence>
         </button>
         {entry && <button type="button" className="top-nine-remove" onClick={() => setSlots((current) => current.map((value, position) => position === index ? null : value))} aria-label={`Quitar ${entry.title}`}><X /></button>}
-        <AnimatePresence>{activeSlot === index && <Picker entries={availableFor(index)} slot={index} pending={pending} onPending={setPending} onConfirm={confirm} pickerRef={pickerRef} />}</AnimatePresence>
+        <AnimatePresence>{activeSlot === index && <Picker anchor={activeAnchor} entries={availableFor(index)} pending={pending} onPending={setPending} onConfirm={confirm} pickerRef={pickerRef} />}</AnimatePresence>
       </div>)}
     </div>
     {eligible.length < 9 && <p className="top-nine-warning">Esta consigna necesita nueve obras compatibles y actualmente tenés {eligible.length}.</p>}
