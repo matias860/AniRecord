@@ -37,7 +37,7 @@ function Picker({ anchor, entries, pending, onPending, onConfirm, pickerRef }) {
     const place = () => {
       if (!anchor) return
       const rect = anchor.getBoundingClientRect()
-      const width = Math.min(380, window.innerWidth - 24)
+      const width = Math.min(560, window.innerWidth - 24)
       const height = Math.min(640, window.innerHeight - 24)
       const gap = 16
       const margin = 12
