@@ -9,6 +9,15 @@
 @media(prefers-reduced-motion:reduce){.top-nine-slot,.top-nine-community-card,.top-nine-mini-grid a,.home-top-nine-launch{transition:none}}
 .top-nine-modal-backdrop{position:fixed;inset:0;z-index:1450;display:grid;place-items:center;padding:20px;background:rgba(4,6,11,.82);backdrop-filter:blur(13px)}
 .top-nine-picker-grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
+.top-nine-picker-grid{border-radius:8px;overflow-x:hidden}
+.top-nine-modal-backdrop>.top-nine-composer{clip-path:inset(0 round 24px)}
+@supports selector(::-webkit-scrollbar){
+  .top-nine-picker-grid,.top-nine-modal-backdrop>section.top-nine-composer{scrollbar-width:auto;scrollbar-color:auto}
+  .top-nine-picker-grid::-webkit-scrollbar,.top-nine-modal-backdrop>.top-nine-composer::-webkit-scrollbar{width:7px}
+  .top-nine-picker-grid::-webkit-scrollbar-button,.top-nine-modal-backdrop>.top-nine-composer::-webkit-scrollbar-button{display:none;width:0;height:0}
+  .top-nine-modal-backdrop>.top-nine-composer::-webkit-scrollbar-track{margin-block:24px;background:transparent}
+  .top-nine-modal-backdrop>.top-nine-composer::-webkit-scrollbar-thumb{border-radius:99px;background:var(--accent)}
+}
 .top-nine-modal-backdrop>.top-nine-composer{width:min(640px,100%);max-width:640px;max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;margin:0;padding:28px 30px;scrollbar-width:thin;scrollbar-color:var(--accent) transparent;background:var(--user-surface,#171b29)}
 .top-nine-modal-backdrop .top-nine-composer>header h2{font-size:clamp(28px,3.5vw,40px);padding-inline:14px}
 @media(max-width:700px){.top-nine-modal-backdrop{padding:12px}.top-nine-modal-backdrop>.top-nine-composer{max-height:calc(100dvh - 24px);padding:28px 16px 20px}}
