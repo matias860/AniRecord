@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +38,7 @@ public class TopNineService {
     private final CurrentUserService currentUser;
     private final Clock clock;
 
+    @Autowired
     public TopNineService(TopNineSubmissionRepository submissions, LibraryEntryRepository library,
                           UserProfileAssetRepository assets, CurrentUserService currentUser) {
         this(submissions, library, assets, currentUser, Clock.system(ARGENTINA));
