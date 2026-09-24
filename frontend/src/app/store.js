@@ -13,6 +13,7 @@ import authReducer from '../features/auth/authSlice.js'
 import peopleReducer from '../features/people/peopleSlice.js'
 import favoritesReducer from '../features/favorites/favoritesSlice.js'
 import recommendationsReducer from '../features/recommendations/recommendationsSlice.js'
+import topNineReducer from '../features/topNine/topNineSlice.js'
 
 const appReducer = combineReducers({
   library: libraryReducer,
@@ -27,6 +28,7 @@ const appReducer = combineReducers({
   people: peopleReducer,
   favorites: favoritesReducer,
   recommendations: recommendationsReducer,
+  topNine: topNineReducer,
 })
 
 const rootReducer = (state, action) => appReducer(action.type === 'auth/logout/fulfilled' ? undefined : state, action)

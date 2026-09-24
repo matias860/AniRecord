@@ -7,6 +7,7 @@ const successMessages = {
   'library/synchronizeAniList/fulfilled': 'Biblioteca sincronizada con AniList.',
   'library/add/fulfilled': 'Título agregado a tu biblioteca.',
   'library/remove/fulfilled': 'Título eliminado de tu biblioteca.',
+  'topNine/publish/fulfilled': 'Tu 3×3 ya aparece en el Home.',
 }
 
 // Son consultas de fondo: su propio componente ya puede mostrar un estado de
@@ -16,6 +17,7 @@ const silentBackgroundFailures = new Set([
   'recommendations/fetchWeekly/rejected',
   'home/season/rejected',
   'home/airing/rejected',
+  'topNine/fetchCurrent/rejected',
 ])
 
 export const toastMiddleware = (store) => (next) => (action) => {

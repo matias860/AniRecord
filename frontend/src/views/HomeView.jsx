@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Play, RefreshCw, X } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play, RefreshCw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -9,11 +9,14 @@ import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import SeasonMarquee from '../components/home/SeasonMarquee.jsx'
 import RecommendationMarquee from '../components/home/RecommendationMarquee.jsx'
 import WeeklyRecommendationModal from '../components/home/WeeklyRecommendationModal.jsx'
+import TopNineComposer from '../components/home/TopNineComposer.jsx'
+import TopNineShowcase from '../components/home/TopNineShowcase.jsx'
 import PageState from '../components/common/PageState.jsx'
 import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setWatchingPage } from '../features/home/homeSlice.js'
 import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
 import { addToast } from '../features/toast/toastSlice.js'
 import { fetchWeeklyRecommendations } from '../features/recommendations/recommendationsSlice.js'
+import { fetchCurrentTopNine } from '../features/topNine/topNineSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
 import { acknowledgeSyncPrompt } from '../features/auth/authSlice.js'
 
@@ -47,7 +50,9 @@ export default function HomeView() {
   const library = useSelector((state) => state.library)
   const home = useSelector((state) => state.home)
   const recommendations = useSelector((state) => state.recommendations)
+  const topNine = useSelector((state) => state.topNine)
   const [recommendationModal, setRecommendationModal] = useState(false)
+  const [topNineOpen, setTopNineOpen] = useState(false)
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
   const [optimisticDismissal, setOptimisticDismissal] = useState(null)
   const localDismissedCommit = window.localStorage.getItem(syncPromptKey)
@@ -91,6 +96,10 @@ export default function HomeView() {
   }, [dispatch, recommendations.status])
 
   useEffect(() => {
+    if (topNine.status === 'idle') dispatch(fetchCurrentTopNine())
+  }, [dispatch, topNine.status])
+
+  useEffect(() => {
     if (!home.seasonCache[selectedSeasonKey] && !home.seasonErrors[selectedSeasonKey] && home.seasonStatus !== 'loading') {
       dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear }))
     }
@@ -120,6 +129,7 @@ export default function HomeView() {
   const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
   const libraryReady = library.status === 'succeeded'
   const ownRecommendation = recommendations.items.find((item) => item.recommenderId === auth.userId)
+  const showRecommendationCta = recommendations.status === 'succeeded' && !ownRecommendation
   const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
   const scheduleOptions = [0, 1, 2, 3].map((offset) => {
       const item = seasonAtOffset(offset)
@@ -198,9 +208,13 @@ export default function HomeView() {
         {auth.authenticated ? <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div> : <Link className="primary-button welcome-login-button" to="/login">Iniciar sesión</Link>}
       </section>
 
-      <AnimatePresence initial={false}>{recommendations.status === 'succeeded' && !ownRecommendation && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 52, marginTop: 22, marginBottom: 22 }} exit={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
-        <span>Recomendar una serie esta semana</span>
-      </motion.button>}</AnimatePresence>
+      <div className={`home-community-actions${showRecommendationCta ? ' has-weekly' : ''}`}>
+        <AnimatePresence initial={false}>{showRecommendationCta && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 52 }} exit={{ opacity: 0, height: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
+          <span>Recomendar una serie esta semana</span>
+        </motion.button>}</AnimatePresence>
+        {topNine.prompt && <button className="home-top-nine-launch" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setTopNineOpen((open) => !open) : requestLogin(navigate, location)}><Grid3X3 /> {topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}</button>}
+      </div>
+      <AnimatePresence initial={false}>{topNineOpen && auth.authenticated && topNine.prompt && <TopNineComposer key={topNine.prompt.key} prompt={topNine.prompt} mine={topNine.mine} onClose={() => setTopNineOpen(false)} />}</AnimatePresence>
 
       {home.unavailable && <aside className="external-service-notice" role="status">
         <strong>Información en tiempo real temporalmente no disponible</strong>
@@ -220,6 +234,8 @@ export default function HomeView() {
         onPrevious={() => dispatch(setSeasonOffset(home.seasonOffset - 1))}
         onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
       />
+
+      <TopNineShowcase key={topNine.prompt?.key ?? 'top-nine-loading'} prompt={topNine.prompt} submissions={topNine.submissions} />
 
       {auth.authenticated && <><LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
       <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} /></>}
