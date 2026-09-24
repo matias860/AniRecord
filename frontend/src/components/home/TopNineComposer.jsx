@@ -37,8 +37,8 @@ function Picker({ anchor, entries, pending, onPending, onConfirm, pickerRef }) {
     const place = () => {
       if (!anchor) return
       const rect = anchor.getBoundingClientRect()
-      const width = Math.min(270, window.innerWidth - 24)
-      const height = Math.min(540, window.innerHeight - 24)
+      const width = Math.min(380, window.innerWidth - 24)
+      const height = Math.min(640, window.innerHeight - 24)
       const gap = 16
       const margin = 12
       const opensLeft = rect.right + gap + width > window.innerWidth - margin
@@ -84,6 +84,12 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
   const [activeAnchor, setActiveAnchor] = useState(null)
   const [pending, setPending] = useState(null)
   const pickerRef = useRef(null)
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [])
 
   useEffect(() => {
     const ids = slots.map((entry) => entry?.id ?? null)
@@ -150,7 +156,10 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     } catch { /* El toast global presenta el error. */ }
   }
 
-  return <motion.section className="top-nine-composer" aria-labelledby="top-nine-composer-title" initial={{ opacity: 0, y: -18, height: 0 }} animate={{ opacity: 1, y: 0, height: 'auto' }} exit={{ opacity: 0, y: -12, height: 0 }} transition={{ duration: .3, ease: 'easeOut' }}>
+  return createPortal(<motion.div className="top-nine-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onPointerDown={(event) => {
+    if (event.target === event.currentTarget && !publishing && activeSlot === null) onClose()
+  }}>
+  <motion.section className="top-nine-composer" role="dialog" aria-modal="true" aria-labelledby="top-nine-composer-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .25, ease: 'easeOut' }}>
     <button className="top-nine-close" type="button" onClick={onClose} disabled={publishing} aria-label="Cerrar el 3×3"><X /></button>
     <header>
       <span className="eyebrow">Consigna quincenal</span>
@@ -178,4 +187,5 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
       <button type="button" className="primary-button" onClick={publish} disabled={completed !== 9 || publishing}><Send /> {publishing ? 'Publicando…' : mine ? 'Actualizar publicación' : 'Publicar'}</button>
     </footer>
   </motion.section>
+  </motion.div>, document.body)
 }
