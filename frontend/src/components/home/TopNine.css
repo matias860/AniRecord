@@ -9,6 +9,11 @@
 @media(prefers-reduced-motion:reduce){.top-nine-slot,.top-nine-community-card,.top-nine-mini-grid a,.home-top-nine-launch{transition:none}}
 .top-nine-modal-backdrop{position:fixed;inset:0;z-index:1450;display:grid;place-items:center;padding:20px;background:rgba(4,6,11,.82);backdrop-filter:blur(13px)}
 .top-nine-picker-grid{grid-template-columns:repeat(auto-fill,minmax(92px,1fr))}
+.home-community-actions.has-weekly{display:flex;align-items:stretch;gap:10px;padding-top:0}
+.home-community-actions.has-weekly .recommendation-cta{flex:1;min-width:0;width:auto;padding:0 18px}
+.home-community-actions.has-weekly .home-top-nine-launch{position:static;flex:none;justify-content:center;transform:none}
+.home-community-actions.has-weekly .home-top-nine-launch:hover{transform:translateY(-2px)}
+@media(max-width:480px){.home-community-actions.has-weekly{gap:8px}.home-community-actions.has-weekly .recommendation-cta{padding-inline:12px}.home-community-actions.has-weekly .recommendation-cta>span{font-size:10px}.home-community-actions.has-weekly .home-top-nine-launch{padding-inline:10px}}
 .top-nine-picker-grid{border-radius:8px;overflow-x:hidden}
 .top-nine-modal-backdrop>.top-nine-composer{clip-path:inset(0 round 24px)}
 @supports selector(::-webkit-scrollbar){
