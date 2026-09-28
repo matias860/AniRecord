@@ -38,8 +38,13 @@ public class AniListAuthService {
         this.connections=connections; this.users=users; this.sessions=sessions; this.currentUser=currentUser;
         this.clientId=clientId; this.clientSecret=clientSecret; this.redirectUri=redirectUri;
         String encryptionSecret = tokenEncryptionKey.isBlank() ? clientSecret : tokenEncryptionKey;
-        this.tokenCipher = new SecretCipher(encryptionSecret.isBlank() ? "local-development-only" : encryptionSecret);
-        this.oauthStateToken = new OAuthStateToken(clientSecret.isBlank() ? "local-development-oauth-state" : clientSecret);
+        boolean productionOAuth = redirectUri.startsWith("https://");
+        if (productionOAuth && (clientSecret.isBlank() || encryptionSecret.isBlank())) {
+            throw new IllegalStateException("Producción requiere ANILIST_CLIENT_SECRET; también se usa para cifrar si TOKEN_ENCRYPTION_KEY no está definida");
+        }
+        String ephemeralDevelopmentSecret = TokenSecurity.randomToken();
+        this.tokenCipher = new SecretCipher(encryptionSecret.isBlank() ? ephemeralDevelopmentSecret : encryptionSecret);
+        this.oauthStateToken = new OAuthStateToken(clientSecret.isBlank() ? ephemeralDevelopmentSecret : clientSecret);
     }
 
     public AuthStatusResponse status() { return currentUser.optional()
@@ -100,11 +105,9 @@ public class AniListAuthService {
     @Transactional public void logout(String sessionToken) {
         if (sessionToken==null) return;
         sessions.deleteById(TokenSecurity.digest(sessionToken));
-        if (sessionToken.length() <= 64) sessions.deleteById(sessionToken);
     }
     @Transactional public String claim(String ticket) {
         AppSession pendingSession=sessions.findByTokenAndExpiresAtAfter(TokenSecurity.digest(ticket), LocalDateTime.now())
-                .or(() -> sessions.findByTokenAndExpiresAtAfter(ticket, LocalDateTime.now()))
                 .orElseThrow(() -> new BusinessException("El acceso venció"));
         sessions.delete(pendingSession);
         String rawSession=TokenSecurity.randomToken();

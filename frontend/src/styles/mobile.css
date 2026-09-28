@@ -1,0 +1,30 @@
+/* Shared mobile viewport safeguards. Keep component-specific responsive rules with each component. */
+.auth-loading {
+  min-height: 100dvh;
+}
+
+.login-page {
+  min-height: calc(100dvh - 190px);
+}
+
+.catalog-landing {
+  min-height: calc(100dvh - 220px);
+}
+
+.recommendation-modal {
+  max-height: min(850px, calc(100dvh - 44px));
+}
+
+@media (max-width: 620px) {
+  .login-page {
+    min-height: calc(100dvh - 170px);
+  }
+
+  .image-crop-backdrop {
+    padding: 8px;
+  }
+
+  .image-crop-modal {
+    max-height: calc(100dvh - 16px);
+  }
+}

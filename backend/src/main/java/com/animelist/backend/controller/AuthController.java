@@ -12,9 +12,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController @RequestMapping({"/api/auth", "/api/anilist/oauth"})
 public class AuthController {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
     private static final String PUBLIC_FRONTEND_URL = "https://anirecord.com.ar";
     private final AniListAuthService auth; private final LocalAuthService localAuth; private final String frontendUrl; private final boolean secure;
     public AuthController(AniListAuthService auth, LocalAuthService localAuth,
@@ -23,9 +26,15 @@ public class AuthController {
     @GetMapping("/status") public AuthStatusResponse status(){return auth.status();}
     @GetMapping({"/login", "/connect"}) public ResponseEntity<Void> login(){return ResponseEntity.status(302).location(URI.create(auth.authorizationUrl())).build();}
     @GetMapping("/callback") public ResponseEntity<Void> callback(@RequestParam(required=false) String code,@RequestParam(required=false) String state,@RequestParam(required=false) String error){
-        if(error!=null||code==null||state==null)return redirect("error",null);
+        if(error!=null||code==null||state==null){
+            LOGGER.warn("AniList OAuth callback rejected: providerError={}, missingCode={}, missingState={}", error != null, code == null, state == null);
+            return redirect("error",null);
+        }
         try { var result=auth.exchangeCode(code,state); return redirect("success",result.sessionToken()); }
-        catch(RuntimeException ex){return redirect("error",null);}
+        catch(RuntimeException ex){
+            LOGGER.warn("AniList OAuth callback failed: exception={}", ex.getClass().getSimpleName());
+            return redirect("error",null);
+        }
     }
     @PostMapping("/claim") public ResponseEntity<Void> claim(@RequestBody Map<String,String> body){String token=body.get("ticket");if(token==null||token.isBlank())return ResponseEntity.badRequest().build();return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE,cookie(auth.claim(token)).toString()).build();}
     @PostMapping("/register") public ResponseEntity<AuthStatusResponse> register(@Valid @RequestBody LocalRegisterRequest request) {

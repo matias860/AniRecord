@@ -809,14 +809,3 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
   .detail-banner-shade{background:linear-gradient(180deg,rgba(10,12,20,.32),rgba(10,12,20,.08) 42%,rgba(10,12,20,.58))}
   .detail-banner::before{height:42px}.detail-banner::after{height:68px}
 }
-
-/* Dynamic viewport units keep full-screen panels usable while mobile browser chrome changes height. */
-.auth-loading{min-height:100dvh}
-.login-page{min-height:calc(100dvh - 190px)}
-.catalog-landing{min-height:calc(100dvh - 220px)}
-.recommendation-modal{max-height:min(850px,calc(100dvh - 44px))}
-@media(max-width:620px){
-  .login-page{min-height:calc(100dvh - 170px)}
-  .image-crop-backdrop{padding:8px}
-  .image-crop-modal{max-height:calc(100dvh - 16px)}
-}

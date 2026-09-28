@@ -1,6 +1,7 @@
 package com.animelist.backend.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,17 @@ import com.animelist.backend.repository.AppUserRepository;
 import org.junit.jupiter.api.Test;
 
 class AniListAuthServiceTest {
+    @Test
+    void refusesAProductionOauthConfigurationWithoutSecrets() {
+        assertThrows(IllegalStateException.class, () -> new AniListAuthService(
+                mock(AniListConnectionRepository.class),
+                mock(AppUserRepository.class),
+                mock(AppSessionRepository.class),
+                mock(CurrentUserService.class),
+                "client-id", "", "https://anirecord.com.ar/api/auth/callback", ""
+        ));
+    }
+
     @Test
     void storesTheAcknowledgedCommitOnTheCurrentAccount() {
         AppUserRepository users = mock(AppUserRepository.class);

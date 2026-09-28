@@ -56,39 +56,41 @@ Esto es una revisión de código y configuración, no una prueba de penetración
 - No se encontraron usos de `dangerouslySetInnerHTML`, `eval` ni `new Function`.
 - La sincronización hacia AniList mantiene la lógica defensiva agregada anteriormente: previsualización, confirmación por entrada y conservación de cambios ya enviados.
 
-## Riesgos y deuda pendientes
+## Seguimiento aplicado después de la auditoría
 
-### Media — rate limit local y confianza en `X-Forwarded-For`
+### Resuelto sin servicios pagos — rate limit del backend
 
-`RateLimitFilter` guarda contadores en memoria. Cada réplica tiene su propio estado y un reinicio los borra. Además usa el primer valor de `X-Forwarded-For`; la seguridad de ese dato depende de que el proxy de Northflank elimine valores aportados por el cliente. Conviene migrarlo a Redis/Upstash o al firewall del proveedor y definir explícitamente qué proxy es confiable.
+Se agregaron cuotas específicas para importaciones y sincronizaciones de AniList, cargas de avatar/banner, publicaciones 3×3, recomendaciones y todas las escrituras restantes. Una sesión autenticada recibe una cuota propia estricta y una cuota por IP más amplia para no bloquear a usuarios distintos detrás de la misma red. Los identificadores de sesión se digieren antes de usarse como claves y el mapa tiene un máximo de 20.000 ventanas para mantener acotada la memoria.
 
-### Media — secretos de desarrollo como último fallback
+La IP toma el primer valor de `X-Forwarded-For`, que Vercel reemplaza por la IP real antes del rewrite y Northflank propaga por su balanceador. El límite sigue siendo local a la instancia y se reinicia con el proceso; esto se acepta deliberadamente para mantener el servicio gratuito y evitar Redis, Upstash o consumo extra del firewall. Si en el futuro el backend escala a varias réplicas, habrá que reevaluarlo.
 
-Si faltan tanto `TOKEN_ENCRYPTION_KEY` como las credenciales OAuth, el backend arranca con claves literales de desarrollo. En ese estado no se puede iniciar OAuth nuevo, pero el comportamiento no es fail-closed y una mala configuración podría pasar desapercibida. Producción debería exigir las variables y abortar el arranque si faltan.
+### Resuelto — secretos de producción
 
-### Baja — compatibilidad temporal con sesiones antiguas sin digest
+El backend ahora aborta el arranque cuando la URL OAuth es HTTPS y falta `ANILIST_CLIENT_SECRET`. En desarrollo local se genera un secreto efímero por proceso en lugar de usar una clave literal conocida.
 
-`CurrentUserService` y el flujo de claim todavía prueban el token antiguo en texto después de probar su digest. Esto facilita la migración de sesiones existentes, pero una fila legacy robada equivale a una sesión activa. Debe retirarse después de invalidar o migrar todas las sesiones antiguas.
+### Resuelto — sesiones antiguas sin digest
 
-### Baja — errores OAuth con poca trazabilidad
+Se eliminó la búsqueda alternativa de sesiones y tickets guardados como texto. Una sesión legacy que todavía existiera requerirá iniciar sesión una vez; las sesiones modernas no se ven afectadas.
 
-El callback captura cualquier `RuntimeException` y redirige a un error genérico sin registrar la causa. No filtra datos al usuario, pero complica distinguir rechazo de AniList, error de base de datos o configuración incorrecta. Se recomienda logging estructurado sin tokens ni códigos OAuth.
+### Resuelto — trazabilidad OAuth segura
 
-### Baja — rate limit incompleto para operaciones costosas
+El callback registra si faltó código/estado y la clase de excepción cuando falla el intercambio. No escribe códigos OAuth, estados ni tokens en los logs.
 
-El límite dedicado cubre autenticación y rutas AniList, pero no cargas de imágenes, sincronización completa, publicaciones 3×3 ni recomendaciones. Autenticación y tamaño máximo reducen el impacto, aunque faltan cuotas por usuario para abuso sostenido.
+### Resuelto — operaciones costosas
 
-### Baja — CSS acumulativo difícil de mantener
+Las rutas costosas tienen cuotas dedicadas. Los límites ocurren antes de procesar imágenes o llamar a AniList, por lo que reducen trabajo y tráfico externo.
 
-`index.css` contiene varias generaciones de reglas para los mismos selectores y breakpoints. La cascada actual funciona, pero ya produjo anulaciones involuntarias en navegación, recomendaciones y detalle. Conviene separar layout, componentes y responsive por módulo y eliminar reglas superadas.
+### En progreso — CSS acumulativo
 
-### Baja — configuración de desarrollo confusa
+Se inició la separación con `styles/mobile.css`, que concentra las protecciones compartidas de viewport dinámico. El resto debe seguir migrándose por componente cuando se toque cada pantalla; moverlo todo de una sola vez agregaría riesgo visual sin beneficio operativo inmediato.
 
-`frontend/.env.development` define `VITE_API_URL`, pero `apiClient` usa `/api` y Vite siempre lo redirige a `localhost:8080`. La variable no participa del flujo. Conviene eliminarla o hacer que `vite.config.js` la use de manera explícita para evitar probar contra un backend distinto del esperado.
+### Resuelto — configuración de desarrollo
 
-### Informativa — imágenes externas de perfil
+Vite usa ahora `VITE_API_PROXY_TARGET` de forma explícita y mantiene `http://localhost:8080` como valor local predeterminado. Se eliminó la variable que no participaba del flujo.
 
-Los perfiles de AniList pueden conservar URLs HTTPS externas. Esto es necesario para mostrar avatar y banner, pero hace que el navegador contacte al host de la imagen y revele IP/agente de usuario. Las imágenes subidas localmente no tienen este problema. Un proxy de imágenes propio sería la opción de privacidad más fuerte.
+### Decisión aceptada — imágenes externas de perfil
+
+Los perfiles de AniList pueden conservar URLs HTTPS externas. Se decidió no crear un proxy propio para evitar almacenamiento, transferencia y mantenimiento adicionales. Las cargas hechas dentro de AniRecord siguen sirviéndose desde la infraestructura actual.
 
 ## Verificación ejecutada
 

@@ -21,8 +21,7 @@ public class CurrentUserService {
     public java.util.Optional<AppUser> optional() {
         if (request.getCookies() == null) return java.util.Optional.empty();
         return Arrays.stream(request.getCookies()).filter(c -> COOKIE.equals(c.getName())).map(Cookie::getValue).findFirst()
-                .flatMap(token -> sessions.findByTokenAndExpiresAtAfter(TokenSecurity.digest(token), LocalDateTime.now())
-                        .or(() -> sessions.findByTokenAndExpiresAtAfter(token, LocalDateTime.now())))
+                .flatMap(token -> sessions.findByTokenAndExpiresAtAfter(TokenSecurity.digest(token), LocalDateTime.now()))
                 .map(AppSession::getUser);
     }
 }

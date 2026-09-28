@@ -1,10 +1,12 @@
 package com.animelist.backend.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 import com.animelist.backend.entity.AppSession;
 import com.animelist.backend.entity.AppUser;
+import com.animelist.backend.exception.UnauthorizedException;
 import com.animelist.backend.repository.AppSessionRepository;
 import com.animelist.backend.security.TokenSecurity;
 import jakarta.servlet.http.Cookie;
@@ -27,18 +29,15 @@ class CurrentUserServiceTest {
         assertEquals(3L, new CurrentUserService(sessions, request).require().getId());
     }
 
-    @Test void keepsLegacySessionsWorkingUntilTheyExpire() {
+    @Test void rejectsLegacyPlainTextSessions() {
         String legacy = "legacy-plain-session";
-        AppUser user = new AppUser(); user.setId(4L);
-        AppSession session = new AppSession(); session.setUser(user);
         AppSessionRepository sessions = mock(AppSessionRepository.class);
         when(sessions.findByTokenAndExpiresAtAfter(eq(TokenSecurity.digest(legacy)), any(LocalDateTime.class)))
                 .thenReturn(Optional.empty());
-        when(sessions.findByTokenAndExpiresAtAfter(eq(legacy), any(LocalDateTime.class)))
-                .thenReturn(Optional.of(session));
         var request = new MockHttpServletRequest();
         request.setCookies(new Cookie(CurrentUserService.COOKIE, legacy));
 
-        assertEquals(4L, new CurrentUserService(sessions, request).require().getId());
+        assertThrows(UnauthorizedException.class, () -> new CurrentUserService(sessions, request).require());
+        verify(sessions, never()).findByTokenAndExpiresAtAfter(eq(legacy), any(LocalDateTime.class));
     }
 }
