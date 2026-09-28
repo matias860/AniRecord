@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -19,6 +20,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final int MAX_WINDOWS = 20_000;
     private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
+    private final AtomicLong nextCleanupAt = new AtomicLong();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -57,13 +59,20 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private boolean allow(String key, Limit limit) {
         long now = Instant.now().getEpochSecond();
-        if (windows.size() > 10_000) windows.entrySet().removeIf(entry -> now >= entry.getValue().expiresAt());
+        cleanupExpiredWindows(now);
         if (!windows.containsKey(key) && windows.size() >= MAX_WINDOWS) return false;
         Window window = windows.compute(key, (ignored, previous) -> {
             if (previous == null || now >= previous.expiresAt()) return new Window(1, now + limit.seconds());
             return new Window(previous.count() + 1, previous.expiresAt());
         });
         return window.count() <= limit.requests();
+    }
+
+    private void cleanupExpiredWindows(long now) {
+        if (windows.size() <= 10_000) return;
+        long scheduled = nextCleanupAt.get();
+        if (now < scheduled || !nextCleanupAt.compareAndSet(scheduled, now + 60)) return;
+        windows.entrySet().removeIf(entry -> now >= entry.getValue().expiresAt());
     }
 
     private String clientAddress(HttpServletRequest request) {
