@@ -26,3 +26,23 @@
 .top-nine-modal-backdrop>.top-nine-composer{width:min(640px,100%);max-width:640px;max-height:calc(100dvh - 40px);overflow-y:auto;overscroll-behavior:contain;margin:0;padding:28px 30px;scrollbar-width:thin;scrollbar-color:var(--accent) transparent;background:var(--user-surface,#171b29)}
 .top-nine-modal-backdrop .top-nine-composer>header h2{font-size:clamp(28px,3.5vw,40px);padding-inline:14px}
 @media(max-width:700px){.top-nine-modal-backdrop{padding:12px}.top-nine-modal-backdrop>.top-nine-composer{max-height:calc(100dvh - 24px);padding:28px 16px 20px}}
+@media(max-width:420px){
+  .top-nine-modal-backdrop{padding:8px}
+  .top-nine-modal-backdrop>.top-nine-composer{max-height:calc(100dvh - 16px);padding:24px 10px 16px;border-radius:18px;clip-path:inset(0 round 18px)}
+  .top-nine-modal-backdrop .top-nine-composer>header{padding-inline:22px}
+  .top-nine-modal-backdrop .top-nine-composer>header h2{padding:0;font-size:clamp(24px,8vw,32px)}
+  .top-nine-close{right:10px;top:10px}
+  .top-nine-builder{gap:6px;margin-top:20px}
+  .top-nine-slot{border-radius:12px}
+  .top-nine-empty{gap:4px}.top-nine-empty svg{width:28px;height:28px}
+  .top-nine-remove{width:27px;height:27px;right:4px;top:4px}
+  .top-nine-composer>footer{gap:8px;margin-top:18px}.top-nine-composer>footer button{min-width:0;padding-inline:10px}
+  .top-nine-picker{padding:10px;border-radius:15px}
+  .top-nine-picker-grid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}
+}
+@media(max-height:620px){
+  .top-nine-modal-backdrop>.top-nine-composer{max-height:calc(100dvh - 12px);padding-top:18px}
+  .top-nine-composer>header p,.top-nine-composer>header>small{display:none}
+  .top-nine-builder{width:min(100%,430px);margin-top:14px}
+  .top-nine-composer>footer{margin-top:14px}
+}

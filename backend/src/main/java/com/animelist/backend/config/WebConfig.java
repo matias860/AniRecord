@@ -17,8 +17,7 @@ public class WebConfig implements WebMvcConfigurer {
                         Arrays.stream(frontendUrl.split(",")),
                         Stream.of(
                                 "https://anirecord.com.ar",
-                                "https://anirecord.vercel.app",
-                                "http://localhost:5173"))
+                                "https://anirecord.vercel.app"))
                 .map(String::trim)
                 .filter(value -> !value.isBlank())
                 .distinct()
