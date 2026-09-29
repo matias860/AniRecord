@@ -64,7 +64,7 @@ class MediaRelationPersistenceServiceTest {
         verify(snapshotRepository).saveAll(any());
         verify(watchRepository).save(any(MediaRelationWatch.class));
         verify(notificationRepository, never()).save(any());
-        verify(libraryRepository, never()).findDistinctUsersByMediaId(any());
+        verify(libraryRepository, never()).findDistinctUsersByMediaIdAndAccountType(any(), any());
     }
 
     @Test
@@ -75,8 +75,7 @@ class MediaRelationPersistenceServiceTest {
         when(watchRepository.findById(10L)).thenReturn(Optional.of(watch));
 
         AppUser local = user(1L, AccountType.LOCAL);
-        AppUser linked = user(2L, AccountType.ANILIST);
-        when(libraryRepository.findDistinctUsersByMediaId(10L)).thenReturn(List.of(local, linked));
+        when(libraryRepository.findDistinctUsersByMediaIdAndAccountType(10L, AccountType.LOCAL)).thenReturn(List.of(local));
         when(notificationRepository.existsByUserIdAndSourceKey(1L, "relation:100:200:SEQUEL")).thenReturn(false);
 
         int created = service.reconcile(100, List.of(sequel));

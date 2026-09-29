@@ -82,9 +82,7 @@ public class MediaRelationPersistenceService {
 
     private int notifyLocalOwners(Media source, List<MediaRelationResponse> additions) {
         int created = 0;
-        var localOwners = libraryRepository.findDistinctUsersByMediaId(source.getId()).stream()
-                .filter(user -> user.getAccountType() == AccountType.LOCAL)
-                .toList();
+        var localOwners = libraryRepository.findDistinctUsersByMediaIdAndAccountType(source.getId(), AccountType.LOCAL);
 
         for (MediaRelationResponse relation : additions) {
             String sourceKey = "relation:%d:%d:%s".formatted(

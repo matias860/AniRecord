@@ -29,6 +29,7 @@ class AniListExportServiceTest {
         user.setId(1L); user.setAccountType(AccountType.ANILIST); user.setAnilistUserId(42); user.setAnilistUsername("test");
         when(current.require()).thenReturn(user); when(auth.validToken(user)).thenReturn("test-token");
         when(entries.findSummaries(1L, MediaType.ANIME, null)).thenReturn(List.of(entry(TrackingStatus.COMPLETED, new BigDecimal("8.5"))));
+        when(entries.findSummaryByIdAndUserId(7L, 1L)).thenReturn(Optional.of(entry(TrackingStatus.COMPLETED, new BigDecimal("8.5"))));
         when(client.read("test-token", 42, MediaType.ANIME)).thenReturn(new Snapshot(Map.of(), "POINT_100"));
     }
 
@@ -125,7 +126,7 @@ class AniListExportServiceTest {
 
     @Test void refusesChangesMadeLocallyAfterPreview() {
         var preview = service.preview();
-        when(entries.findSummaries(1L, MediaType.ANIME, null)).thenReturn(List.of(entry(TrackingStatus.DROPPED, null)));
+        when(entries.findSummaryByIdAndUserId(7L, 1L)).thenReturn(Optional.of(entry(TrackingStatus.DROPPED, null)));
         assertThrows(BusinessException.class, () -> service.apply(preview.id(), 7L));
         verify(client, never()).save(any(), anyInt(), any(), any(), any());
     }
@@ -156,6 +157,7 @@ class AniListExportServiceTest {
         State before = new State("CURRENT", 1, 0);
         State after = new State("CURRENT", 3, 85);
         when(entries.findSummaries(1L, MediaType.MANGA, null)).thenReturn(List.of(local));
+        when(entries.findSummaryByIdAndUserId(7L, 1L)).thenReturn(Optional.of(local));
         when(client.read("test-token", 42, MediaType.MANGA)).thenReturn(new Snapshot(Map.of(10, new Remote(100, before)), "POINT_100"));
 
         var preview = service.preview(MediaType.MANGA);

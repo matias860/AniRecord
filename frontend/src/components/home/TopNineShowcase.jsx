@@ -9,8 +9,8 @@ const coverError = (event) => { if (event.currentTarget.src !== COVER_FALLBACK) 
 
 function SubmissionCard({ submission }) {
   return <article className="top-nine-community-card">
-    <header>{submission.userAvatar ? <img src={submission.userAvatar} onError={(event) => { event.currentTarget.style.display = 'none' }} alt="" /> : <span><UserRound /></span>}<div><strong>{submission.userName}</strong><small>Su selección</small></div></header>
-    <div className="top-nine-mini-grid">{submission.selections.map((media) => <Link to={`/media/${media.anilistId}`} key={media.position} title={media.title} aria-label={media.title}><img src={media.coverImage || COVER_FALLBACK} onError={coverError} alt="" /></Link>)}</div>
+    <header>{submission.userAvatar ? <img src={submission.userAvatar} onError={(event) => { event.currentTarget.style.display = 'none' }} alt="" loading="lazy" decoding="async" /> : <span><UserRound /></span>}<div><strong>{submission.userName}</strong><small>Su selección</small></div></header>
+    <div className="top-nine-mini-grid">{submission.selections.map((media) => <Link to={`/media/${media.anilistId}`} key={media.position} title={media.title} aria-label={media.title}><img src={media.coverImage || COVER_FALLBACK} onError={coverError} alt="" loading="lazy" decoding="async" /></Link>)}</div>
   </article>
 }
 

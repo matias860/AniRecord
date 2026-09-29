@@ -64,7 +64,7 @@ function Picker({ anchor, entries, pending, onPending, onConfirm, pickerRef }) {
     <div className="top-nine-picker-grid">
       {visible.map((entry) => <div className={`top-nine-candidate${pending?.id === entry.id ? ' selected' : ''}`} key={entry.id}>
         <button type="button" className="top-nine-candidate-cover" title={entry.title} aria-label={`Seleccionar ${entry.title}`} onClick={() => onPending(pending?.id === entry.id ? null : entry)}>
-          <img src={entry.coverImage || COVER_FALLBACK} onError={coverError} alt="" />
+          <img src={entry.coverImage || COVER_FALLBACK} onError={coverError} alt="" loading="lazy" decoding="async" />
         </button>
         {pending?.id === entry.id && <button type="button" className="top-nine-confirm-cover" onClick={() => onConfirm(entry)} aria-label={`Confirmar ${entry.title}`}><Check /></button>}
       </div>)}

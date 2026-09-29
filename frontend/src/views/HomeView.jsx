@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play, RefreshCw, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -65,7 +65,10 @@ export default function HomeView() {
   const showSyncPrompt = auth.accountType === 'ANILIST' && dismissedCommit !== appCommit
   const { season: selectedSeasonName, year: selectedSeasonYear } = seasonAtOffset(home.seasonOffset)
   const selectedSeasonKey = `${selectedSeasonName}-${selectedSeasonYear}`
-  const selectedSeasonEntries = home.seasonCache[selectedSeasonKey] ?? []
+  const selectedSeasonEntries = useMemo(
+    () => home.seasonCache[selectedSeasonKey] ?? [],
+    [home.seasonCache, selectedSeasonKey],
+  )
 
   useEffect(() => {
     if (auth.authenticated && library.status === 'idle') dispatch(fetchLibrary())
@@ -105,28 +108,48 @@ export default function HomeView() {
     }
   }, [dispatch, home.seasonCache, home.seasonErrors, home.seasonStatus, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
-  const airingWithCurrentProgress = home.airing.map((entry) => ({
-    ...entry,
-    currentProgress: library.items.find((item) => item.anilistId === entry.anilistId)?.progress ?? entry.currentProgress,
-  }))
-  const pendingEpisodeIds = new Set(airingWithCurrentProgress
-    .filter((entry) => entry.nextAiringEpisode.episode - 1 > entry.currentProgress)
-    .map((entry) => entry.anilistId))
-  const byRecentProgress = (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt) || b.progress - a.progress
-  const byWatchingPriority = (a, b) => {
-    const pendingDifference = Number(pendingEpisodeIds.has(b.anilistId)) - Number(pendingEpisodeIds.has(a.anilistId))
-    if (pendingDifference) return pendingDifference
-    const releasingDifference = Number(b.releaseStatus === 'RELEASING') - Number(a.releaseStatus === 'RELEASING')
-    return releasingDifference || byRecentProgress(a, b)
-  }
-  const allWatching = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS' && item.mediaType === 'ANIME').sort(byWatchingPriority)
-  const allReading = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS' && item.mediaType === 'MANGA').sort(byRecentProgress)
+  const { airingWithCurrentProgress, allReading, allWatching, completed, inProgress, pendingEpisodeIds } = useMemo(() => {
+    const libraryByAniListId = new Map(library.items.map((item) => [item.anilistId, item]))
+    const airing = home.airing.map((entry) => ({
+      ...entry,
+      currentProgress: libraryByAniListId.get(entry.anilistId)?.progress ?? entry.currentProgress,
+    }))
+    const pending = new Set(airing
+      .filter((entry) => entry.nextAiringEpisode.episode - 1 > entry.currentProgress)
+      .map((entry) => entry.anilistId))
+    const byRecentProgress = (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt) || b.progress - a.progress
+    const byWatchingPriority = (a, b) => {
+      const pendingDifference = Number(pending.has(b.anilistId)) - Number(pending.has(a.anilistId))
+      if (pendingDifference) return pendingDifference
+      const releasingDifference = Number(b.releaseStatus === 'RELEASING') - Number(a.releaseStatus === 'RELEASING')
+      return releasingDifference || byRecentProgress(a, b)
+    }
+    const watchingEntries = []
+    const readingEntries = []
+    let currentCount = 0
+    let completedCount = 0
+    for (const item of library.items) {
+      if (item.trackingStatus === 'IN_PROGRESS') {
+        currentCount += 1
+        if (item.mediaType === 'ANIME') watchingEntries.push(item)
+        else if (item.mediaType === 'MANGA') readingEntries.push(item)
+      } else if (item.trackingStatus === 'COMPLETED') completedCount += 1
+    }
+    watchingEntries.sort(byWatchingPriority)
+    readingEntries.sort(byRecentProgress)
+    return {
+      airingWithCurrentProgress: airing,
+      allReading: readingEntries,
+      allWatching: watchingEntries,
+      completed: completedCount,
+      inProgress: currentCount,
+      pendingEpisodeIds: pending,
+    }
+  }, [home.airing, library.items])
   const watchingPage = Math.min(home.watchingPage, Math.max(0, Math.ceil(allWatching.length / pageSize) - 1))
   const readingPage = Math.min(home.readingPage, Math.max(0, Math.ceil(allReading.length / pageSize) - 1))
   const watching = allWatching.slice(watchingPage * pageSize, watchingPage * pageSize + pageSize)
   const reading = allReading.slice(readingPage * pageSize, readingPage * pageSize + pageSize)
-  const inProgress = library.items.filter((item) => item.trackingStatus === 'IN_PROGRESS').length
-  const completed = library.items.filter((item) => item.trackingStatus === 'COMPLETED').length
   const libraryReady = library.status === 'succeeded'
   const ownRecommendation = recommendations.items.find((item) => item.recommenderId === auth.userId)
   const showRecommendationCta = recommendations.status === 'succeeded' && !ownRecommendation
@@ -135,14 +158,16 @@ export default function HomeView() {
       const item = seasonAtOffset(offset)
       return { value: String(offset), label: `${seasonLabels[item.season]} ${item.year}` }
     })
-  const seasonMediaById = new Map(selectedSeasonEntries.map((item) => [item.anilistId, item]))
-  const calendarEntries = library.items.filter((item) => item.mediaType === 'ANIME'
-    && ['PLANNED', 'IN_PROGRESS'].includes(item.trackingStatus)
-    && item.releaseSeason === selectedSeasonName && item.releaseYear === selectedSeasonYear)
-    .map((item) => {
-      const currentMedia = seasonMediaById.get(item.anilistId)
-      return currentMedia ? { ...item, releaseStartDate: currentMedia.releaseStartDate ?? item.releaseStartDate } : item
-    })
+  const calendarEntries = useMemo(() => {
+    const seasonMediaById = new Map(selectedSeasonEntries.map((item) => [item.anilistId, item]))
+    return library.items.filter((item) => item.mediaType === 'ANIME'
+      && ['PLANNED', 'IN_PROGRESS'].includes(item.trackingStatus)
+      && item.releaseSeason === selectedSeasonName && item.releaseYear === selectedSeasonYear)
+      .map((item) => {
+        const currentMedia = seasonMediaById.get(item.anilistId)
+        return currentMedia ? { ...item, releaseStartDate: currentMedia.releaseStartDate ?? item.releaseStartDate } : item
+      })
+  }, [library.items, selectedSeasonEntries, selectedSeasonName, selectedSeasonYear])
 
   const closeSyncPrompt = () => {
     const previousCommit = dismissedCommit

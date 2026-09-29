@@ -63,7 +63,7 @@ public class AniListExportService {
         synchronized (writeLocks[Math.floorMod(user.getId().hashCode(), writeLocks.length)]) {
             Change change = plan.changes().stream().filter(c -> c.entryId().equals(entryId)).findFirst()
                     .orElseThrow(() -> new BusinessException("La entrada no pertenece a esta vista previa."));
-            var local = entries.findSummaries(user.getId(), plan.mediaType(), null).stream().filter(e -> e.id().equals(entryId)).findFirst()
+            var local = entries.findSummaryByIdAndUserId(entryId, user.getId())
                     .orElseThrow(() -> new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo."));
             State refreshedAfter = merge(local, desired(local, plan.scoreFormat()), change.before());
             if (!Objects.equals(local.anilistId(), change.anilistId())

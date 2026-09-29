@@ -2,6 +2,7 @@ package com.animelist.backend.service;
 
 import com.animelist.backend.dto.anilist.MediaRelationsResponse;
 import com.animelist.backend.entity.Media;
+import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,7 @@ public class MediaRelationWatchService {
     )
     public void scan() {
         if (!enabled) return;
-        List<Media> tracked = libraryRepository.findDistinctTrackedMedia();
+        List<Media> tracked = libraryRepository.findDistinctTrackedMediaByAccountType(AccountType.LOCAL);
         if (tracked.isEmpty()) return;
 
         try {

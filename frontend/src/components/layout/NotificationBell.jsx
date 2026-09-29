@@ -6,12 +6,18 @@ import { Link } from 'react-router-dom'
 import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../../features/notifications/notificationSlice.js'
 
 const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2 }
+const POLL_INTERVAL = 15 * 60 * 1000
 
 export default function NotificationBell({ hovered, onMouseEnter }) {
   const [open, setOpen] = useState(false); const root = useRef(null); const dispatch = useDispatch()
   const { items, status, error } = useSelector((state) => state.notifications); const unread = items.filter((item) => !item.read).length
   useEffect(() => { if (status === 'idle') dispatch(fetchNotifications()) }, [dispatch, status])
-  useEffect(() => { const timer = window.setInterval(() => dispatch(fetchNotifications()), 300000); return () => window.clearInterval(timer) }, [dispatch])
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') dispatch(fetchNotifications()) }
+    const timer = window.setInterval(refresh, POLL_INTERVAL)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh) }
+  }, [dispatch])
   useEffect(() => { const close = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }; document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close) }, [])
   const select = (item) => { if (!item.read) dispatch(markNotificationRead(item.id)); setOpen(false) }
   const toggle = async () => {
