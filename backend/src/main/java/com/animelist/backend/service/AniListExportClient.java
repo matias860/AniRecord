@@ -1,6 +1,7 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.exception.BusinessException;
+import com.animelist.backend.enums.MediaType;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.*;
@@ -22,6 +23,7 @@ public class AniListExportClient {
     public record State(String status, int progress, int score) {}
     public record Remote(int id, State value) {}
     public record Snapshot(Map<Integer, Remote> entries, String scoreFormat) {}
+    public enum ProgressUnit { EPISODES, CHAPTERS, VOLUMES }
 
     public AniListExportClient(@Value("${anilist.api.url:https://graphql.anilist.co}") String url) {
         var factory = new JdkClientHttpRequestFactory(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
@@ -30,24 +32,31 @@ public class AniListExportClient {
     }
 
     public Snapshot read(String token, Integer userId) {
+        return read(token, userId, MediaType.ANIME);
+    }
+
+    public Snapshot read(String token, Integer userId, MediaType mediaType) {
         Map<Integer, Remote> result = new HashMap<>();
         String scoreFormat = null;
         for (int page = 1; page <= 200; page++) {
             Map<String, Object> data = request(token, """
-                query($user: Int!, $page: Int!) {
+                query($user: Int!, $type: MediaType!, $page: Int!) {
                   User(id: $user) { mediaListOptions { scoreFormat } }
                   Page(page: $page, perPage: 50) {
                     pageInfo { hasNextPage }
-                    mediaList(userId: $user, type: ANIME) { id mediaId status progress score(format: POINT_100) }
+                    mediaList(userId: $user, type: $type) {
+                      id mediaId status progress progressVolumes score(format: POINT_100)
+                      media { format }
+                    }
                   }
                 }
-                """, Map.of("user", userId, "page", page));
+                """, Map.of("user", userId, "type", mediaType.name(), "page", page));
             if (scoreFormat == null) scoreFormat = scoreFormat(data);
             Map<?, ?> response = (Map<?, ?>) data.get("Page");
             if (response == null || !(response.get("mediaList") instanceof List<?> entries)) throw invalid();
             for (Object entry : entries) {
                 Map<?, ?> item = (Map<?, ?>) entry;
-                result.put(((Number) item.get("mediaId")).intValue(), remote(item));
+                result.put(((Number) item.get("mediaId")).intValue(), remote(item, progressUnit(mediaType, item)));
             }
             if (response.get("pageInfo") instanceof Map<?, ?> info && Boolean.FALSE.equals(info.get("hasNextPage")))
                 return new Snapshot(Map.copyOf(result), scoreFormat);
@@ -56,33 +65,45 @@ public class AniListExportClient {
     }
 
     public Remote readEntry(String token, Integer userId, int mediaId) {
+        return readEntry(token, userId, mediaId, MediaType.ANIME);
+    }
+
+    public Remote readEntry(String token, Integer userId, int mediaId, MediaType mediaType) {
         Map<String, Object> data = request(token, """
-            query($user: Int!, $media: Int!) {
+            query($user: Int!, $media: Int!, $type: MediaType!) {
               Page(page: 1, perPage: 1) {
-                mediaList(userId: $user, mediaId: $media, type: ANIME) { id status progress score(format: POINT_100) }
+                mediaList(userId: $user, mediaId: $media, type: $type) {
+                  id status progress progressVolumes score(format: POINT_100)
+                  media { format }
+                }
               }
             }
-            """, Map.of("user", userId, "media", mediaId));
+            """, Map.of("user", userId, "media", mediaId, "type", mediaType.name()));
         if (!(data.get("Page") instanceof Map<?, ?> page) || !(page.get("mediaList") instanceof List<?> entries)) throw invalid();
-        return entries.isEmpty() ? null : remote((Map<?, ?>) entries.get(0));
+        return entries.isEmpty() ? null : remote((Map<?, ?>) entries.get(0), progressUnit(mediaType, (Map<?, ?>) entries.get(0)));
     }
 
     public void save(String token, int mediaId, Integer entryId, State value) {
+        save(token, mediaId, entryId, value, ProgressUnit.EPISODES);
+    }
+
+    public void save(String token, int mediaId, Integer entryId, State value, ProgressUnit progressUnit) {
+        String progressArgument = progressUnit == ProgressUnit.VOLUMES ? "progressVolumes" : "progress";
         Map<String, Object> variables = new HashMap<>(Map.of("media", mediaId, "status", value.status(), "progress", value.progress(), "score", value.score()));
         if (entryId != null) variables.put("id", entryId);
         String mutation = """
             mutation(%s$media: Int!, $status: MediaListStatus!, $progress: Int!, $score: Int!) {
-              SaveMediaListEntry(%smediaId: $media, status: $status, progress: $progress, scoreRaw: $score) {
-                mediaId status progress score(format: POINT_100)
+              SaveMediaListEntry(%smediaId: $media, status: $status, %s: $progress, scoreRaw: $score) {
+                mediaId status progress progressVolumes score(format: POINT_100)
               }
             }
-            """.formatted(entryId == null ? "" : "$id: Int!, ", entryId == null ? "" : "id: $id, ");
+            """.formatted(entryId == null ? "" : "$id: Int!, ", entryId == null ? "" : "id: $id, ", progressArgument);
         Map<String, Object> data = request(token, mutation, variables);
         if (!(data.get("SaveMediaListEntry") instanceof Map<?, ?> saved) || !Objects.equals(saved.get("mediaId"), mediaId)) {
             log.warn("AniList export save response was incomplete: media={}", mediaId);
             throw invalid();
         }
-        State confirmed = state(saved);
+        State confirmed = state(saved, progressUnit);
         if (!value.equals(confirmed)) {
             log.warn("AniList export save mismatch: media={}, expected={}, confirmed={}", mediaId, value, confirmed);
             throw invalid();
@@ -96,15 +117,23 @@ public class AniListExportClient {
         return format;
     }
 
-    private static State state(Map<?, ?> value) {
-        if (!(value.get("status") instanceof String status) || !(value.get("progress") instanceof Number progress)
+    private static State state(Map<?, ?> value, ProgressUnit progressUnit) {
+        Object progressValue = progressUnit == ProgressUnit.VOLUMES ? value.get("progressVolumes") : value.get("progress");
+        if (!(value.get("status") instanceof String status) || !(progressValue instanceof Number progress)
                 || !(value.get("score") instanceof Number score)) throw invalid();
         return new State(status, progress.intValue(), (int) Math.round(score.doubleValue()));
     }
 
-    private static Remote remote(Map<?, ?> value) {
+    private static Remote remote(Map<?, ?> value, ProgressUnit progressUnit) {
         if (!(value.get("id") instanceof Number id)) throw invalid();
-        return new Remote(id.intValue(), state(value));
+        return new Remote(id.intValue(), state(value, progressUnit));
+    }
+
+    private static ProgressUnit progressUnit(MediaType mediaType, Map<?, ?> value) {
+        if (mediaType == MediaType.ANIME) return ProgressUnit.EPISODES;
+        Object mediaValue = value.get("media");
+        return mediaValue instanceof Map<?, ?> media && "NOVEL".equals(media.get("format"))
+                ? ProgressUnit.VOLUMES : ProgressUnit.CHAPTERS;
     }
 
     @SuppressWarnings("unchecked")
@@ -195,7 +224,7 @@ public class AniListExportClient {
         if (status == 401) return new BusinessException("AniList rechazó la autorización. Inicia sesión de nuevo con AniList y vuelve a revisar los cambios.");
         if (status == 403) return new BusinessException("AniList denegó esta solicitud (403). Revisa el acceso a tu cuenta antes de volver a intentarlo.");
         if (status >= 500) return new BusinessException("AniList tiene un problema temporal (" + status + "). Espera un minuto y revisa los cambios de nuevo; la última operación puede haberse guardado.");
-        return new BusinessException("AniList rechazó la solicitud (" + status + "). Revisa los datos del anime indicado antes de continuar.");
+        return new BusinessException("AniList rechazó la solicitud (" + status + "). Revisa los datos de la entrada indicada antes de continuar.");
     }
 
     private synchronized void reserveRequest() {

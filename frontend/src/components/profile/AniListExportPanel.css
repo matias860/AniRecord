@@ -50,3 +50,10 @@
 @keyframes anilist-spin { to { transform: rotate(360deg); } }
 @media (max-width: 420px) { .anilist-export-transfer { gap: .6rem; padding: .65rem; } .anilist-export-transfer .anilist-export-cover { width: 48px; height: 68px; } .anilist-export-transfer-copy > strong { font-size: .82rem; } .anilist-export-transfer-label { font-size: .58rem; } .anilist-export-ring { width: 40px; height: 40px; } }
 @media (prefers-reduced-motion: reduce) { .anilist-export-panel *, .anilist-export-panel *::before { animation: none !important; transition: none !important; } .anilist-export-cover-scan { display: none; } }
+.anilist-export-heading { align-items: flex-end; gap: 1rem; }
+.anilist-export-heading .media-type-switch { flex: 0 0 auto; }
+
+@media (max-width: 560px) {
+  .anilist-export-heading { align-items: stretch; flex-direction: column; }
+  .anilist-export-heading .media-type-switch { align-self: flex-start; }
+}

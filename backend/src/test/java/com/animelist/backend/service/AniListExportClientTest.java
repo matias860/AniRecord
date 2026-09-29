@@ -1,6 +1,7 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.exception.BusinessException;
+import com.animelist.backend.enums.MediaType;
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
@@ -8,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import static com.animelist.backend.service.AniListExportClient.State;
+import static com.animelist.backend.service.AniListExportClient.ProgressUnit;
 
 class AniListExportClientTest {
     @Test void readIncludesTheAccountsScoreFormat() throws Exception {
@@ -24,6 +26,44 @@ class AniListExportClientTest {
             var snapshot = new AniListExportClient("http://127.0.0.1:" + server.getAddress().getPort()).read("test-token", 42);
             assertEquals("POINT_10", snapshot.scoreFormat());
             assertEquals(new State("COMPLETED", 12, 90), snapshot.entries().get(10).value());
+        } finally { server.stop(0); }
+    }
+
+    @Test void mangaReadUsesVolumeProgressForNovels() throws Exception {
+        var requestBody = new java.util.concurrent.atomic.AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] response = "{\"data\":{\"User\":{\"mediaListOptions\":{\"scoreFormat\":\"POINT_100\"}},\"Page\":{\"pageInfo\":{\"hasNextPage\":false},\"mediaList\":[{\"id\":100,\"mediaId\":10,\"status\":\"CURRENT\",\"progress\":12,\"progressVolumes\":3,\"score\":80,\"media\":{\"format\":\"NOVEL\"}}]}}}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response); exchange.close();
+        });
+        server.start();
+        try {
+            var snapshot = new AniListExportClient("http://127.0.0.1:" + server.getAddress().getPort()).read("test-token", 42, MediaType.MANGA);
+            assertEquals(new State("CURRENT", 3, 80), snapshot.entries().get(10).value());
+            assertTrue(requestBody.get().contains("\"type\":\"MANGA\""));
+            assertTrue(requestBody.get().contains("progressVolumes"));
+        } finally { server.stop(0); }
+    }
+
+    @Test void novelMutationWritesVolumesInsteadOfChapters() throws Exception {
+        var requestBody = new java.util.concurrent.atomic.AtomicReference<String>();
+        var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        server.createContext("/", exchange -> {
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] response = "{\"data\":{\"SaveMediaListEntry\":{\"mediaId\":10,\"status\":\"CURRENT\",\"progress\":12,\"progressVolumes\":3,\"score\":80}}}".getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, response.length);
+            exchange.getResponseBody().write(response); exchange.close();
+        });
+        server.start();
+        try {
+            new AniListExportClient("http://127.0.0.1:" + server.getAddress().getPort())
+                    .save("test-token", 10, 100, new State("CURRENT", 3, 80), ProgressUnit.VOLUMES);
+            assertTrue(requestBody.get().contains("progressVolumes: $progress"));
+            assertFalse(requestBody.get().contains("status: $status, progress: $progress"));
         } finally { server.stop(0); }
     }
 

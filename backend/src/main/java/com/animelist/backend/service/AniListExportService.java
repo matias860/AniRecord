@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import static com.animelist.backend.service.AniListExportClient.State;
 import static com.animelist.backend.service.AniListExportClient.Remote;
 import static com.animelist.backend.service.AniListExportClient.Snapshot;
+import static com.animelist.backend.service.AniListExportClient.ProgressUnit;
 
 @Service
 public class AniListExportService {
@@ -25,30 +26,34 @@ public class AniListExportService {
     private final Cache<UUID, Plan> plans = Caffeine.newBuilder().maximumSize(100).expireAfterWrite(Duration.ofHours(2)).build();
     private final Object[] writeLocks = java.util.stream.IntStream.range(0, 64).mapToObj(i -> new Object()).toArray();
 
-    public record Change(Long entryId, int anilistId, String title, String coverImage, State before, State after) {}
-    public record Preview(UUID id, String username, Instant expiresAt, List<Change> changes, int unchanged) {}
-    private record Plan(Long userId, String scoreFormat, List<Change> changes) {}
+    public record Change(Long entryId, int anilistId, String title, String coverImage, ProgressUnit progressUnit, State before, State after) {}
+    public record Preview(UUID id, String username, MediaType mediaType, Instant expiresAt, List<Change> changes, int unchanged) {}
+    private record Plan(Long userId, MediaType mediaType, String scoreFormat, List<Change> changes) {}
 
     public AniListExportService(CurrentUserService currentUser, AniListAuthService auth, LibraryEntryRepository entries, AniListExportClient client) {
         this.currentUser = currentUser; this.auth = auth; this.entries = entries; this.client = client;
     }
 
     public Preview preview() {
+        return preview(MediaType.ANIME);
+    }
+
+    public Preview preview(MediaType mediaType) {
         AppUser user = connectedUser();
         String token = token(user);
-        List<LibraryEntrySummaryResponse> local = entries.findSummaries(user.getId(), MediaType.ANIME, null);
-        Snapshot snapshot = client.read(token, user.getAnilistUserId());
+        List<LibraryEntrySummaryResponse> local = entries.findSummaries(user.getId(), mediaType, null);
+        Snapshot snapshot = client.read(token, user.getAnilistUserId(), mediaType);
         Map<Integer, Remote> remote = snapshot.entries();
         List<Change> changes = new ArrayList<>();
         for (var entry : local) {
             State before = remote.containsKey(entry.anilistId()) ? remote.get(entry.anilistId()).value() : null;
             State after = merge(entry, desired(entry, snapshot.scoreFormat()), before);
-            if (!after.equals(before)) changes.add(new Change(entry.id(), entry.anilistId(), entry.title(), entry.coverImage(), before, after));
+            if (!after.equals(before)) changes.add(new Change(entry.id(), entry.anilistId(), entry.title(), entry.coverImage(), progressUnit(entry), before, after));
         }
         UUID id = UUID.randomUUID();
         List<Change> immutable = List.copyOf(changes);
-        plans.put(id, new Plan(user.getId(), snapshot.scoreFormat(), immutable));
-        return new Preview(id, user.getAnilistUsername(), Instant.now().plus(Duration.ofHours(2)), immutable, local.size() - changes.size());
+        plans.put(id, new Plan(user.getId(), mediaType, snapshot.scoreFormat(), immutable));
+        return new Preview(id, user.getAnilistUsername(), mediaType, Instant.now().plus(Duration.ofHours(2)), immutable, local.size() - changes.size());
     }
 
     public void apply(UUID planId, Long entryId) {
@@ -58,17 +63,19 @@ public class AniListExportService {
         synchronized (writeLocks[Math.floorMod(user.getId().hashCode(), writeLocks.length)]) {
             Change change = plan.changes().stream().filter(c -> c.entryId().equals(entryId)).findFirst()
                     .orElseThrow(() -> new BusinessException("La entrada no pertenece a esta vista previa."));
-            var local = entries.findSummaries(user.getId(), MediaType.ANIME, null).stream().filter(e -> e.id().equals(entryId)).findFirst()
+            var local = entries.findSummaries(user.getId(), plan.mediaType(), null).stream().filter(e -> e.id().equals(entryId)).findFirst()
                     .orElseThrow(() -> new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo."));
             State refreshedAfter = merge(local, desired(local, plan.scoreFormat()), change.before());
-            if (!Objects.equals(local.anilistId(), change.anilistId()) || !refreshedAfter.equals(change.after()))
+            if (!Objects.equals(local.anilistId(), change.anilistId())
+                    || progressUnit(local) != change.progressUnit()
+                    || !refreshedAfter.equals(change.after()))
                 throw new BusinessException("La biblioteca cambió. Revisa los cambios de nuevo.");
             String token = token(user);
-            Remote remote = client.readEntry(token, user.getAnilistUserId(), change.anilistId());
+            Remote remote = client.readEntry(token, user.getAnilistUserId(), change.anilistId(), plan.mediaType());
             State remoteState = remote == null ? null : remote.value();
             if (change.after().equals(remoteState)) return; // An acknowledged or uncertain earlier request already succeeded.
             if (!Objects.equals(remoteState, change.before())) throw new BusinessException("La entrada cambió en AniList. Revisa los cambios de nuevo para no sobrescribirla sin confirmar.");
-            client.save(token, change.anilistId(), remote == null ? null : remote.id(), change.after());
+            client.save(token, change.anilistId(), remote == null ? null : remote.id(), change.after(), change.progressUnit());
         }
     }
 
@@ -119,6 +126,11 @@ public class AniListExportService {
             case "POINT_3" -> rawScore < 48 ? 35 : rawScore < 73 ? 60 : 85;
             default -> rawScore; // POINT_100 and POINT_10_DECIMAL preserve AniRecord's tenths.
         };
+    }
+
+    private static ProgressUnit progressUnit(LibraryEntrySummaryResponse entry) {
+        if (entry.mediaType() == MediaType.ANIME) return ProgressUnit.EPISODES;
+        return "NOVEL".equals(entry.mediaFormat()) ? ProgressUnit.VOLUMES : ProgressUnit.CHAPTERS;
     }
 
     private AppUser connectedUser() {

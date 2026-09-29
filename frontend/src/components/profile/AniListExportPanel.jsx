@@ -2,11 +2,23 @@ import { useEffect, useRef, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { ArrowUpRight, RefreshCw, Upload, Check, Minus, Pause, Image as ImageIcon } from 'lucide-react'
 import apiClient from '../../api/apiClient.js'
+import MediaTypeSwitch from '../common/MediaTypeSwitch.jsx'
 import './AniListExportPanel.css'
 
-const statuses = { CURRENT: 'Viendo', COMPLETED: 'Completado', PLANNING: 'Pendiente', PAUSED: 'Pausado', DROPPED: 'Abandonado', REPEATING: 'Volviendo a ver' }
-const describe = (value) => value
-  ? `${statuses[value.status] ?? value.status} · ${value.progress} episodios · ${value.score ? `${value.score / 10}/10` : 'Sin puntuar'}`
+const statusLabel = (status, mediaType) => ({
+  CURRENT: mediaType === 'MANGA' ? 'Leyendo' : 'Viendo',
+  COMPLETED: 'Completado',
+  PLANNING: 'Pendiente',
+  PAUSED: 'Pausado',
+  DROPPED: 'Abandonado',
+  REPEATING: mediaType === 'MANGA' ? 'Releyendo' : 'Volviendo a ver',
+}[status] ?? status)
+const unitLabel = (unit, progress) => {
+  const labels = unit === 'VOLUMES' ? ['volumen', 'volúmenes'] : unit === 'CHAPTERS' ? ['capítulo', 'capítulos'] : ['episodio', 'episodios']
+  return labels[progress === 1 ? 0 : 1]
+}
+const describe = (value, entry, mediaType) => value
+  ? `${statusLabel(value.status, mediaType)} · ${value.progress} ${unitLabel(entry.progressUnit, value.progress)} · ${value.score ? `${value.score / 10}/10` : 'Sin puntuar'}`
   : 'No está en tu lista'
 
 function Cover({ entry, uploading = false }) {
@@ -28,6 +40,7 @@ function SelectionCheckbox({ checked, partial = false, onChange }) {
 
 export default function AniListExportPanel() {
   const accountType = useSelector((state) => state.auth.accountType)
+  const [mediaType, setMediaType] = useState('ANIME')
   const [preview, setPreview] = useState(null)
   const [phase, setPhase] = useState('idle')
   const [error, setError] = useState('')
@@ -49,7 +62,7 @@ export default function AniListExportPanel() {
     busy.current = true
     setError(''); setPhase('loading'); setPreview(null); setCompleted(0); setActiveEntry(null)
     try {
-      const { data } = await apiClient.post('/library/export/anilist/preview')
+      const { data } = await apiClient.post(`/library/export/anilist/preview?type=${mediaType}`)
       if (!mounted.current) return
       setPreview(data); setSelected(new Set(data.changes.map((entry) => entry.entryId))); setPhase('review')
     } catch (reason) {
@@ -86,11 +99,18 @@ export default function AniListExportPanel() {
   const sending = phase === 'sending' || phase === 'stopping'
   const showTransfer = activeEntry && (sending || phase === 'done' || phase === 'stopped')
   const percent = total ? Math.round(completed / total * 100) : 0
+  const itemName = mediaType === 'MANGA' ? 'manga' : 'anime'
+  const itemPlural = mediaType === 'MANGA' ? 'mangas' : 'animes'
+
+  const changeMediaType = (nextType) => {
+    if (working || nextType === mediaType) return
+    setMediaType(nextType); setPreview(null); setPhase('idle'); setError(''); setCompleted(0); setTotal(0); setSelected(new Set()); setActiveEntry(null)
+  }
 
   return <section className="anilist-export-panel" aria-labelledby="anilist-export-heading">
-    <div className="section-heading"><div><span className="eyebrow">Tu biblioteca conectada</span><h2 id="anilist-export-heading"><ArrowUpRight /> Sincronizar con AniList</h2></div></div>
+    <div className="section-heading anilist-export-heading"><div><span className="eyebrow">Tu biblioteca conectada</span><h2 id="anilist-export-heading"><ArrowUpRight /> Sincronizar con AniList</h2></div><MediaTypeSwitch value={mediaType} onChange={changeMediaType} ariaLabel="Elegir biblioteca para sincronizar" /></div>
     <p className="anilist-export-intro">Combina tu biblioteca sin retroceder el progreso ni reemplazar puntuaciones existentes en AniList.</p>
-    <details className="anilist-export-details"><summary>Qué se sincroniza</summary><p>Los animes nuevos se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniList se conserva; AniRecord completa una puntuación únicamente cuando allí no hay ninguna. Los estados de pausa o abandono de AniList también se respetan. Manga, fechas, notas y otros datos no se modifican.</p></details>
+    <details className="anilist-export-details"><summary>Qué se sincroniza</summary><p>Los {itemPlural} nuevos se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniList se conserva; AniRecord completa una puntuación únicamente cuando allí no hay ninguna. Los estados de pausa o abandono de AniList también se respetan. Fechas, notas y otros datos no se modifican.</p></details>
     {error && <p role="alert" className="anilist-export-error">{error}</p>}
     <div aria-live="polite" role="status">
       {phase === 'loading' && <p className="anilist-export-loading"><RefreshCw aria-hidden="true" /> Comparando tu biblioteca…</p>}
@@ -99,11 +119,11 @@ export default function AniListExportPanel() {
         <div className="anilist-export-transfer-copy">
           <span className="anilist-export-transfer-label">{phase === 'done' ? 'Biblioteca sincronizada' : phase === 'stopped' ? 'Envío detenido' : phase === 'stopping' ? 'Terminando la entrada actual' : 'Enviando a AniList'}</span>
           <strong>{phase === 'done' ? 'Todo al día' : activeEntry.title}</strong>
-          <span className="anilist-export-transfer-meta">{phase === 'done' ? `${completed} ${completed === 1 ? 'anime sincronizado' : 'animes sincronizados'}` : `${statuses[activeEntry.after.status]} · ${activeEntry.before ? 'Actualizando entrada' : 'Agregando a tu lista'}`}</span>
+          <span className="anilist-export-transfer-meta">{phase === 'done' ? `${completed} ${completed === 1 ? `${itemName} sincronizado` : `${itemPlural} sincronizados`}` : `${statusLabel(activeEntry.after.status, mediaType)} · ${activeEntry.before ? 'Actualizando entrada' : 'Agregando a tu lista'}`}</span>
           <small>{sending ? 'Mantené esta página abierta.' : phase === 'stopped' ? 'Lo enviado se conserva. Revisá de nuevo para continuar.' : 'Tus cambios ya están en AniList.'}</small>
         </div>
         <div className="anilist-export-meter">
-          <div className="anilist-export-ring" role="progressbar" aria-label="Animes confirmados en AniList" aria-valuemin={0} aria-valuemax={total} aria-valuenow={completed} aria-valuetext={`${completed} de ${total} confirmados`}>
+          <div className="anilist-export-ring" role="progressbar" aria-label={`${itemPlural} confirmados en AniList`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={completed} aria-valuetext={`${completed} de ${total} confirmados`}>
             <svg viewBox="0 0 48 48" aria-hidden="true"><circle className="ring-track" cx="24" cy="24" r="20" /><circle className="ring-value" cx="24" cy="24" r="20" pathLength="100" strokeDasharray={`${percent} 100`} /></svg>
             {phase === 'done' ? <Check aria-hidden="true" /> : phase === 'stopped' ? <Pause aria-hidden="true" /> : <Upload className="anilist-export-upload-icon" aria-hidden="true" />}
           </div>
@@ -124,7 +144,7 @@ export default function AniListExportPanel() {
               return next
             })} />
             <Cover key={`${entry.entryId}-${entry.coverImage}`} entry={entry} />
-            <span><strong>{entry.title}</strong><small>AniList: {describe(entry.before)}</small><small>Resultado seguro: {describe(entry.after)}</small></span>
+            <span><strong>{entry.title}</strong><small>AniList: {describe(entry.before, entry, mediaType)}</small><small>Resultado seguro: {describe(entry.after, entry, mediaType)}</small></span>
           </label>)}
         </div>
         <p className="anilist-export-note">Se envían gradualmente para respetar los límites de AniList. Puedes detener el proceso entre entradas.</p>
