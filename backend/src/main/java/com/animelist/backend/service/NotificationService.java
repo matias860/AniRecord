@@ -104,7 +104,10 @@ public class NotificationService {
             for (int request = 1; request < MAX_PAGES_PER_SYNC && !resolved; request++) {
                 PageResult result = syncPage(user, token, nextPage, false);
                 added += result.added();
-                resolved = result.reachedKnownNotification() || !result.hasNextPage();
+                // AniList paginates by offset. New notifications can move already imported
+                // entries into a pending page, so a duplicate is not an end-of-history marker
+                // while a backfill is active. Only the API's final page can close the cursor.
+                resolved = !result.hasNextPage();
                 if (!resolved) nextPage++;
             }
             user.setNotificationBackfillPage(resolved ? null : nextPage);
@@ -123,6 +126,12 @@ public class NotificationService {
         }
         if (markImportedAsRead) {
             user.setNotificationsInitializedAt(java.time.LocalDateTime.now());
+        }
+        if (!markImportedAsRead && originalBackfillPage == null && user.getNotificationBackfillPage() != null) {
+            LOGGER.info("Se inició el backfill de notificaciones de AniList: userId={}, nextPage={}",
+                    user.getId(), user.getNotificationBackfillPage());
+        } else if (!markImportedAsRead && originalBackfillPage != null && user.getNotificationBackfillPage() == null) {
+            LOGGER.info("Se completó el backfill de notificaciones de AniList: userId={}", user.getId());
         }
         if (markImportedAsRead || !Objects.equals(originalBackfillPage, user.getNotificationBackfillPage())) users.save(user);
         return added;
