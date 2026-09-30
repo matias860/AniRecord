@@ -49,7 +49,7 @@ export default function MediaDetailView() {
     if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [authenticated, dispatch, library.status])
 
-  if (detailStatus !== 'succeeded') return <PageState loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
+  if (detailStatus !== 'succeeded') return <PageState fullPage loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
   const titleLength = [...detail.title].length
   const titleSizeClass = titleLength > 64 ? 'detail-title-extra-long' : titleLength > 38 ? 'detail-title-long' : ''

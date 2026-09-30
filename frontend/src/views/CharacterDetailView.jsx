@@ -18,7 +18,7 @@ export default function CharacterDetailView() {
   const authenticated = useSelector((state) => state.auth.authenticated)
   useEffect(() => { dispatch(fetchCharacter(anilistId)) }, [anilistId, dispatch])
   useEffect(() => { if (authenticated) dispatch(fetchPersonFavorites()) }, [authenticated, dispatch])
-  if (!person) return <PageState loading={bucket.loadingId === anilistId || !bucket.error} error={bucket.error} />
+  if (!person) return <PageState fullPage loading={bucket.loadingId === anilistId || !bucket.error} error={bucket.error} />
   return <PersonPage person={person} personType="CHARACTER" favorites={favorites} authenticated={authenticated} eyebrow="Personaje" facts={[person.gender, person.age && `${person.age} años`, person.birthday && `Nacimiento: ${person.birthday}`, person.bloodType && `Grupo sanguíneo: ${person.bloodType}`]}>
     {!!person.voiceActors?.length && <section className="person-section"><span className="eyebrow"><Mic2 /> Actuación de voz</span><h2>Seiyūs</h2><div className="person-card-grid">{person.voiceActors.map((actor) => <Link className="person-card" key={actor.anilistId} to={`/seiyuus/${actor.anilistId}`}><img src={actor.image} alt={actor.name} /><span><strong>{actor.name}</strong><small>{actor.nativeName || actor.language}</small></span></Link>)}</div></section>}
     <MediaConnections items={person.media} />

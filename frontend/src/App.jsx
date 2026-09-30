@@ -17,7 +17,7 @@ import { fetchAuth } from './features/auth/authSlice.js'
 import apiClient from './api/apiClient.js'
 import { clearReturnPath, consumeReturnPath, currentReturnPath, getReturnPath } from './lib/authNavigation.js'
 
-const viewFallback = <div className="page-state"><ProfileLoader message="Cargando…" /></div>
+const viewFallback = <div className="page-state full-page route-loading"><ProfileLoader message="Cargando…" /></div>
 
 export default function App() {
   const dispatch = useDispatch()

@@ -100,6 +100,8 @@ export default function LibraryView() {
     }))
     .filter((section) => section.items.length), [filtered, mediaType, trackingStatus])
 
+  if ((status === 'idle' || status === 'loading') && !items.length) return <PageState fullPage loading />
+
   return (
     <>
       <div className="page-title">

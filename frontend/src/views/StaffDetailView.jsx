@@ -19,7 +19,7 @@ export default function StaffDetailView() {
   useEffect(() => { dispatch(fetchStaff(anilistId)) }, [anilistId, dispatch])
   const isVoiceActor = isVoiceActorProfessional(person?.occupations)
   useEffect(() => { if (authenticated && isVoiceActor) dispatch(fetchPersonFavorites()) }, [authenticated, dispatch, isVoiceActor])
-  if (!person) return <PageState loading={bucket.loadingId === anilistId || !bucket.error} error={bucket.error} />
+  if (!person) return <PageState fullPage loading={bucket.loadingId === anilistId || !bucket.error} error={bucket.error} />
   const facts = [person.language, person.age && `${person.age} años`, person.birthday && `Nacimiento: ${person.birthday}`, person.homeTown, ...(person.occupations || [])]
   const pageCount = Math.max(1, Math.ceil((person.characters || []).length / 8))
   const currentPage = Math.min(page, pageCount - 1)
