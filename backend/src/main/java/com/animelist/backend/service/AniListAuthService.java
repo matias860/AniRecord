@@ -61,15 +61,16 @@ public class AniListAuthService {
         return commit;
     }
 
-    public String authorizationUrl() {
+    public AuthorizationRequest authorizationRequest() {
         if (clientId.isBlank() || clientSecret.isBlank()) throw new BusinessException("Faltan las credenciales OAuth de AniList");
         String state=oauthStateToken.create();
-        return "https://anilist.co/api/v2/oauth/authorize?client_id="+enc(clientId)+"&redirect_uri="+enc(redirectUri)+"&response_type=code&state="+enc(state);
+        String url = "https://anilist.co/api/v2/oauth/authorize?client_id="+enc(clientId)+"&redirect_uri="+enc(redirectUri)+"&response_type=code&state="+enc(state);
+        return new AuthorizationRequest(url, state);
     }
 
     @Transactional @SuppressWarnings("unchecked")
-    public LoginResult exchangeCode(String code, String state) {
-        if (!oauthStateToken.isValid(state)) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
+    public LoginResult exchangeCode(String code, String state, String browserState) {
+        if (!oauthStateToken.matches(state, browserState)) throw new BusinessException("La autorización venció. Vuelve a iniciar sesión.");
         Map<String,Object> token=client.post().uri("https://anilist.co/api/v2/oauth/token").contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("grant_type","authorization_code","client_id",clientId,"client_secret",clientSecret,"redirect_uri",redirectUri,"code",code))
                 .retrieve().body(Map.class);
@@ -128,5 +129,6 @@ public class AniListAuthService {
         if (viewer.get("bannerImage")!=null) user.setBannerUrl(String.valueOf(viewer.get("bannerImage")));
     }
     private String enc(String value){return URLEncoder.encode(value, StandardCharsets.UTF_8);}
+    public record AuthorizationRequest(String url, String state) {}
     public record LoginResult(String sessionToken, Long userId, String username, boolean firstLogin) {}
 }

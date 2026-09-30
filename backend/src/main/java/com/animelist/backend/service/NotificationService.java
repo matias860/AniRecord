@@ -4,7 +4,9 @@ import com.animelist.backend.dto.notification.NotificationResponse;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.enums.NotificationType;
 import com.animelist.backend.enums.AccountType;
+import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.repository.AppNotificationRepository;
+import com.animelist.backend.repository.AppUserRepository;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -24,8 +26,11 @@ import org.slf4j.LoggerFactory;
 @Service
 public class NotificationService {
     private static final Logger LOGGER = LoggerFactory.getLogger(NotificationService.class);
+    private static final int MAX_PAGES_PER_SYNC = 3;
     private static final String QUERY = """
-        query { Page(page: 1, perPage: 50) { notifications(type_in: [AIRING, RELATED_MEDIA_ADDITION, MEDIA_DATA_CHANGE, MEDIA_MERGE, MEDIA_DELETION]) {
+        query($page: Int!) { Page(page: $page, perPage: 50) {
+          pageInfo { hasNextPage }
+          notifications(type_in: [AIRING, RELATED_MEDIA_ADDITION, MEDIA_DATA_CHANGE, MEDIA_MERGE, MEDIA_DELETION]) {
           __typename
           ... on AiringNotification { id type animeId episode contexts createdAt media { id title { userPreferred } coverImage { large } } }
           ... on RelatedMediaAdditionNotification { id type mediaId context createdAt media { id title { userPreferred } coverImage { large } } }
@@ -35,11 +40,13 @@ public class NotificationService {
         } } }
         """;
     private final AppNotificationRepository repository;
+    private final AppUserRepository users;
     private final AniListAuthService auth;
     private final CurrentUserService currentUser;
     private final RestClient client;
-    public NotificationService(AppNotificationRepository repository, AniListAuthService auth, CurrentUserService currentUser) {
+    public NotificationService(AppNotificationRepository repository, AppUserRepository users, AniListAuthService auth, CurrentUserService currentUser) {
         this.repository = repository;
+        this.users = users;
         this.auth = auth;
         this.currentUser = currentUser;
         HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build();
@@ -52,7 +59,7 @@ public class NotificationService {
         try {
             var user = currentUser.require();
             if (user.getAccountType() == AccountType.LOCAL) return 0;
-            return repository.countByUserId(user.getId()) == 0 ? initialSync() : sync();
+            return user.getNotificationsInitializedAt() == null ? initialSync() : sync();
         }
         catch (RuntimeException exception) {
             LOGGER.warn("No se pudieron sincronizar las notificaciones de AniList; se conserva el historial local", exception);
@@ -77,20 +84,37 @@ public class NotificationService {
     private int sync(boolean markImportedAsRead) {
         var user=currentUser.require();
         String token = auth.validToken(); if (token == null) return 0;
-        Map<String, Object> body = client.post().uri("https://graphql.anilist.co").header("Authorization", "Bearer " + token)
-                .contentType(MediaType.APPLICATION_JSON).body(Map.of("query", QUERY)).retrieve().body(Map.class);
-        Map<String, Object> data = (Map<String, Object>) body.get("data");
-        Map<String, Object> page = (Map<String, Object>) data.get("Page");
-        List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
         int added = 0;
-        for (Map<String, Object> item : items) {
-            String typename = String.valueOf(item.get("__typename"));
-            Integer episode = number(item.get("episode"));
-            if (!shouldImport(typename, episode)) continue;
-            Integer externalId = number(item.get("id"));
-            if (externalId == null || repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) continue;
-            AppNotification notification = map(item, typename, episode, externalId);
-            if (notification != null) { notification.setUser(user); notification.setRead(markImportedAsRead); repository.save(notification); added++; }
+        boolean reachedKnownNotification = false;
+        for (int pageNumber = 1; pageNumber <= MAX_PAGES_PER_SYNC && !reachedKnownNotification; pageNumber++) {
+            Map<String, Object> body = client.post().uri("https://graphql.anilist.co").header("Authorization", "Bearer " + token)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("query", QUERY, "variables", Map.of("page", pageNumber)))
+                    .retrieve().body(Map.class);
+            if (body == null || !(body.get("data") instanceof Map<?, ?> data) || !(data.get("Page") instanceof Map<?, ?> rawPage)) {
+                throw new BusinessException("AniList no devolvió las notificaciones");
+            }
+            Map<String, Object> page = (Map<String, Object>) rawPage;
+            List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
+            for (Map<String, Object> item : items) {
+                String typename = String.valueOf(item.get("__typename"));
+                Integer episode = number(item.get("episode"));
+                if (!shouldImport(typename, episode)) continue;
+                Integer externalId = number(item.get("id"));
+                if (externalId == null) continue;
+                if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
+                    reachedKnownNotification = true;
+                    continue;
+                }
+                AppNotification notification = map(item, typename, episode, externalId);
+                if (notification != null) { notification.setUser(user); notification.setRead(markImportedAsRead); repository.save(notification); added++; }
+            }
+            Map<String, Object> pageInfo = page.get("pageInfo") instanceof Map<?, ?> info ? (Map<String, Object>) info : Map.of();
+            if (!Boolean.TRUE.equals(pageInfo.get("hasNextPage"))) break;
+        }
+        if (markImportedAsRead) {
+            user.setNotificationsInitializedAt(java.time.LocalDateTime.now());
+            users.save(user);
         }
         return added;
     }

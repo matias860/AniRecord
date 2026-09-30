@@ -30,6 +30,18 @@ public class UserPreferenceSchemaInitializer implements ApplicationRunner {
             if (!"PostgreSQL".equalsIgnoreCase(connection.getMetaData().getDatabaseProductName())) return;
         }
         jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS last_sync_prompt_commit VARCHAR(64)");
+        Boolean notificationStateExists = jdbc.queryForObject("""
+            SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = 'app_user'
+                  AND column_name = 'notifications_initialized_at'
+            )
+            """, Boolean.class);
+        jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS notifications_initialized_at TIMESTAMP");
+        if (!Boolean.TRUE.equals(notificationStateExists)) {
+            jdbc.execute("UPDATE app_user SET notifications_initialized_at = CURRENT_TIMESTAMP WHERE account_type = 'ANILIST' AND notifications_initialized_at IS NULL");
+        }
         LOGGER.info("Preferencia compartida del aviso de sincronización verificada correctamente");
     }
 }

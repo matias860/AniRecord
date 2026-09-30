@@ -7,6 +7,10 @@ import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.enums.ProfileAssetType;
 import com.animelist.backend.repository.UserProfileAssetRepository;
 import java.util.Optional;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import javax.imageio.ImageIO;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -24,13 +28,13 @@ class ProfileAssetServiceTest {
         verify(currentUser, never()).require();
     }
 
-    @Test void acceptsARealPngForLocalAccounts() {
+    @Test void acceptsARealPngForLocalAccounts() throws Exception {
         UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
         CurrentUserService currentUser = mock(CurrentUserService.class);
         AppUser user = new AppUser(); user.setId(4L); user.setAccountType(AccountType.LOCAL);
         when(currentUser.require()).thenReturn(user);
         when(repository.findByUserIdAndAssetType(4L, ProfileAssetType.AVATAR)).thenReturn(Optional.empty());
-        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1};
+        byte[] png = png();
         var file = new MockMultipartFile("file", "avatar.png", "image/png", png);
 
         new ProfileAssetService(repository, currentUser).save(ProfileAssetType.AVATAR, file);
@@ -38,17 +42,36 @@ class ProfileAssetServiceTest {
         verify(repository).save(argThat(asset -> asset.getUser() == user && asset.getData().length == png.length));
     }
 
-    @Test void acceptsUploadsForAniListAccounts() {
+    @Test void acceptsUploadsForAniListAccounts() throws Exception {
         UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
         CurrentUserService currentUser = mock(CurrentUserService.class);
         AppUser user = new AppUser(); user.setId(4L); user.setAccountType(AccountType.ANILIST);
         when(currentUser.require()).thenReturn(user);
         when(repository.findByUserIdAndAssetType(4L, ProfileAssetType.AVATAR)).thenReturn(Optional.empty());
-        byte[] png = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1};
+        byte[] png = png();
         var file = new MockMultipartFile("file", "avatar.png", "image/png", png);
 
         new ProfileAssetService(repository, currentUser).save(ProfileAssetType.AVATAR, file);
 
         verify(repository).save(argThat(asset -> asset.getUser() == user && asset.getData().length == png.length));
+    }
+
+    @Test void rejectsTruncatedImagesThatOnlyHaveAPngSignature() {
+        UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser(); user.setId(4L);
+        when(currentUser.require()).thenReturn(user);
+        byte[] fake = {(byte) 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1};
+
+        assertThrows(com.animelist.backend.exception.BusinessException.class,
+                () -> new ProfileAssetService(repository, currentUser).save(ProfileAssetType.AVATAR,
+                        new MockMultipartFile("file", "avatar.png", "image/png", fake)));
+        verify(repository, never()).save(any());
+    }
+
+    private byte[] png() throws Exception {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", output);
+        return output.toByteArray();
     }
 }

@@ -229,7 +229,8 @@ class LibraryServiceTest {
 
     private void mockEntry(Long id, LibraryEntry entry) {
         entry.setId(id);
-        when(libraryEntryRepository.findWithMediaByIdAndUserId(id, 1L)).thenReturn(Optional.of(entry));
+        lenient().when(libraryEntryRepository.findWithMediaByIdAndUserId(id, 1L)).thenReturn(Optional.of(entry));
+        lenient().when(libraryEntryRepository.findWithMediaForUpdateByIdAndUserId(id, 1L)).thenReturn(Optional.of(entry));
     }
 
     private LibraryEntry entry(int progress, Integer totalUnits, TrackingStatus status) {

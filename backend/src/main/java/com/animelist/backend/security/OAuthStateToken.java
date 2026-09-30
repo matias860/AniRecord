@@ -35,6 +35,13 @@ public final class OAuthStateToken {
         }
     }
 
+    public boolean matches(String state, String browserState) {
+        if (state == null || browserState == null || !isValid(state)) return false;
+        return MessageDigest.isEqual(
+                state.getBytes(StandardCharsets.UTF_8),
+                browserState.getBytes(StandardCharsets.UTF_8));
+    }
+
     private String sign(String value) {
         try {
             Mac mac = Mac.getInstance("HmacSHA256");

@@ -30,6 +30,9 @@ class TokenSecurityTest {
         var states = new OAuthStateToken("oauth-test-secret");
         String state = states.create();
         assertTrue(states.isValid(state));
+        assertTrue(states.matches(state, state));
+        assertFalse(states.matches(state, states.create()));
+        assertFalse(states.matches(state, null));
         assertFalse(states.isValid(state + "alterado"));
         assertFalse(new OAuthStateToken("different-secret").isValid(state));
     }

@@ -231,3 +231,7 @@ CREATE TABLE IF NOT EXISTS app_notification (
     KEY idx_notification_occurred (occurred_at),
     KEY idx_notification_read (is_read)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+-- ARCHIVO HISTÓRICO: esquema MySQL anterior de usuario único.
+-- No usar para crear, migrar ni reparar la base PostgreSQL actual de AniRecord.
+-- La estructura vigente se describe en backend/src/main/resources/db/migration
+-- y en los inicializadores idempotentes de backend/src/main/java/.../config.

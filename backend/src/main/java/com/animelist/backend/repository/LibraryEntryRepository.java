@@ -11,8 +11,10 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long> {
 
@@ -50,6 +52,10 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
 
     @EntityGraph(attributePaths = "media")
     Optional<LibraryEntry> findWithMediaByIdAndUserId(Long id, Long userId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select entry from LibraryEntry entry join fetch entry.media where entry.id = :id and entry.user.id = :userId")
+    Optional<LibraryEntry> findWithMediaForUpdateByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
 
     boolean existsByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 

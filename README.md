@@ -28,8 +28,8 @@ npm install
 npm run dev
 ```
 
-El entorno de desarrollo utiliza el backend publicado. Esto permite trabajar
-desde cualquier PC sin instalar ni iniciar MySQL.
+El entorno de desarrollo usa por defecto un backend local en
+`http://localhost:8080`. Se puede cambiar mediante `VITE_API_PROXY_TARGET`.
 
 ## Desarrollo del backend
 
@@ -41,7 +41,7 @@ DATABASE_USERNAME=USUARIO_NEON
 DATABASE_PASSWORD=CONTRASEÑA_NEON
 ANILIST_CLIENT_ID=ID_DE_ANILIST
 ANILIST_CLIENT_SECRET=SECRETO_DE_ANILIST
-ANILIST_REDIRECT_URI=http://localhost:8080/api/anilist/oauth/callback
+ANILIST_REDIRECT_URI=http://localhost:8080/api/auth/callback
 ```
 
 Después, desde `backend`:
@@ -50,16 +50,21 @@ Después, desde `backend`:
 .\mvnw.cmd spring-boot:run
 ```
 
-Las modificaciones de la base se agregan como nuevas migraciones en
-`backend/src/main/resources/db/migration` (`V2__...sql`, `V3__...sql`, etc.).
-Flyway las aplica automáticamente sin borrar los datos existentes.
+Las modificaciones de la base se documentan como nuevas migraciones en
+`backend/src/main/resources/db/migration`. Flyway está desactivado por defecto:
+no debe activarse sobre una base existente sin revisar primero su historial,
+hacer una copia y verificar la línea base. Algunas versiones antiguas contienen
+operaciones destructivas. Las ampliaciones recientes que necesita producción
+se aplican mediante inicializadores idempotentes que solo crean o agregan
+estructuras y nunca eliminan datos.
 
 ## Sincronización manual hacia AniList
 
 Las cuentas conectadas con AniList tienen en su perfil una sección para revisar y
-enviar animes de AniRecord a AniList. Se comparan estado, episodios y puntuación
-(convertida a la escala de 100 de AniList), y se pueden seleccionar las entradas
-a enviar. No se eliminan entradas ni se exportan manga, notas, fechas o favoritos.
+enviar anime, manga y novelas de AniRecord a AniList. Se comparan estado,
+progreso y puntuación (convertida a la escala de 100 de AniList), y se pueden
+seleccionar las entradas a enviar. No se eliminan entradas remotas ni se exportan
+notas, fechas o favoritos.
 
 La vista previa es privada por usuario, dura dos horas y se invalida si el backend
 se reinicia. Cada envío vuelve a comprobar los valores locales y remotos. Si hay
@@ -78,4 +83,6 @@ Los cambios enviados a `main` se despliegan automáticamente:
 
 - Vercel reconstruye el frontend.
 - Northflank reconstruye el backend cuando cambia la carpeta `backend`.
-- Flyway aplica las nuevas migraciones en Neon al iniciar el backend.
+- Los inicializadores seguros verifican las ampliaciones aditivas necesarias en
+  Neon al iniciar el backend. Flyway permanece desactivado salvo una operación
+  de migración planificada y respaldada.

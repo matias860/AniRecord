@@ -148,7 +148,7 @@ public class LibraryService {
 
     @Transactional
     public LibraryEntryResponse incrementProgress(Long id) {
-        LibraryEntry entry = findEntry(id);
+        LibraryEntry entry = findEntryForUpdate(id);
         int previousProgress = entry.getProgress();
         TrackingStatus previousStatus = entry.getTrackingStatus();
         BigDecimal previousScore = entry.getPersonalScore();
@@ -166,7 +166,7 @@ public class LibraryService {
 
     @Transactional
     public LibraryEntryResponse decrementProgress(Long id) {
-        LibraryEntry entry = findEntry(id);
+        LibraryEntry entry = findEntryForUpdate(id);
         int previousProgress = entry.getProgress();
         TrackingStatus previousStatus = entry.getTrackingStatus();
         BigDecimal previousScore = entry.getPersonalScore();
@@ -233,6 +233,11 @@ public class LibraryService {
 
     private LibraryEntry findEntry(Long id) {
         return libraryEntryRepository.findWithMediaByIdAndUserId(id, currentUser.require().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("No se encontró la entrada de biblioteca"));
+    }
+
+    private LibraryEntry findEntryForUpdate(Long id) {
+        return libraryEntryRepository.findWithMediaForUpdateByIdAndUserId(id, currentUser.require().getId())
                 .orElseThrow(() -> new ResourceNotFoundException("No se encontró la entrada de biblioteca"));
     }
 
