@@ -93,37 +93,11 @@ public class NotificationService {
     private int sync(boolean markImportedAsRead) {
         var user=currentUser.require();
         String token = auth.validToken(); if (token == null) return 0;
-        int added = 0;
         Integer originalBackfillPage = user.getNotificationBackfillPage();
-        Integer pendingPage = markImportedAsRead ? null : user.getNotificationBackfillPage();
-        if (pendingPage != null) {
-            PageResult recent = syncPage(user, token, 1, false);
-            added += recent.added();
-            boolean resolved = !recent.hasNextPage();
-            int nextPage = pendingPage;
-            for (int request = 1; request < MAX_PAGES_PER_SYNC && !resolved; request++) {
-                PageResult result = syncPage(user, token, nextPage, false);
-                added += result.added();
-                // AniList paginates by offset. New notifications can move already imported
-                // entries into a pending page, so a duplicate is not an end-of-history marker
-                // while a backfill is active. Only the API's final page can close the cursor.
-                resolved = !result.hasNextPage();
-                if (!resolved) nextPage++;
-            }
-            user.setNotificationBackfillPage(resolved ? null : nextPage);
-        } else {
-            boolean reachedKnown = false;
-            boolean hasNextPage = false;
-            int pageNumber = 1;
-            for (int request = 0; request < MAX_PAGES_PER_SYNC; request++, pageNumber++) {
-                PageResult result = syncPage(user, token, pageNumber, markImportedAsRead);
-                added += result.added();
-                reachedKnown = result.reachedKnownNotification();
-                hasNextPage = result.hasNextPage();
-                if (reachedKnown || !hasNextPage) break;
-            }
-            user.setNotificationBackfillPage(!markImportedAsRead && !reachedKnown && hasNextPage ? pageNumber : null);
-        }
+        Integer originalCatchupPage = user.getNotificationCatchupPage();
+        int added = !markImportedAsRead && originalBackfillPage != null
+                ? syncDuringBackfill(user, token)
+                : syncSequentially(user, token, markImportedAsRead);
         if (markImportedAsRead) {
             user.setNotificationsInitializedAt(java.time.LocalDateTime.now());
         }
@@ -133,7 +107,72 @@ public class NotificationService {
         } else if (!markImportedAsRead && originalBackfillPage != null && user.getNotificationBackfillPage() == null) {
             LOGGER.info("Se completó el backfill de notificaciones de AniList: userId={}", user.getId());
         }
-        if (markImportedAsRead || !Objects.equals(originalBackfillPage, user.getNotificationBackfillPage())) users.save(user);
+        if (markImportedAsRead
+                || !Objects.equals(originalBackfillPage, user.getNotificationBackfillPage())
+                || !Objects.equals(originalCatchupPage, user.getNotificationCatchupPage())) users.save(user);
+        return added;
+    }
+
+    private int syncSequentially(com.animelist.backend.entity.AppUser user, String token, boolean markImportedAsRead) {
+        int added = 0;
+        int pageNumber = 1;
+        PageResult result = null;
+        for (int request = 0; request < MAX_PAGES_PER_SYNC; request++, pageNumber++) {
+            result = syncPage(user, token, pageNumber, markImportedAsRead);
+            added += result.added();
+            if (result.reachedKnownBoundary() || !result.hasNextPage()) break;
+        }
+        boolean unresolved = result != null && !result.reachedKnownBoundary() && result.hasNextPage();
+        user.setNotificationBackfillPage(!markImportedAsRead && unresolved ? pageNumber : null);
+        user.setNotificationCatchupPage(null);
+        return added;
+    }
+
+    private int syncDuringBackfill(com.animelist.backend.entity.AppUser user, String token) {
+        int added = 0;
+        int requests = 0;
+        PageResult firstPage = syncPage(user, token, 1, false);
+        added += firstPage.added();
+        requests++;
+        if (!firstPage.hasNextPage()) {
+            user.setNotificationCatchupPage(null);
+            user.setNotificationBackfillPage(null);
+            return added;
+        }
+
+        Integer catchupPage = user.getNotificationCatchupPage();
+        boolean catchupResolved = catchupPage == null && firstPage.reachedKnownBoundary();
+        if (catchupPage == null && !catchupResolved) catchupPage = 2;
+        while (!catchupResolved && requests < MAX_PAGES_PER_SYNC) {
+            PageResult result = syncPage(user, token, catchupPage, false);
+            added += result.added();
+            requests++;
+            catchupResolved = result.reachedKnownBoundary() || !result.hasNextPage();
+            if (!result.hasNextPage()) {
+                user.setNotificationCatchupPage(null);
+                user.setNotificationBackfillPage(null);
+                return added;
+            }
+            if (!catchupResolved) catchupPage++;
+        }
+        if (!catchupResolved) {
+            user.setNotificationCatchupPage(catchupPage);
+            return added;
+        }
+        user.setNotificationCatchupPage(null);
+
+        int backfillPage = user.getNotificationBackfillPage();
+        while (requests < MAX_PAGES_PER_SYNC) {
+            PageResult result = syncPage(user, token, backfillPage, false);
+            added += result.added();
+            requests++;
+            if (!result.hasNextPage()) {
+                user.setNotificationBackfillPage(null);
+                break;
+            }
+            backfillPage++;
+            user.setNotificationBackfillPage(backfillPage);
+        }
         return added;
     }
 
@@ -149,7 +188,7 @@ public class NotificationService {
         Map<String, Object> page = (Map<String, Object>) rawPage;
         List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
         int added = 0;
-        boolean reachedKnown = false;
+        boolean reachedKnownBoundary = false;
         for (Map<String, Object> item : items) {
             String typename = String.valueOf(item.get("__typename"));
             Integer episode = number(item.get("episode"));
@@ -157,9 +196,10 @@ public class NotificationService {
             Integer externalId = number(item.get("id"));
             if (externalId == null) continue;
             if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
-                reachedKnown = true;
+                reachedKnownBoundary = true;
                 continue;
             }
+            reachedKnownBoundary = false;
             AppNotification notification = map(item, typename, episode, externalId);
             if (notification != null) {
                 notification.setUser(user);
@@ -169,10 +209,10 @@ public class NotificationService {
             }
         }
         Map<String, Object> pageInfo = page.get("pageInfo") instanceof Map<?, ?> info ? (Map<String, Object>) info : Map.of();
-        return new PageResult(added, reachedKnown, Boolean.TRUE.equals(pageInfo.get("hasNextPage")));
+        return new PageResult(added, reachedKnownBoundary, Boolean.TRUE.equals(pageInfo.get("hasNextPage")));
     }
 
-    private record PageResult(int added, boolean reachedKnownNotification, boolean hasNextPage) {}
+    private record PageResult(int added, boolean reachedKnownBoundary, boolean hasNextPage) {}
 
     static boolean shouldImport(String typename, Integer episode) {
         return !"AiringNotification".equals(typename) || episode != null;

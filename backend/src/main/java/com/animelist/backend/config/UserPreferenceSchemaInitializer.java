@@ -40,6 +40,7 @@ public class UserPreferenceSchemaInitializer implements ApplicationRunner {
             """, Boolean.class);
         jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS notifications_initialized_at TIMESTAMP");
         jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS notification_backfill_page INTEGER");
+        jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS notification_catchup_page INTEGER");
         if (!Boolean.TRUE.equals(notificationStateExists)) {
             jdbc.execute("UPDATE app_user SET notifications_initialized_at = CURRENT_TIMESTAMP WHERE account_type = 'ANILIST' AND notifications_initialized_at IS NULL");
         }

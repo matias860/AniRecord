@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
@@ -103,6 +104,89 @@ class NotificationServiceTest {
         assertEquals(null, user.getNotificationBackfillPage());
         assertEquals(Set.of(400, 200, 150, 100), storedIds);
         server.verify();
+    }
+
+    @Test void catchesUpMoreThanFiftyRecentNotificationsBeforeAdvancingHistoricalBackfill() {
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AppUserRepository users = mock(AppUserRepository.class);
+        AniListAuthService auth = mock(AniListAuthService.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = backfillingUser(9L, 4);
+        when(currentUser.require()).thenReturn(user);
+        when(auth.validToken()).thenReturn("token");
+        Set<Integer> storedIds = storedNotifications(notifications, 900);
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AtomicInteger response = new AtomicInteger();
+        int[] firstFifty = IntStream.rangeClosed(1051, 1100).toArray();
+        int[] secondFifty = IntStream.rangeClosed(1001, 1050).toArray();
+        server.expect(times(3), requestTo("https://graphql.anilist.co"))
+                .andRespond(request -> switch (response.getAndIncrement()) {
+                    case 0 -> withSuccess(page(firstFifty, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 1 -> withSuccess(page(secondFifty, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    default -> withSuccess(page(new int[] { 900 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                });
+        NotificationService service = new NotificationService(notifications, users, auth, currentUser, builder.build());
+
+        assertEquals(100, service.sync());
+        assertEquals(4, user.getNotificationBackfillPage());
+        assertEquals(null, user.getNotificationCatchupPage());
+        assertEquals(101, storedIds.size());
+        server.verify();
+    }
+
+    @Test void resumesRecentCatchupSeparatelyWhenNewNotificationsKeepArriving() {
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AppUserRepository users = mock(AppUserRepository.class);
+        AniListAuthService auth = mock(AniListAuthService.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = backfillingUser(10L, 10);
+        when(currentUser.require()).thenReturn(user);
+        when(auth.validToken()).thenReturn("token");
+        Set<Integer> storedIds = storedNotifications(notifications, 900);
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AtomicInteger response = new AtomicInteger();
+        server.expect(times(6), requestTo("https://graphql.anilist.co"))
+                .andRespond(request -> switch (response.getAndIncrement()) {
+                    case 0 -> withSuccess(page(new int[] { 1200 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 1 -> withSuccess(page(new int[] { 1199 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 2 -> withSuccess(page(new int[] { 1198 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 3 -> withSuccess(page(new int[] { 1201, 1200 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 4 -> withSuccess(page(new int[] { 1198, 1197 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    default -> withSuccess(page(new int[] { 1196, 900 }, true), MediaType.APPLICATION_JSON).createResponse(request);
+                });
+        NotificationService service = new NotificationService(notifications, users, auth, currentUser, builder.build());
+
+        assertEquals(3, service.sync());
+        assertEquals(10, user.getNotificationBackfillPage());
+        assertEquals(4, user.getNotificationCatchupPage());
+        assertEquals(3, service.sync());
+        assertEquals(10, user.getNotificationBackfillPage());
+        assertEquals(null, user.getNotificationCatchupPage());
+        assertEquals(Set.of(900, 1200, 1199, 1198, 1201, 1197, 1196), storedIds);
+        server.verify();
+    }
+
+    private AppUser backfillingUser(long id, int page) {
+        AppUser user = new AppUser();
+        user.setId(id);
+        user.setAccountType(AccountType.ANILIST);
+        user.setNotificationsInitializedAt(LocalDateTime.now());
+        user.setNotificationBackfillPage(page);
+        return user;
+    }
+
+    private Set<Integer> storedNotifications(AppNotificationRepository notifications, Integer... existingIds) {
+        Set<Integer> storedIds = new HashSet<>(Set.of(existingIds));
+        when(notifications.existsByUserIdAndAnilistNotificationId(any(), any()))
+                .thenAnswer(invocation -> storedIds.contains(invocation.getArgument(1, Integer.class)));
+        when(notifications.save(any(AppNotification.class))).thenAnswer(invocation -> {
+            AppNotification notification = invocation.getArgument(0);
+            storedIds.add(notification.getAnilistNotificationId());
+            return notification;
+        });
+        return storedIds;
     }
 
     private String page(int id, boolean hasNextPage) {
