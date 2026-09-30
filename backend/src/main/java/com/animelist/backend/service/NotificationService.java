@@ -95,6 +95,7 @@ public class NotificationService {
         String token = auth.validToken(); if (token == null) return 0;
         Integer originalBackfillPage = user.getNotificationBackfillPage();
         Integer originalCatchupPage = user.getNotificationCatchupPage();
+        Integer originalCatchupAnchorId = user.getNotificationCatchupAnchorId();
         int added = !markImportedAsRead && originalBackfillPage != null
                 ? syncDuringBackfill(user, token)
                 : syncSequentially(user, token, markImportedAsRead);
@@ -107,9 +108,20 @@ public class NotificationService {
         } else if (!markImportedAsRead && originalBackfillPage != null && user.getNotificationBackfillPage() == null) {
             LOGGER.info("Se completó el backfill de notificaciones de AniList: userId={}", user.getId());
         }
+        if (!markImportedAsRead && originalCatchupPage == null && user.getNotificationCatchupPage() != null) {
+            LOGGER.info("Se inició el catch-up reciente de notificaciones de AniList: userId={}, nextPage={}",
+                    user.getId(), user.getNotificationCatchupPage());
+        } else if (!markImportedAsRead && originalCatchupPage != null && user.getNotificationCatchupPage() == null) {
+            LOGGER.info("Se completó el catch-up reciente de notificaciones de AniList: userId={}", user.getId());
+        } else if (!markImportedAsRead && user.getNotificationCatchupPage() != null
+                && !Objects.equals(originalCatchupPage, user.getNotificationCatchupPage())) {
+            LOGGER.info("Se pausó el catch-up reciente de notificaciones de AniList: userId={}, nextPage={}",
+                    user.getId(), user.getNotificationCatchupPage());
+        }
         if (markImportedAsRead
                 || !Objects.equals(originalBackfillPage, user.getNotificationBackfillPage())
-                || !Objects.equals(originalCatchupPage, user.getNotificationCatchupPage())) users.save(user);
+                || !Objects.equals(originalCatchupPage, user.getNotificationCatchupPage())
+                || !Objects.equals(originalCatchupAnchorId, user.getNotificationCatchupAnchorId())) users.save(user);
         return added;
     }
 
@@ -125,6 +137,7 @@ public class NotificationService {
         boolean unresolved = result != null && !result.reachedKnownBoundary() && result.hasNextPage();
         user.setNotificationBackfillPage(!markImportedAsRead && unresolved ? pageNumber : null);
         user.setNotificationCatchupPage(null);
+        user.setNotificationCatchupAnchorId(null);
         return added;
     }
 
@@ -135,33 +148,92 @@ public class NotificationService {
         added += firstPage.added();
         requests++;
         if (!firstPage.hasNextPage()) {
-            user.setNotificationCatchupPage(null);
-            user.setNotificationBackfillPage(null);
+            clearNotificationCursors(user);
             return added;
         }
-
-        Integer catchupPage = user.getNotificationCatchupPage();
-        boolean catchupResolved = catchupPage == null && firstPage.reachedKnownBoundary();
-        if (catchupPage == null && !catchupResolved) catchupPage = 2;
-        while (!catchupResolved && requests < MAX_PAGES_PER_SYNC) {
-            PageResult result = syncPage(user, token, catchupPage, false);
-            added += result.added();
-            requests++;
-            catchupResolved = result.reachedKnownBoundary() || !result.hasNextPage();
-            if (!result.hasNextPage()) {
-                user.setNotificationCatchupPage(null);
-                user.setNotificationBackfillPage(null);
-                return added;
-            }
-            if (!catchupResolved) catchupPage++;
-        }
-        if (!catchupResolved) {
-            user.setNotificationCatchupPage(catchupPage);
-            return added;
-        }
-        user.setNotificationCatchupPage(null);
 
         int backfillPage = user.getNotificationBackfillPage();
+        Integer catchupPage = user.getNotificationCatchupPage();
+        Integer currentHeadId = firstPage.firstNotificationId();
+        Integer storedAnchorId = user.getNotificationCatchupAnchorId();
+
+        if (catchupPage != null && storedAnchorId != null) {
+            if (!Objects.equals(currentHeadId, storedAnchorId)) {
+                int anchorPage = firstPage.notificationIds().contains(storedAnchorId) ? 1 : 0;
+                int probePage = 2;
+                while (anchorPage == 0 && requests < MAX_PAGES_PER_SYNC) {
+                    PageResult probe = syncPage(user, token, probePage, false);
+                    added += probe.added();
+                    requests++;
+                    if (probe.notificationIds().contains(storedAnchorId)) anchorPage = probePage;
+                    if (!probe.hasNextPage()) {
+                        clearNotificationCursors(user);
+                        return added;
+                    }
+                    probePage++;
+                }
+                if (anchorPage == 0) {
+                    resetNotificationCursors(user, currentHeadId);
+                    return added;
+                }
+                int pageShift = anchorPage - 1;
+                catchupPage += pageShift;
+                backfillPage += pageShift;
+            }
+        } else {
+            catchupPage = null;
+            boolean recentResolved = firstPage.reachedKnownBoundary();
+            int boundaryPage = 1;
+            int recentPage = 2;
+            while (!recentResolved && requests < MAX_PAGES_PER_SYNC) {
+                PageResult recent = syncPage(user, token, recentPage, false);
+                added += recent.added();
+                requests++;
+                if (!recent.hasNextPage()) {
+                    clearNotificationCursors(user);
+                    return added;
+                }
+                recentResolved = recent.reachedKnownBoundary();
+                if (recentResolved) boundaryPage = recentPage;
+                recentPage++;
+            }
+            if (!recentResolved) {
+                resetNotificationCursors(user, currentHeadId);
+                return added;
+            }
+            backfillPage += boundaryPage - 1;
+        }
+
+        user.setNotificationBackfillPage(backfillPage);
+        if (catchupPage != null) {
+            int firstCatchupPage = catchupPage;
+            int lastCatchupPage = catchupPage - 1;
+            boolean catchupResolved = false;
+            while (!catchupResolved && requests < MAX_PAGES_PER_SYNC) {
+                PageResult result = syncPage(user, token, catchupPage, false);
+                added += result.added();
+                requests++;
+                lastCatchupPage = catchupPage;
+                if (!result.hasNextPage()) {
+                    clearNotificationCursors(user);
+                    return added;
+                }
+                catchupResolved = result.reachedKnownBoundary();
+                if (!catchupResolved) catchupPage++;
+            }
+            if (!catchupResolved) {
+                user.setNotificationCatchupPage(catchupPage);
+                user.setNotificationCatchupAnchorId(currentHeadId);
+                return added;
+            }
+            user.setNotificationCatchupPage(null);
+            user.setNotificationCatchupAnchorId(null);
+            if (backfillPage >= firstCatchupPage && backfillPage <= lastCatchupPage) {
+                backfillPage = lastCatchupPage + 1;
+                user.setNotificationBackfillPage(backfillPage);
+            }
+        }
+
         while (requests < MAX_PAGES_PER_SYNC) {
             PageResult result = syncPage(user, token, backfillPage, false);
             added += result.added();
@@ -174,6 +246,18 @@ public class NotificationService {
             user.setNotificationBackfillPage(backfillPage);
         }
         return added;
+    }
+
+    private void clearNotificationCursors(com.animelist.backend.entity.AppUser user) {
+        user.setNotificationCatchupPage(null);
+        user.setNotificationCatchupAnchorId(null);
+        user.setNotificationBackfillPage(null);
+    }
+
+    private void resetNotificationCursors(com.animelist.backend.entity.AppUser user, Integer currentHeadId) {
+        user.setNotificationCatchupPage(MAX_PAGES_PER_SYNC + 1);
+        user.setNotificationCatchupAnchorId(currentHeadId);
+        user.setNotificationBackfillPage(MAX_PAGES_PER_SYNC + 1);
     }
 
     @SuppressWarnings("unchecked")
@@ -189,12 +273,16 @@ public class NotificationService {
         List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
         int added = 0;
         boolean reachedKnownBoundary = false;
+        Integer firstNotificationId = null;
+        List<Integer> notificationIds = new ArrayList<>(items.size());
         for (Map<String, Object> item : items) {
             String typename = String.valueOf(item.get("__typename"));
             Integer episode = number(item.get("episode"));
-            if (!shouldImport(typename, episode)) continue;
             Integer externalId = number(item.get("id"));
             if (externalId == null) continue;
+            if (firstNotificationId == null) firstNotificationId = externalId;
+            notificationIds.add(externalId);
+            if (!shouldImport(typename, episode)) continue;
             if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
                 reachedKnownBoundary = true;
                 continue;
@@ -209,10 +297,12 @@ public class NotificationService {
             }
         }
         Map<String, Object> pageInfo = page.get("pageInfo") instanceof Map<?, ?> info ? (Map<String, Object>) info : Map.of();
-        return new PageResult(added, reachedKnownBoundary, Boolean.TRUE.equals(pageInfo.get("hasNextPage")));
+        return new PageResult(added, reachedKnownBoundary, Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
+                firstNotificationId, List.copyOf(notificationIds));
     }
 
-    private record PageResult(int added, boolean reachedKnownBoundary, boolean hasNextPage) {}
+    private record PageResult(int added, boolean reachedKnownBoundary, boolean hasNextPage,
+            Integer firstNotificationId, List<Integer> notificationIds) {}
 
     static boolean shouldImport(String typename, Integer episode) {
         return !"AiringNotification".equals(typename) || episode != null;
