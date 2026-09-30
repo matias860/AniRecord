@@ -45,14 +45,23 @@ public class NotificationService {
     private final CurrentUserService currentUser;
     private final RestClient client;
     public NotificationService(AppNotificationRepository repository, AppUserRepository users, AniListAuthService auth, CurrentUserService currentUser) {
+        this(repository, users, auth, currentUser, notificationClient());
+    }
+
+    NotificationService(AppNotificationRepository repository, AppUserRepository users, AniListAuthService auth,
+            CurrentUserService currentUser, RestClient client) {
         this.repository = repository;
         this.users = users;
         this.auth = auth;
         this.currentUser = currentUser;
+        this.client = client;
+    }
+
+    private static RestClient notificationClient() {
         HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(Duration.ofSeconds(10));
-        this.client = RestClient.builder().requestFactory(requestFactory).build();
+        return RestClient.builder().requestFactory(requestFactory).build();
     }
 
     public int syncSafely() {
@@ -85,39 +94,76 @@ public class NotificationService {
         var user=currentUser.require();
         String token = auth.validToken(); if (token == null) return 0;
         int added = 0;
-        boolean reachedKnownNotification = false;
-        for (int pageNumber = 1; pageNumber <= MAX_PAGES_PER_SYNC && !reachedKnownNotification; pageNumber++) {
-            Map<String, Object> body = client.post().uri("https://graphql.anilist.co").header("Authorization", "Bearer " + token)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("query", QUERY, "variables", Map.of("page", pageNumber)))
-                    .retrieve().body(Map.class);
-            if (body == null || !(body.get("data") instanceof Map<?, ?> data) || !(data.get("Page") instanceof Map<?, ?> rawPage)) {
-                throw new BusinessException("AniList no devolvió las notificaciones");
+        Integer originalBackfillPage = user.getNotificationBackfillPage();
+        Integer pendingPage = markImportedAsRead ? null : user.getNotificationBackfillPage();
+        if (pendingPage != null) {
+            PageResult recent = syncPage(user, token, 1, false);
+            added += recent.added();
+            boolean resolved = !recent.hasNextPage();
+            int nextPage = pendingPage;
+            for (int request = 1; request < MAX_PAGES_PER_SYNC && !resolved; request++) {
+                PageResult result = syncPage(user, token, nextPage, false);
+                added += result.added();
+                resolved = result.reachedKnownNotification() || !result.hasNextPage();
+                if (!resolved) nextPage++;
             }
-            Map<String, Object> page = (Map<String, Object>) rawPage;
-            List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
-            for (Map<String, Object> item : items) {
-                String typename = String.valueOf(item.get("__typename"));
-                Integer episode = number(item.get("episode"));
-                if (!shouldImport(typename, episode)) continue;
-                Integer externalId = number(item.get("id"));
-                if (externalId == null) continue;
-                if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
-                    reachedKnownNotification = true;
-                    continue;
-                }
-                AppNotification notification = map(item, typename, episode, externalId);
-                if (notification != null) { notification.setUser(user); notification.setRead(markImportedAsRead); repository.save(notification); added++; }
+            user.setNotificationBackfillPage(resolved ? null : nextPage);
+        } else {
+            boolean reachedKnown = false;
+            boolean hasNextPage = false;
+            int pageNumber = 1;
+            for (int request = 0; request < MAX_PAGES_PER_SYNC; request++, pageNumber++) {
+                PageResult result = syncPage(user, token, pageNumber, markImportedAsRead);
+                added += result.added();
+                reachedKnown = result.reachedKnownNotification();
+                hasNextPage = result.hasNextPage();
+                if (reachedKnown || !hasNextPage) break;
             }
-            Map<String, Object> pageInfo = page.get("pageInfo") instanceof Map<?, ?> info ? (Map<String, Object>) info : Map.of();
-            if (!Boolean.TRUE.equals(pageInfo.get("hasNextPage"))) break;
+            user.setNotificationBackfillPage(!markImportedAsRead && !reachedKnown && hasNextPage ? pageNumber : null);
         }
         if (markImportedAsRead) {
             user.setNotificationsInitializedAt(java.time.LocalDateTime.now());
-            users.save(user);
         }
+        if (markImportedAsRead || !Objects.equals(originalBackfillPage, user.getNotificationBackfillPage())) users.save(user);
         return added;
     }
+
+    @SuppressWarnings("unchecked")
+    private PageResult syncPage(com.animelist.backend.entity.AppUser user, String token, int pageNumber, boolean markImportedAsRead) {
+        Map<String, Object> body = client.post().uri("https://graphql.anilist.co").header("Authorization", "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("query", QUERY, "variables", Map.of("page", pageNumber)))
+                .retrieve().body(Map.class);
+        if (body == null || !(body.get("data") instanceof Map<?, ?> data) || !(data.get("Page") instanceof Map<?, ?> rawPage)) {
+            throw new BusinessException("AniList no devolvió las notificaciones");
+        }
+        Map<String, Object> page = (Map<String, Object>) rawPage;
+        List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
+        int added = 0;
+        boolean reachedKnown = false;
+        for (Map<String, Object> item : items) {
+            String typename = String.valueOf(item.get("__typename"));
+            Integer episode = number(item.get("episode"));
+            if (!shouldImport(typename, episode)) continue;
+            Integer externalId = number(item.get("id"));
+            if (externalId == null) continue;
+            if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
+                reachedKnown = true;
+                continue;
+            }
+            AppNotification notification = map(item, typename, episode, externalId);
+            if (notification != null) {
+                notification.setUser(user);
+                notification.setRead(markImportedAsRead);
+                repository.save(notification);
+                added++;
+            }
+        }
+        Map<String, Object> pageInfo = page.get("pageInfo") instanceof Map<?, ?> info ? (Map<String, Object>) info : Map.of();
+        return new PageResult(added, reachedKnown, Boolean.TRUE.equals(pageInfo.get("hasNextPage")));
+    }
+
+    private record PageResult(int added, boolean reachedKnownNotification, boolean hasNextPage) {}
 
     static boolean shouldImport(String typename, Integer episode) {
         return !"AiringNotification".equals(typename) || episode != null;

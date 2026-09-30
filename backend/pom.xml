@@ -54,6 +54,11 @@
 			<groupId>com.github.ben-manes.caffeine</groupId>
 			<artifactId>caffeine</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>com.twelvemonkeys.imageio</groupId>
+			<artifactId>imageio-webp</artifactId>
+			<version>3.15.2</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.postgresql</groupId>

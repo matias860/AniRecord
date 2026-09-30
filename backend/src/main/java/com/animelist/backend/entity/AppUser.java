@@ -56,6 +56,8 @@ public class AppUser {
     private LocalDateTime lastAniListSyncAt;
     @Column(name = "notifications_initialized_at")
     private LocalDateTime notificationsInitializedAt;
+    @Column(name = "notification_backfill_page")
+    private Integer notificationBackfillPage;
     @Column(name = "last_sync_prompt_commit", length = 64)
     private String lastSyncPromptCommit;
     @Column(name = "created_at", nullable = false, updatable = false)

@@ -10,6 +10,7 @@ import java.util.Locale;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.concurrent.Semaphore;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -20,7 +21,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ProfileAssetService {
-    private static final long MAX_PIXELS = 12_000_000L;
+    private static final Semaphore IMAGE_DECODER = new Semaphore(1, true);
     private static final Set<String> ALLOWED_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
     private final UserProfileAssetRepository repository;
     private final CurrentUserService currentUser;
@@ -39,19 +40,23 @@ public class ProfileAssetService {
         if (file.getSize() > max) throw new BusinessException(type == ProfileAssetType.AVATAR
                 ? "El avatar no puede superar 2 MB" : "El banner no puede superar 6 MB");
         if (!ALLOWED_TYPES.contains(contentType)) throw new BusinessException("Usá una imagen JPG, PNG o WebP");
+        if (!IMAGE_DECODER.tryAcquire()) throw new BusinessException("Ya se está procesando otra imagen. Intentá nuevamente en unos segundos");
+        byte[] bytes;
         try {
-            byte[] bytes = file.getBytes();
+            bytes = file.getBytes();
             if (!matchesSignature(bytes, contentType)) throw new BusinessException("El archivo no contiene una imagen válida");
-            validateImage(bytes, contentType);
-            UserProfileAsset asset = repository.findByUserIdAndAssetType(user.getId(), type).orElseGet(UserProfileAsset::new);
-            asset.setUser(user);
-            asset.setAssetType(type);
-            asset.setContentType(contentType);
-            asset.setData(bytes);
-            repository.save(asset);
+            validateImage(bytes, type);
         } catch (java.io.IOException ex) {
             throw new BusinessException("No se pudo leer la imagen");
+        } finally {
+            IMAGE_DECODER.release();
         }
+        UserProfileAsset asset = repository.findByUserIdAndAssetType(user.getId(), type).orElseGet(UserProfileAsset::new);
+        asset.setUser(user);
+        asset.setAssetType(type);
+        asset.setContentType(contentType);
+        asset.setData(bytes);
+        repository.save(asset);
     }
 
     @Transactional(readOnly = true)
@@ -80,11 +85,7 @@ public class ProfileAssetService {
                 && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
     }
 
-    private void validateImage(byte[] bytes, String type) throws IOException {
-        if ("image/webp".equals(type)) {
-            validateWebP(bytes);
-            return;
-        }
+    private void validateImage(byte[] bytes, ProfileAssetType type) throws IOException {
         try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
             Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
             if (!readers.hasNext()) throw new BusinessException("El archivo no contiene una imagen válida");
@@ -93,7 +94,7 @@ public class ProfileAssetService {
                 reader.setInput(input, true, true);
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
-                validateDimensions(width, height);
+                validateDimensions(type, width, height);
                 if (reader.read(0) == null) throw new BusinessException("El archivo no contiene una imagen válida");
             } catch (RuntimeException | IOException exception) {
                 if (exception instanceof BusinessException businessException) throw businessException;
@@ -104,50 +105,13 @@ public class ProfileAssetService {
         }
     }
 
-    private void validateWebP(byte[] bytes) {
-        long declaredEnd = 8L + littleEndian32(bytes, 4);
-        if (declaredEnd < 20 || declaredEnd != bytes.length) throw new BusinessException("El archivo no contiene una imagen válida");
-        int offset = 12;
-        while (offset + 8 <= declaredEnd) {
-            String chunk = new String(bytes, offset, 4, java.nio.charset.StandardCharsets.US_ASCII);
-            long chunkSize = littleEndian32(bytes, offset + 4);
-            long dataEnd = offset + 8L + chunkSize;
-            if (dataEnd > declaredEnd) throw new BusinessException("El archivo no contiene una imagen válida");
-            int data = offset + 8;
-            if ("VP8X".equals(chunk) && chunkSize >= 10) {
-                validateDimensions(1 + littleEndian24(bytes, data + 4), 1 + littleEndian24(bytes, data + 7));
-            }
-            if ("VP8L".equals(chunk) && chunkSize >= 5 && (bytes[data] & 0xff) == 0x2f) {
-                int width = 1 + ((bytes[data + 1] & 0xff) | ((bytes[data + 2] & 0x3f) << 8));
-                int height = 1 + (((bytes[data + 2] & 0xc0) >> 6) | ((bytes[data + 3] & 0xff) << 2) | ((bytes[data + 4] & 0x0f) << 10));
-                validateDimensions(width, height);
-                return;
-            }
-            if ("VP8 ".equals(chunk) && chunkSize >= 10 && (bytes[data + 3] & 0xff) == 0x9d
-                    && (bytes[data + 4] & 0xff) == 0x01 && (bytes[data + 5] & 0xff) == 0x2a) {
-                int width = ((bytes[data + 6] & 0xff) | ((bytes[data + 7] & 0x3f) << 8));
-                int height = ((bytes[data + 8] & 0xff) | ((bytes[data + 9] & 0x3f) << 8));
-                validateDimensions(width, height);
-                return;
-            }
-            offset = (int) (dataEnd + (chunkSize & 1));
-        }
-        throw new BusinessException("El archivo no contiene una imagen WebP válida");
-    }
-
-    private void validateDimensions(int width, int height) {
-        if (width <= 0 || height <= 0 || (long) width * height > MAX_PIXELS) {
+    private void validateDimensions(ProfileAssetType type, int width, int height) {
+        int maxWidth = type == ProfileAssetType.AVATAR ? 1024 : 2400;
+        int maxHeight = type == ProfileAssetType.AVATAR ? 1024 : 1200;
+        long maxPixels = type == ProfileAssetType.AVATAR ? 1_048_576L : 2_880_000L;
+        if (width <= 0 || height <= 0 || width > maxWidth || height > maxHeight || (long) width * height > maxPixels) {
             throw new BusinessException("La imagen tiene dimensiones demasiado grandes");
         }
-    }
-
-    private long littleEndian32(byte[] bytes, int offset) {
-        return (bytes[offset] & 0xffL) | ((bytes[offset + 1] & 0xffL) << 8)
-                | ((bytes[offset + 2] & 0xffL) << 16) | ((bytes[offset + 3] & 0xffL) << 24);
-    }
-
-    private int littleEndian24(byte[] bytes, int offset) {
-        return (bytes[offset] & 0xff) | ((bytes[offset + 1] & 0xff) << 8) | ((bytes[offset + 2] & 0xff) << 16);
     }
 
     public record AssetData(String contentType, byte[] bytes) {}

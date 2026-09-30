@@ -93,6 +93,7 @@ class LibraryServiceTest {
         assertEquals(12, response.progress());
         assertEquals(TrackingStatus.COMPLETED, response.trackingStatus());
         assertNotNull(response.completedAt());
+        verify(libraryEntryRepository).findWithMediaForUpdateByIdAndUserId(1L, 1L);
     }
 
     @Test
@@ -124,6 +125,7 @@ class LibraryServiceTest {
         assertEquals(12, response.progress());
         assertEquals(TrackingStatus.COMPLETED, response.trackingStatus());
         assertNotNull(response.completedAt());
+        verify(libraryEntryRepository).findWithMediaForUpdateByIdAndUserId(1L, 1L);
     }
 
     @Test
@@ -191,6 +193,17 @@ class LibraryServiceTest {
         assertEquals(TrackingStatus.PLANNED, response.trackingStatus());
         assertNull(response.startedAt());
         assertNull(response.completedAt());
+    }
+
+    @Test
+    void deletingAnEntryUsesTheSameWriteLockAsProgressChanges() {
+        LibraryEntry entry = entry(5, 12, TrackingStatus.IN_PROGRESS);
+        mockEntry(1L, entry);
+
+        libraryService.delete(1L);
+
+        verify(libraryEntryRepository).findWithMediaForUpdateByIdAndUserId(1L, 1L);
+        verify(libraryEntryRepository).delete(entry);
     }
 
     @Test

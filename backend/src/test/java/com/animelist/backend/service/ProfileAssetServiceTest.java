@@ -9,6 +9,7 @@ import com.animelist.backend.repository.UserProfileAssetRepository;
 import java.util.Optional;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import javax.imageio.ImageIO;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.Test;
@@ -69,9 +70,54 @@ class ProfileAssetServiceTest {
         verify(repository, never()).save(any());
     }
 
+    @Test void acceptsAWebPThatCanBeDecoded() {
+        UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser(); user.setId(4L);
+        when(currentUser.require()).thenReturn(user);
+        when(repository.findByUserIdAndAssetType(4L, ProfileAssetType.AVATAR)).thenReturn(Optional.empty());
+        byte[] webp = Base64.getDecoder().decode("UklGRlYAAABXRUJQVlA4IDoAAADwAgCdASoBAAEAAEcIhYWIhYSIAgICdaoD+AP6Ag1NGAD+/vNYf/5gZt2KO//mBv/80F4SW6//zLwASUNNVAgAAAB0ZXN0MXgxAA==");
+
+        new ProfileAssetService(repository, currentUser).save(ProfileAssetType.AVATAR,
+                new MockMultipartFile("file", "avatar.webp", "image/webp", webp));
+
+        verify(repository).save(argThat(asset -> asset.getData().length == webp.length));
+    }
+
+    @Test void rejectsAWebPWithAValidContainerButCorruptFrame() {
+        UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser(); user.setId(4L);
+        when(currentUser.require()).thenReturn(user);
+        byte[] fake = { 'R','I','F','F', 22,0,0,0, 'W','E','B','P', 'V','P','8',' ', 10,0,0,0,
+                0,0,0, (byte)0x9d,1,0x2a, 1,0, 1,0 };
+
+        assertThrows(com.animelist.backend.exception.BusinessException.class,
+                () -> new ProfileAssetService(repository, currentUser).save(ProfileAssetType.AVATAR,
+                        new MockMultipartFile("file", "avatar.webp", "image/webp", fake)));
+        verify(repository, never()).save(any());
+    }
+
+    @Test void rejectsAvatarDimensionsBeforeDecodingThePixels() throws Exception {
+        UserProfileAssetRepository repository = mock(UserProfileAssetRepository.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser(); user.setId(4L);
+        when(currentUser.require()).thenReturn(user);
+        byte[] oversized = png(1025, 1);
+
+        assertThrows(com.animelist.backend.exception.BusinessException.class,
+                () -> new ProfileAssetService(repository, currentUser).save(ProfileAssetType.AVATAR,
+                        new MockMultipartFile("file", "avatar.png", "image/png", oversized)));
+        verify(repository, never()).save(any());
+    }
+
     private byte[] png() throws Exception {
+        return png(2, 2);
+    }
+
+    private byte[] png(int width, int height) throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", output);
+        ImageIO.write(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB), "png", output);
         return output.toByteArray();
     }
 }

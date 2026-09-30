@@ -105,7 +105,7 @@ public class LibraryService {
 
     @Transactional
     public LibraryEntryResponse update(Long id, UpdateLibraryEntryRequest request) {
-        LibraryEntry entry = findEntry(id);
+        LibraryEntry entry = findEntryForUpdate(id);
         int previousProgress = entry.getProgress();
         TrackingStatus previousStatus = entry.getTrackingStatus();
         BigDecimal previousScore = entry.getPersonalScore();
@@ -197,7 +197,7 @@ public class LibraryService {
 
     @Transactional
     public void delete(Long id) {
-        LibraryEntry entry = findEntry(id);
+        LibraryEntry entry = findEntryForUpdate(id);
         activityHistoryService.recordRemoval(entry);
         libraryEntryRepository.delete(entry);
     }
