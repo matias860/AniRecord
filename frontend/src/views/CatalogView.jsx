@@ -12,17 +12,12 @@ import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import MediaTypeSwitch from '../components/common/MediaTypeSwitch.jsx'
 import { fetchCatalog, fetchCatalogCategories } from '../features/catalog/catalogSlice.js'
 import { fetchLibrary } from '../features/library/librarySlice.js'
-import { emptyCatalogFilters, filtersFromSearchParams, normalizeCatalogFilters, searchParamsFromFilters } from '../lib/catalogFilters.js'
+import { catalogRequestFilters, emptyCatalogFilters, filtersFromSearchParams, normalizeCatalogFilters, searchParamsFromFilters } from '../lib/catalogFilters.js'
 
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: 161 }, (_, index) => 2100 - index)
-const requestFilters = (filters) => {
-  return Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
-    Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 1)))
-}
-
 export default function CatalogView() {
   const { mediaType } = useParams()
   const navigate = useNavigate()
@@ -49,14 +44,11 @@ export default function CatalogView() {
 
   useEffect(() => {
     if (!type) return
-    let request
-    const timer = window.setTimeout(() => {
-      const applicableFilters = type === 'MANGA'
-        ? { ...filters, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
-        : { ...filters, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
-      request = dispatch(fetchCatalog({ type, page: 1, filters: requestFilters(applicableFilters) }))
-    }, filters.search.trim() ? 400 : 0)
-    return () => { window.clearTimeout(timer); request?.abort() }
+    const applicableFilters = type === 'MANGA'
+      ? { ...filters, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
+      : { ...filters, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
+    const request = dispatch(fetchCatalog({ type, page: 1, filters: catalogRequestFilters(applicableFilters) }))
+    return () => request.abort()
   }, [dispatch, filters, type])
 
   const displayedItems = useMemo(() => {
@@ -90,7 +82,7 @@ export default function CatalogView() {
       <AnimatePresence mode="wait" initial={false}><motion.div className="catalog-type-content" key={type} initial={{ opacity: 0, x: type === 'ANIME' ? -18 : 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: type === 'ANIME' ? 18 : -18 }} transition={{ duration: .26, ease: 'easeOut' }}>
       {catalog.unavailable ? <AniListUnavailable /> : <>
       <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={(event) => event.preventDefault()}>
-        <label className="catalog-search" data-field-label="Buscar"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder="Título..." /></label>
+        <CatalogSearch key={`${type}:${filters.search}`} initialValue={filters.search} onCommit={update('search')} />
         <StyledSelect ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
         {type === 'ANIME' && <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
         <GenreMultiSelect genres={catalog.genres} tags={catalog.tags} value={{ genre: filters.genre, tag: filters.tag }} onChange={({ genre, tag }) => setFilters((current) => ({ ...current, genre, tag }))} />
@@ -113,6 +105,18 @@ function navigateToMediaType(navigate, nextType, filters) {
   const nextFilters = normalizeCatalogFilters({ ...filters, format: '', country: '', season: '' }, nextType)
   const params = searchParamsFromFilters(nextFilters).toString()
   navigate(`/catalogo/${nextType.toLowerCase()}${params ? `?${params}` : ''}`)
+}
+
+function CatalogSearch({ initialValue, onCommit }) {
+  const [value, setValue] = useState(initialValue)
+
+  useEffect(() => {
+    if (value === initialValue) return undefined
+    const timer = window.setTimeout(() => onCommit(value), 350)
+    return () => window.clearTimeout(timer)
+  }, [initialValue, onCommit, value])
+
+  return <label className="catalog-search" data-field-label="Buscar"><Search /><input value={value} maxLength={100} onChange={(event) => setValue(event.target.value)} placeholder="Título..." /></label>
 }
 
 function AniListUnavailable() {

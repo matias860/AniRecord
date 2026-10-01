@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { useLocation } from 'react-router-dom'
 import anilistLogo from '../assets/anilist-logo.svg'
 import { clearAuthError, localLogin, registerLocal } from '../features/auth/authSlice.js'
-import { currentReturnPath, rememberReturnPath } from '../lib/authNavigation.js'
+import { currentReturnPath, oauthLoginUrl, rememberReturnPath } from '../lib/authNavigation.js'
 
 export default function LoginView() {
   const dispatch = useDispatch()
@@ -37,7 +37,7 @@ export default function LoginView() {
         <h1>Todo lo que ves y leés, en un solo lugar.</h1>
         <p>Inicia sesión con AniList para importar tu colección o crea un perfil independiente desde cero.</p>
         <div className="login-options">
-          <a className="anilist-login-button" href="/api/auth/login" onClick={rememberDestination}><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
+          <a className="anilist-login-button" href={oauthLoginUrl()} onClick={rememberDestination}><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
           <button className="local-account-button" onClick={() => setMode('register')}><UserPlus /><span>Crear un perfil nuevo</span></button>
           <button className="login-text-button" onClick={() => setMode('login')}>Ya tengo un perfil local</button>
         </div>

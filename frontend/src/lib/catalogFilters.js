@@ -16,7 +16,7 @@ const seasons = new Set(['WINTER', 'SPRING', 'SUMMER', 'FALL'])
 const statuses = new Set(['RELEASING', 'FINISHED', 'NOT_YET_RELEASED', 'HIATUS', 'CANCELLED'])
 const sorts = new Set(['POPULARITY', 'SCORE', 'TRENDING', 'NEWEST'])
 const countries = new Set(['JP', 'KR', 'CN'])
-const searchLimit = 120
+const searchLimit = 100
 const categoryLimit = 20
 const categoryLengthLimit = 80
 
@@ -63,8 +63,21 @@ export function searchParamsFromFilters(filters) {
   return params
 }
 
+export function catalogRequestFilters(filters) {
+  const request = {}
+  Object.entries(filters).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      if (value.length) request[key] = value
+    } else if (key === 'search') {
+      const search = typeof value === 'string' ? value.trim() : ''
+      if (search) request.search = search
+    } else if (value) request[key] = value
+  })
+  return request
+}
+
 function cleanSearch(value) {
-  return typeof value === 'string' ? value.trim().slice(0, searchLimit) : ''
+  return typeof value === 'string' ? value.slice(0, searchLimit) : ''
 }
 
 function cleanYear(value) {

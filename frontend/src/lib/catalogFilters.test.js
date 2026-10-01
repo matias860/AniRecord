@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { filtersFromSearchParams, searchParamsFromFilters } from './catalogFilters.js'
+import { catalogRequestFilters, filtersFromSearchParams, normalizeCatalogFilters, searchParamsFromFilters } from './catalogFilters.js'
 
 test('invalid anime URL filters fall back to safe defaults', () => {
   const params = new URLSearchParams('year=abc&season=INVALID&sort=INVALID&format=NOVEL&country=JP&status=NOPE')
@@ -13,7 +13,14 @@ test('invalid anime URL filters fall back to safe defaults', () => {
   assert.equal(filters.format, '')
   assert.equal(filters.country, '')
   assert.equal(filters.status, '')
-  assert.ok(filters.search.length <= 120)
+  assert.equal(filters.search.length, 100)
+})
+
+test('editable search keeps a trailing space and trims only the backend request', () => {
+  const filters = normalizeCatalogFilters({ search: 'One ', genre: [], tag: [] }, 'ANIME')
+
+  assert.equal(filters.search, 'One ')
+  assert.equal(catalogRequestFilters(filters).search, 'One')
 })
 
 test('manga URL filters preserve valid values and remove anime-only values', () => {
