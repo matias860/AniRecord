@@ -3,6 +3,7 @@ package com.animelist.backend.controller;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.CharacterDetailResponse;
+import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.StaffDetailResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
@@ -84,9 +85,14 @@ public class AniListController {
         return aniListClient.getStaff(anilistId);
     }
 
+    @GetMapping("/catalog/categories")
+    public CatalogCategoriesResponse catalogCategories() {
+        return aniListClient.getCategories();
+    }
+
     @GetMapping("/catalog/genres")
     public List<String> catalogGenres() {
-        return aniListClient.getGenres();
+        return aniListClient.getCategories().genres();
     }
 
     @GetMapping("/season/current")

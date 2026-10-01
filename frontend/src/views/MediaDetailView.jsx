@@ -72,8 +72,8 @@ export default function MediaDetailView() {
         </div>
       </div>
       {saved && <div className="detail-tracking-row"><SavedTrackingEditor unreleased={isUnreleasedAnime(detail)} saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
-      {(!!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
-        {!!detail.tags?.length && <div className="detail-tags"><span className="eyebrow">Categorías principales</span><MediaTags tags={detail.tags} /></div>}
+      {(!!detail.genres?.length || !!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
+        {(!!detail.genres?.length || !!detail.tags?.length) && <div className="detail-tags"><span className="eyebrow">Géneros y categorías</span><MediaTags genres={detail.genres} tags={detail.tags} mediaType={detail.mediaType} /></div>}
         {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
       </div>}
       <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>

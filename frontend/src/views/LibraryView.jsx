@@ -18,7 +18,7 @@ import {
   setLibraryMediaType,
   setLibraryTrackingStatus,
 } from '../features/library/librarySlice.js'
-import { fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
+import { fetchCatalogCategories } from '../features/catalog/catalogSlice.js'
 
 const statuses = [['ALL', 'Todos'], ['IN_PROGRESS', 'En curso'], ['PLANNED', 'Pendientes'], ['COMPLETED', 'Completados'], ['PAUSED', 'Pausados'], ['DROPPED', 'Abandonados']]
 const sectionOrder = ['IN_PROGRESS', 'COMPLETED', 'PLANNED', 'PAUSED', 'DROPPED']
@@ -57,7 +57,7 @@ export default function LibraryView() {
     .map((item) => item.releaseYear))].sort((a, b) => b - a), [items, mediaType])
 
   useEffect(() => { if (status === 'idle') dispatch(fetchLibrary()) }, [dispatch, status])
-  useEffect(() => { if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres()) }, [catalog.genresStatus, dispatch])
+  useEffect(() => { if (catalog.categoriesStatus === 'idle') dispatch(fetchCatalogCategories()) }, [catalog.categoriesStatus, dispatch])
   useEffect(() => {
     if (filters.format && !formatsFor(mediaType).some((option) => option.value === filters.format)) {
       dispatch(setLibraryFilter({ key: 'format', value: '' }))

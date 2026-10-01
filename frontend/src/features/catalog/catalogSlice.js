@@ -21,23 +21,23 @@ export const fetchCatalog = createAsyncThunk(
   },
 )
 
-export const fetchCatalogGenres = createAsyncThunk('catalog/genres', async (_, { rejectWithValue, signal }) => {
+export const fetchCatalogCategories = createAsyncThunk('catalog/categories', async (_, { rejectWithValue, signal }) => {
   if (isAniListTemporarilyUnavailable()) return rejectWithValue(cachedAniListError())
   try {
-    const { data } = await apiClient.get('/anilist/catalog/genres', { signal })
+    const { data } = await apiClient.get('/anilist/catalog/categories', { signal })
     clearAniListOutage()
     return data
   } catch (error) {
     if (error.status === 502) rememberAniListOutage()
     return rejectWithValue({ message: error.message, unavailable: error.status === 502 })
   }
-}, { condition: (_, { getState }) => !['loading', 'succeeded'].includes(getState().catalog.genresStatus) })
+}, { condition: (_, { getState }) => !['loading', 'succeeded'].includes(getState().catalog.categoriesStatus) })
 
 const catalogSlice = createSlice({
   name: 'catalog',
   initialState: {
-    type: null, items: [], genres: [], filters: {}, currentPage: 1,
-    hasNextPage: false, status: 'idle', genresStatus: 'idle', error: null, unavailable: false, requestId: null,
+    type: null, items: [], genres: [], tags: [], filters: {}, currentPage: 1,
+    hasNextPage: false, status: 'idle', categoriesStatus: 'idle', error: null, unavailable: false, requestId: null,
   },
   reducers: {
     clearCatalog: (state) => { state.type = null; state.items = []; state.status = 'idle'; state.error = null },
@@ -56,10 +56,12 @@ const catalogSlice = createSlice({
       if (state.requestId !== action.meta.requestId || action.meta.aborted) return
       state.status = 'failed'; state.error = action.payload?.message || action.error.message; state.unavailable = Boolean(action.payload?.unavailable)
     })
-    .addCase(fetchCatalogGenres.pending, (state) => { state.genresStatus = 'loading' })
-    .addCase(fetchCatalogGenres.fulfilled, (state, action) => { state.genresStatus = 'succeeded'; state.genres = action.payload })
-    .addCase(fetchCatalogGenres.rejected, (state, action) => {
-      state.genresStatus = 'failed'
+    .addCase(fetchCatalogCategories.pending, (state) => { state.categoriesStatus = 'loading' })
+    .addCase(fetchCatalogCategories.fulfilled, (state, action) => {
+      state.categoriesStatus = 'succeeded'; state.genres = action.payload.genres; state.tags = action.payload.tags
+    })
+    .addCase(fetchCatalogCategories.rejected, (state, action) => {
+      state.categoriesStatus = 'failed'
       if (action.payload?.unavailable) state.unavailable = true
     }),
 })

@@ -13,6 +13,8 @@ import com.animelist.backend.dto.anilist.MediaCreditResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
 import com.animelist.backend.dto.anilist.MediaStreamingLinkResponse;
 import com.animelist.backend.dto.anilist.CharacterDetailResponse;
+import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
+import com.animelist.backend.dto.anilist.CatalogTagResponse;
 import com.animelist.backend.dto.anilist.PersonMediaResponse;
 import com.animelist.backend.dto.anilist.StaffCharacterResponse;
 import com.animelist.backend.dto.anilist.StaffDetailResponse;
@@ -216,8 +218,11 @@ public class AniListClient {
             }
             """;
 
-    private static final String GENRES_QUERY = """
-            query CatalogGenres { GenreCollection }
+    private static final String CATEGORIES_QUERY = """
+            query CatalogCategories {
+              GenreCollection
+              MediaTagCollection { name description category isAdult }
+            }
             """;
 
     private static final String USER_LIBRARY_QUERY = """
@@ -401,7 +406,7 @@ public class AniListClient {
         List<Object> characterEdges = new ArrayList<>(asList(asMap(media.get("mainCharacters")).get("edges")));
         characterEdges.addAll(asList(asMap(media.get("supportingCharacters")).get("edges")));
         media.put("characters", Map.of("edges", characterEdges));
-        return mapMedia(media);
+        return mapMedia(media, true);
     }
 
     public CharacterDetailResponse getCharacter(Integer anilistId) {
@@ -559,11 +564,26 @@ public class AniListClient {
         );
     }
 
-    @Cacheable("catalogGenres")
-    public List<String> getGenres() {
-        return asList(execute(GENRES_QUERY, Map.of()).get("GenreCollection")).stream()
+    @Cacheable("catalogCategories")
+    public CatalogCategoriesResponse getCategories() {
+        Map<String, Object> data = execute(CATEGORIES_QUERY, Map.of());
+        List<String> genres = asList(data.get("GenreCollection")).stream()
                 .map(String::valueOf)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
+        List<CatalogTagResponse> tags = asList(data.get("MediaTagCollection")).stream()
+                .map(this::asMap)
+                .filter(tag -> !Boolean.TRUE.equals(tag.get("isAdult")))
+                .map(tag -> new CatalogTagResponse(
+                        asString(tag.get("name")),
+                        asString(tag.get("description")),
+                        asString(tag.get("category"))))
+                .filter(tag -> tag.name() != null && !tag.name().isBlank())
+                .sorted(java.util.Comparator.comparing(CatalogTagResponse::category,
+                                java.util.Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER))
+                        .thenComparing(CatalogTagResponse::name, String.CASE_INSENSITIVE_ORDER))
+                .toList();
+        return new CatalogCategoriesResponse(genres, tags);
     }
 
     public AniListLibraryExport getUserLibrary(String username, String accessToken) {
@@ -793,6 +813,10 @@ public class AniListClient {
     }
 
     private AniListMediaResponse mapMedia(Map<String, Object> media) {
+        return mapMedia(media, false);
+    }
+
+    private AniListMediaResponse mapMedia(Map<String, Object> media, boolean includeAllTags) {
         MediaType mediaType = enumValue(MediaType.class, asString(media.get("type")));
         Map<String, Object> coverImage = asMap(media.get("coverImage"));
         Map<String, Object> titles = asMap(media.get("title"));
@@ -832,7 +856,7 @@ public class AniListClient {
                 mapRelations(media.get("relations")),
                 mapCharacters(media.get("characters")),
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
-                mapTags(media.get("tags")),
+                mapTags(media.get("tags"), includeAllTags ? Integer.MAX_VALUE : 5),
                 asInteger(asMap(media.get("endDate")).get("year"))
         );
     }
@@ -964,7 +988,7 @@ public class AniListClient {
         }
     }
 
-    private List<MediaTagResponse> mapTags(Object tagsValue) {
+    private List<MediaTagResponse> mapTags(Object tagsValue, int limit) {
         List<MediaTagResponse> tags = asList(tagsValue).stream()
                 .map(this::asMap)
                 .filter(tag -> !Boolean.TRUE.equals(tag.get("isMediaSpoiler")))
@@ -977,10 +1001,11 @@ public class AniListClient {
                         asString(tag.get("description")),
                         asString(tag.get("category"))))
                 .toList();
-        List<MediaTagResponse> visible = new ArrayList<>(tags.stream().limit(5).toList());
+        if (limit >= tags.size()) return tags;
+        List<MediaTagResponse> visible = new ArrayList<>(tags.stream().limit(limit).toList());
         tags.stream().filter(tag -> "Yuri".equalsIgnoreCase(tag.name())).findFirst().ifPresent(yuri -> {
             if (visible.stream().noneMatch(tag -> "Yuri".equalsIgnoreCase(tag.name()))) {
-                if (visible.size() == 5) visible.remove(4);
+                if (visible.size() == limit) visible.remove(limit - 1);
                 visible.add(yuri);
             }
         });

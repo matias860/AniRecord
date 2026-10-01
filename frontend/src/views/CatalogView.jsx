@@ -3,48 +3,47 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, BookOpen, ChevronLeft, ChevronRight, Clapperboard, House, Search, SlidersHorizontal, WifiOff, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import MediaCard from '../components/media/MediaCard.jsx'
 import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import MediaTypeSwitch from '../components/common/MediaTypeSwitch.jsx'
-import { fetchCatalog, fetchCatalogGenres } from '../features/catalog/catalogSlice.js'
+import { fetchCatalog, fetchCatalogCategories } from '../features/catalog/catalogSlice.js'
 import { fetchLibrary } from '../features/library/librarySlice.js'
 
-const emptyFilters = { search: '', year: '', season: '', genre: [], country: '', format: '', status: '', sort: 'POPULARITY' }
+const emptyFilters = { search: '', year: '', season: '', genre: [], tag: [], country: '', format: '', status: '', sort: 'POPULARITY' }
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
 const requestFilters = (filters) => {
-  const active = Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
+  return Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
     Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 1)))
-  if (active.genre?.includes('Yuri')) {
-    active.genre = active.genre.filter((category) => category !== 'Yuri')
-    active.tag = ['Yuri']
-    if (!active.genre.length) delete active.genre
-  }
-  return active
 }
 
 export default function CatalogView() {
   const { mediaType } = useParams()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const dispatch = useDispatch()
   const catalog = useSelector((state) => state.catalog)
   const library = useSelector((state) => state.library)
   const authenticated = useSelector((state) => state.auth.authenticated)
-  const [filters, setFilters] = useState(emptyFilters)
+  const [filters, setFilters] = useState(() => filtersFromSearchParams(searchParams))
   const [filtersOpen, setFiltersOpen] = useState(true)
   const type = mediaType?.toLowerCase() === 'anime' ? 'ANIME' : mediaType?.toLowerCase() === 'manga' ? 'MANGA' : null
 
   useEffect(() => {
     if (!type) return
-    if (catalog.genresStatus === 'idle') dispatch(fetchCatalogGenres())
+    if (catalog.categoriesStatus === 'idle') dispatch(fetchCatalogCategories())
     if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
-  }, [authenticated, catalog.genresStatus, dispatch, library.status, type])
+  }, [authenticated, catalog.categoriesStatus, dispatch, library.status, type])
+
+  useEffect(() => {
+    setSearchParams(searchParamsFromFilters(filters), { replace: true })
+  }, [filters, setSearchParams])
 
   useEffect(() => {
     if (!type) return
@@ -68,16 +67,17 @@ export default function CatalogView() {
       && (!filters.status || item.releaseStatus === filters.status)
       && (!filters.country || item.countryOfOrigin === filters.country)
       && (!filters.format || item.mediaFormat === filters.format)
-      && !filters.genre.length)
+      && !filters.genre.length
+      && !filters.tag.length)
     const localIds = new Set(localMatches.map((item) => item.anilistId))
     return [...localMatches, ...catalog.items.filter((item) => !localIds.has(item.anilistId))]
-  }, [authenticated, catalog.items, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.year, library.items, type])
+  }, [authenticated, catalog.items, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.tag.length, filters.year, library.items, type])
 
   if (mediaType && !type) return <Navigate to="/catalogo" replace />
   if (!type) return <CatalogLanding />
   if ((catalog.status === 'idle' || catalog.status === 'loading') && !catalog.items.length) return <PageState fullPage loading />
 
-  const resetFilters = () => setFilters({ ...emptyFilters, genre: [] })
+  const resetFilters = () => setFilters({ ...emptyFilters, genre: [], tag: [] })
   const changePage = (page) => { dispatch(fetchCatalog({ type, page, filters: catalog.filters })); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const update = (key) => (value) => setFilters((current) => ({ ...current, [key]: value }))
 
@@ -91,7 +91,7 @@ export default function CatalogView() {
         <label className="catalog-search" data-field-label="Buscar"><Search /><input value={filters.search} onChange={(event) => update('search')(event.target.value)} placeholder="Título..." /></label>
         <StyledSelect ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
         {type === 'ANIME' && <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
-        <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre} onChange={update('genre')} />
+        <GenreMultiSelect genres={catalog.genres} tags={catalog.tags} value={{ genre: filters.genre, tag: filters.tag }} onChange={({ genre, tag }) => setFilters((current) => ({ ...current, genre, tag }))} />
         {type === 'MANGA' && <StyledSelect ariaLabel="Origen de publicación" fieldLabel="Origen" value={filters.country} onChange={update('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Formato" fieldLabel="Formato" value={filters.format} onChange={update('format')} options={formatsFor(type)} />
         <StyledSelect ariaLabel="Estado de emisión" fieldLabel="Emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
@@ -105,6 +105,30 @@ export default function CatalogView() {
       </motion.div></AnimatePresence>
     </>
   )
+}
+
+function filtersFromSearchParams(searchParams) {
+  return {
+    ...emptyFilters,
+    search: searchParams.get('search') ?? '',
+    year: searchParams.get('year') ?? '',
+    season: searchParams.get('season') ?? '',
+    genre: searchParams.getAll('genre').filter(Boolean),
+    tag: searchParams.getAll('tag').filter(Boolean),
+    country: searchParams.get('country') ?? '',
+    format: searchParams.get('format') ?? '',
+    status: searchParams.get('status') ?? '',
+    sort: searchParams.get('sort') ?? 'POPULARITY',
+  }
+}
+
+function searchParamsFromFilters(filters) {
+  const params = new URLSearchParams()
+  Object.entries(filters).forEach(([key, value]) => {
+    if (Array.isArray(value)) value.filter(Boolean).forEach((item) => params.append(key, item))
+    else if (value && !(key === 'sort' && value === 'POPULARITY')) params.set(key, value)
+  })
+  return params
 }
 
 function AniListUnavailable() {
