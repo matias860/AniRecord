@@ -1,10 +1,10 @@
 const RETURN_PATH_KEY = 'anime-list:return-after-login'
 const PRODUCTION_OAUTH_ORIGIN = 'https://p01--anime-list--244mm2wyvsvc.code.run'
 
-export function oauthLoginUrl(hostname = window.location.hostname) {
-  return hostname === 'localhost' || hostname === '127.0.0.1'
-    ? '/api/auth/login'
-    : `${PRODUCTION_OAUTH_ORIGIN}/api/auth/login`
+export function oauthLoginUrl(env = import.meta.env ?? {}) {
+  const configuredOrigin = env.VITE_OAUTH_ORIGIN?.trim().replace(/\/+$/, '')
+  const origin = configuredOrigin || (env.DEV ? '' : PRODUCTION_OAUTH_ORIGIN)
+  return `${origin}/api/auth/login`
 }
 
 export function currentReturnPath(location = window.location) {
