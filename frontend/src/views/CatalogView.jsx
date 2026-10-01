@@ -12,12 +12,12 @@ import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import MediaTypeSwitch from '../components/common/MediaTypeSwitch.jsx'
 import { fetchCatalog, fetchCatalogCategories } from '../features/catalog/catalogSlice.js'
 import { fetchLibrary } from '../features/library/librarySlice.js'
+import { emptyCatalogFilters, filtersFromSearchParams, normalizeCatalogFilters, searchParamsFromFilters } from '../lib/catalogFilters.js'
 
-const emptyFilters = { search: '', year: '', season: '', genre: [], tag: [], country: '', format: '', status: '', sort: 'POPULARITY' }
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
-const years = Array.from({ length: new Date().getFullYear() - 1939 }, (_, index) => new Date().getFullYear() - index)
+const years = Array.from({ length: 161 }, (_, index) => 2100 - index)
 const requestFilters = (filters) => {
   return Object.fromEntries(Object.entries(filters).filter(([key, value]) =>
     Array.isArray(value) ? value.length : value && (key !== 'search' || value.trim().length >= 1)))
@@ -31,19 +31,21 @@ export default function CatalogView() {
   const catalog = useSelector((state) => state.catalog)
   const library = useSelector((state) => state.library)
   const authenticated = useSelector((state) => state.auth.authenticated)
-  const [filters, setFilters] = useState(() => filtersFromSearchParams(searchParams))
   const [filtersOpen, setFiltersOpen] = useState(true)
   const type = mediaType?.toLowerCase() === 'anime' ? 'ANIME' : mediaType?.toLowerCase() === 'manga' ? 'MANGA' : null
+  const rawSearchParams = searchParams.toString()
+  const filters = useMemo(() => filtersFromSearchParams(new URLSearchParams(rawSearchParams), type), [rawSearchParams, type])
+
+  const setFilters = (update) => {
+    const nextFilters = typeof update === 'function' ? update(filters) : update
+    setSearchParams(searchParamsFromFilters(normalizeCatalogFilters(nextFilters, type)), { replace: true })
+  }
 
   useEffect(() => {
     if (!type) return
     if (catalog.categoriesStatus === 'idle') dispatch(fetchCatalogCategories())
     if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [authenticated, catalog.categoriesStatus, dispatch, library.status, type])
-
-  useEffect(() => {
-    setSearchParams(searchParamsFromFilters(filters), { replace: true })
-  }, [filters, setSearchParams])
 
   useEffect(() => {
     if (!type) return
@@ -77,13 +79,13 @@ export default function CatalogView() {
   if (!type) return <CatalogLanding />
   if ((catalog.status === 'idle' || catalog.status === 'loading') && !catalog.items.length) return <PageState fullPage loading />
 
-  const resetFilters = () => setFilters({ ...emptyFilters, genre: [], tag: [] })
+  const resetFilters = () => setFilters({ ...emptyCatalogFilters, genre: [], tag: [] })
   const changePage = (page) => { dispatch(fetchCatalog({ type, page, filters: catalog.filters })); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const update = (key) => (value) => setFilters((current) => ({ ...current, [key]: value }))
 
   return (
     <>
-      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><MediaTypeSwitch value={type} onChange={(nextType) => { setFilters((current) => ({ ...current, format: '', country: '', season: '' })); navigate(`/catalogo/${nextType.toLowerCase()}`) }} ariaLabel="Cambiar tipo de catálogo" />{!catalog.unavailable && <button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
+      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><MediaTypeSwitch value={type} onChange={(nextType) => navigateToMediaType(navigate, nextType, filters)} ariaLabel="Cambiar tipo de catálogo" />{!catalog.unavailable && <button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
 
       <AnimatePresence mode="wait" initial={false}><motion.div className="catalog-type-content" key={type} initial={{ opacity: 0, x: type === 'ANIME' ? -18 : 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: type === 'ANIME' ? 18 : -18 }} transition={{ duration: .26, ease: 'easeOut' }}>
       {catalog.unavailable ? <AniListUnavailable /> : <>
@@ -107,28 +109,10 @@ export default function CatalogView() {
   )
 }
 
-function filtersFromSearchParams(searchParams) {
-  return {
-    ...emptyFilters,
-    search: searchParams.get('search') ?? '',
-    year: searchParams.get('year') ?? '',
-    season: searchParams.get('season') ?? '',
-    genre: searchParams.getAll('genre').filter(Boolean),
-    tag: searchParams.getAll('tag').filter(Boolean),
-    country: searchParams.get('country') ?? '',
-    format: searchParams.get('format') ?? '',
-    status: searchParams.get('status') ?? '',
-    sort: searchParams.get('sort') ?? 'POPULARITY',
-  }
-}
-
-function searchParamsFromFilters(filters) {
-  const params = new URLSearchParams()
-  Object.entries(filters).forEach(([key, value]) => {
-    if (Array.isArray(value)) value.filter(Boolean).forEach((item) => params.append(key, item))
-    else if (value && !(key === 'sort' && value === 'POPULARITY')) params.set(key, value)
-  })
-  return params
+function navigateToMediaType(navigate, nextType, filters) {
+  const nextFilters = normalizeCatalogFilters({ ...filters, format: '', country: '', season: '' }, nextType)
+  const params = searchParamsFromFilters(nextFilters).toString()
+  navigate(`/catalogo/${nextType.toLowerCase()}${params ? `?${params}` : ''}`)
 }
 
 function AniListUnavailable() {
