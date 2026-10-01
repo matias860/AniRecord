@@ -102,15 +102,15 @@ export default function CatalogView() {
 
       <AnimatePresence mode="wait" initial={false}><motion.div className="catalog-type-content" key={type} initial={{ opacity: 0, x: type === 'ANIME' ? -18 : 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: type === 'ANIME' ? 18 : -18 }} transition={{ duration: .26, ease: 'easeOut' }}>
       {catalog.unavailable ? <AniListUnavailable /> : <>
-      <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} onSubmit={(event) => event.preventDefault()}>
+      <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} data-media-type={type.toLowerCase()} onSubmit={(event) => event.preventDefault()}>
         <CatalogSearch value={searchDraft} onChange={updateSearchDraft} />
-        <StyledSelect ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
-        {type === 'ANIME' && <StyledSelect ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
-        <GenreMultiSelect genres={catalog.genres} tags={catalog.tags} value={{ genre: filters.genre, tag: filters.tag }} onChange={({ genre, tag }) => setFilters((current) => ({ ...current, genre, tag }))} />
-        {type === 'MANGA' && <StyledSelect ariaLabel="Origen de publicación" fieldLabel="Origen" value={filters.country} onChange={update('country')} options={publicationTypes} />}
-        <StyledSelect ariaLabel="Formato" fieldLabel="Formato" value={filters.format} onChange={update('format')} options={formatsFor(type)} />
-        <StyledSelect ariaLabel="Estado de emisión" fieldLabel="Emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
-        <StyledSelect ariaLabel="Orden" fieldLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
+        <StyledSelect className="catalog-filter-year" ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
+        {type === 'ANIME' && <StyledSelect className="catalog-filter-season" ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
+        <GenreMultiSelect className="catalog-filter-categories" genres={catalog.genres} tags={catalog.tags} value={{ genre: filters.genre, tag: filters.tag }} onChange={({ genre, tag }) => setFilters((current) => ({ ...current, genre, tag }))} />
+        {type === 'MANGA' && <StyledSelect className="catalog-filter-country" ariaLabel="Origen de publicación" fieldLabel="Origen" value={filters.country} onChange={update('country')} options={publicationTypes} />}
+        <StyledSelect className="catalog-filter-format" ariaLabel="Formato" fieldLabel="Formato" value={filters.format} onChange={update('format')} options={formatsFor(type)} />
+        <StyledSelect className="catalog-filter-status" ariaLabel="Estado de emisión" fieldLabel="Emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
+        <StyledSelect className="catalog-filter-sort" ariaLabel="Orden" fieldLabel="Orden" value={filters.sort} onChange={update('sort')} options={[{ value: 'POPULARITY', label: 'Más populares' }, { value: 'SCORE', label: 'Mejor puntuados' }, { value: 'TRENDING', label: 'En tendencia' }, { value: 'NEWEST', label: 'Más recientes' }]} />
         <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 

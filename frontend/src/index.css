@@ -829,3 +829,61 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
 .media-tags-expand{height:36px;display:flex;align-items:center;gap:5px;padding:0 11px;border:1px dashed color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;color:var(--muted);background:transparent;font-size:9px;font-weight:800}.media-tags-expand:hover{color:#fff;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}.media-tags-expand svg{width:13px}
 @media(max-width:760px){.genre-multi-popover{width:min(560px,calc(100vw - 24px));left:50%;right:auto;transform:translateX(-50%)}.category-group>div{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:460px){.genre-multi-popover{position:fixed;top:76px;right:12px;bottom:12px;left:12px;width:auto;padding:12px 0;transform:none}.genre-multi-popover>header,.genre-multi-popover>.category-search,.genre-multi-popover>.category-options{transform:translateX(12px)}.genre-multi-popover>.category-options{max-height:calc(100vh - 190px)}.category-group>div{grid-template-columns:1fr 1fr}.category-group button{font-size:9px}.media-tag-item,.media-tag-label,.media-genre-item{min-width:0;flex:1 1 44%}.media-tags-expand{flex:1 1 100%;justify-content:center}}
+
+/* Stable catalog filter grid and viewport-safe dropdowns. */
+.catalog-filters{
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  align-items:stretch;
+}
+.catalog-filters[data-media-type="anime"]{
+  grid-template-areas:
+    "search search year season categories categories"
+    "format format status status sort clear";
+}
+.catalog-filters[data-media-type="manga"]{
+  grid-template-areas:
+    "search search year categories categories categories"
+    "country country format status sort clear";
+}
+.catalog-search{grid-area:search}
+.catalog-filter-year{grid-area:year}
+.catalog-filter-season{grid-area:season}
+.catalog-filter-categories{grid-area:categories}
+.catalog-filter-country{grid-area:country}
+.catalog-filter-format{grid-area:format}
+.catalog-filter-status{grid-area:status}
+.catalog-filter-sort{grid-area:sort}
+.catalog-filters .clear-filters{grid-area:clear;justify-content:center;min-width:0;padding-inline:8px;border:1px dashed color-mix(in srgb,var(--accent) 24%,var(--line));border-radius:10px;background:color-mix(in srgb,var(--accent) 5%,transparent)}
+.catalog-filters .clear-filters:hover{border-color:color-mix(in srgb,var(--accent) 54%,var(--line));background:color-mix(in srgb,var(--accent) 11%,transparent)}
+.styled-select-popover{
+  box-sizing:border-box;
+  width:min(max(var(--trigger-width),220px),calc(100vw - 24px));
+  min-width:0;
+  max-width:calc(100vw - 24px);
+  max-height:min(360px,calc(100dvh - 24px));
+  overscroll-behavior:contain;
+}
+
+@media(max-width:1000px){
+  .catalog-filters{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .catalog-filters[data-media-type="anime"]{grid-template-areas:"search search year season" "categories categories format status" "sort sort clear clear"}
+  .catalog-filters[data-media-type="manga"]{grid-template-areas:"search search year year" "categories categories categories categories" "country format status sort" "clear clear clear clear"}
+}
+
+@media(max-width:700px){
+  .catalog-filters{grid-template-columns:repeat(2,minmax(0,1fr));padding:11px;gap:8px}
+  .catalog-filters[data-media-type="anime"]{grid-template-areas:"search search" "year season" "categories categories" "format status" "sort clear"}
+  .catalog-filters[data-media-type="manga"]{grid-template-areas:"search search" "year country" "categories categories" "format status" "sort clear"}
+}
+
+@media(max-width:460px){
+  .genre-multi-popover{
+    top:72px;right:10px;bottom:10px;left:10px;
+    width:auto;max-width:none;display:flex;flex-direction:column;
+    padding:12px;overflow:clip;box-sizing:border-box;transform:none;
+  }
+  .genre-multi-popover>header,.genre-multi-popover>.category-search,.genre-multi-popover>.category-options{width:auto;max-width:100%;transform:none}
+  .genre-multi-popover>.category-options{min-height:0;max-height:none;flex:1;padding-right:4px}
+  .category-group>div{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 
-export default function GenreMultiSelect({ genres = [], tags = [], value, onChange }) {
+export default function GenreMultiSelect({ genres = [], tags = [], value, onChange, className = '' }) {
   const dropdownId = useId()
   const details = useRef(null)
   const searchInput = useRef(null)
@@ -58,7 +58,7 @@ export default function GenreMultiSelect({ genres = [], tags = [], value, onChan
     else setQuery('')
   }
 
-  return <details ref={details} open={open} onToggle={handleToggle} className="genre-multi-select" data-field-label="Categorías">
+  return <details ref={details} open={open} onToggle={handleToggle} className={`genre-multi-select ${className}`} data-field-label="Categorías">
     <summary><span>{selectedCount ? `${selectedCount} seleccionada${selectedCount === 1 ? '' : 's'}` : 'Todas'}</span><ChevronDown /></summary>
     {open && <div className="genre-multi-popover">
       <header><div><strong>Categorías</strong><small>Géneros y etiquetas de AniList</small></div>{selectedCount > 0 && <button type="button" onClick={clear}><X /> Limpiar</button>}</header>

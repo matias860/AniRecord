@@ -22,7 +22,7 @@ export default function StyledSelect({ value, onChange, options, ariaLabel, fiel
         <Select.Value />
         <Select.Indicator />
       </Select.Trigger>
-      <Select.Popover className="styled-select-popover" placement="bottom start">
+      <Select.Popover className="styled-select-popover" placement="bottom start" containerPadding={12} shouldFlip>
         <ListBox className="styled-select-list">
           {options.map((option) => <ListBox.Item className="styled-select-option" id={option.value === '' ? emptyKey : String(option.value)} textValue={option.label} key={option.value || emptyKey}>
             <span>{option.label}</span><ListBox.ItemIndicator />
