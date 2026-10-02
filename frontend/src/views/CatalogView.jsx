@@ -31,6 +31,7 @@ export default function CatalogView() {
   const rawSearchParams = searchParams.toString()
   const filters = useMemo(() => filtersFromSearchParams(new URLSearchParams(rawSearchParams), type), [rawSearchParams, type])
   const [searchDraft, setSearchDraft] = useState(filters.search)
+  const [requestSearch, setRequestSearch] = useState(filters.search)
 
   const setFilters = (update) => {
     const nextFilters = typeof update === 'function' ? update(filters) : update
@@ -40,7 +41,7 @@ export default function CatalogView() {
   const updateSearchDraft = (value) => {
     const nextFilters = normalizeCatalogFilters({ ...filters, search: value }, type)
     setSearchDraft(nextFilters.search)
-    replaceCatalogUrl(type, nextFilters)
+    setSearchParams(searchParamsFromFilters(nextFilters), { replace: true })
   }
 
   useEffect(() => {
@@ -49,13 +50,9 @@ export default function CatalogView() {
   }, [filters.search, type])
 
   useEffect(() => {
-    if (searchDraft === filters.search) return undefined
-    const timer = window.setTimeout(() => {
-      const nextFilters = normalizeCatalogFilters({ ...filters, search: searchDraft }, type)
-      setSearchParams(searchParamsFromFilters(nextFilters), { replace: true })
-    }, 350)
+    const timer = window.setTimeout(() => setRequestSearch(filters.search), 350)
     return () => window.clearTimeout(timer)
-  }, [filters, searchDraft, setSearchParams, type])
+  }, [filters.search])
 
   useEffect(() => {
     if (!type) return
@@ -64,13 +61,13 @@ export default function CatalogView() {
   }, [authenticated, catalog.categoriesStatus, dispatch, library.status, type])
 
   useEffect(() => {
-    if (!type) return
+    if (!type || requestSearch !== filters.search) return undefined
     const applicableFilters = type === 'MANGA'
-      ? { ...filters, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
-      : { ...filters, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
+      ? { ...filters, search: requestSearch, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
+      : { ...filters, search: requestSearch, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
     const request = dispatch(fetchCatalog({ type, page: 1, filters: catalogRequestFilters(applicableFilters) }))
     return () => request.abort()
-  }, [dispatch, filters, type])
+  }, [dispatch, filters, requestSearch, type])
 
   const displayedItems = useMemo(() => {
     const query = filters.search.trim().toLocaleLowerCase('es')
@@ -92,7 +89,11 @@ export default function CatalogView() {
   if (!type) return <CatalogLanding />
   if ((catalog.status === 'idle' || catalog.status === 'loading') && !catalog.items.length) return <PageState fullPage loading />
 
-  const resetFilters = () => setFilters({ ...emptyCatalogFilters, genre: [], tag: [] })
+  const resetFilters = () => {
+    setSearchDraft('')
+    setRequestSearch('')
+    setFilters({ ...emptyCatalogFilters, genre: [], tag: [] })
+  }
   const changePage = (page) => { dispatch(fetchCatalog({ type, page, filters: catalog.filters })); window.scrollTo({ top: 0, behavior: 'smooth' }) }
   const update = (key) => (value) => setFilters((current) => ({ ...current, [key]: value }))
 
@@ -126,12 +127,6 @@ function navigateToMediaType(navigate, nextType, filters) {
   const nextFilters = normalizeCatalogFilters({ ...filters, format: '', country: '', season: '' }, nextType)
   const params = searchParamsFromFilters(nextFilters).toString()
   navigate(`/catalogo/${nextType.toLowerCase()}${params ? `?${params}` : ''}`)
-}
-
-function replaceCatalogUrl(type, filters) {
-  const params = searchParamsFromFilters(filters).toString()
-  const url = `/catalogo/${type.toLowerCase()}${params ? `?${params}` : ''}`
-  window.history.replaceState(window.history.state, '', url)
 }
 
 function CatalogSearch({ value, onChange }) {
