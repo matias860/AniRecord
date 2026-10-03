@@ -3,18 +3,20 @@ import { Bell, CheckCheck, GitBranch, Info, Play, RefreshCw, Trash2 } from 'luci
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
-import { fetchNotifications, markAllNotificationsRead, markNotificationRead } from '../../features/notifications/notificationSlice.js'
+import { fetchNotifications, markAllNotificationsRead, markNotificationRead, syncNotifications } from '../../features/notifications/notificationSlice.js'
+import { notificationSyncInterval } from '../../lib/notificationSync.js'
 
 const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2 }
-const POLL_INTERVAL = 15 * 60 * 1000
-
 export default function NotificationBell({ hovered, onMouseEnter }) {
   const [open, setOpen] = useState(false); const root = useRef(null); const dispatch = useDispatch()
   const { items, status, error } = useSelector((state) => state.notifications); const unread = items.filter((item) => !item.read).length
-  useEffect(() => { if (status === 'idle') dispatch(fetchNotifications()) }, [dispatch, status])
   useEffect(() => {
-    const refresh = () => { if (document.visibilityState === 'visible') dispatch(fetchNotifications()) }
-    const timer = window.setInterval(refresh, POLL_INTERVAL)
+    if (status !== 'idle') return
+    dispatch(fetchNotifications()).then(() => dispatch(syncNotifications()))
+  }, [dispatch, status])
+  useEffect(() => {
+    const refresh = () => { if (document.visibilityState === 'visible') dispatch(syncNotifications()) }
+    const timer = window.setInterval(refresh, notificationSyncInterval)
     document.addEventListener('visibilitychange', refresh)
     return () => { window.clearInterval(timer); document.removeEventListener('visibilitychange', refresh) }
   }, [dispatch])
@@ -24,8 +26,9 @@ export default function NotificationBell({ hovered, onMouseEnter }) {
     const next = !open
     setOpen(next)
     if (!next) return
-    dispatch(markAllNotificationsRead())
     if (status !== 'loading') await dispatch(fetchNotifications())
+    dispatch(markAllNotificationsRead())
+    await dispatch(syncNotifications())
     dispatch(markAllNotificationsRead())
   }
   return <div className="notification-root" ref={root} onMouseEnter={onMouseEnter}>{hovered && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}<button className="notification-button" onClick={toggle} aria-label={unread > 0 ? `Notificaciones sin leer: ${unread}` : 'Notificaciones'} aria-expanded={open} aria-controls="notification-popover"><Bell />{unread > 0 && <span className="notification-unread-dot" aria-hidden="true" />}</button>
