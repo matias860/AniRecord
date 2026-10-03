@@ -13,7 +13,11 @@ const days = [
 
 export default function WeeklySchedule({ entries, airingEntries, liveDataAvailable = true, seasonLabel, seasonOptions, seasonOffset, onSeasonChange }) {
   const airingById = new Map(airingEntries.map((entry) => [entry.anilistId, entry]))
-  const scheduled = entries.map((entry) => {
+  const seasonalIds = new Set(entries.map((entry) => entry.anilistId))
+  const scheduleSource = seasonOffset === 0
+    ? [...entries, ...airingEntries.filter((entry) => !seasonalIds.has(entry.anilistId))]
+    : entries
+  const scheduled = scheduleSource.map((entry) => {
     const airing = airingById.get(entry.anilistId)
     const timestamp = airing?.nextAiringEpisode?.airingAt
     const knownDate = timestamp ? new Date(timestamp * 1000) : entry.releaseStartDate ? new Date(`${entry.releaseStartDate}T12:00:00`) : null
