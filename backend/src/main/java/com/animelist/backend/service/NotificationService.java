@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.sql.Timestamp;
 import java.net.http.HttpClient;
 import java.util.*;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
@@ -45,6 +46,7 @@ public class NotificationService {
     private final AniListAuthService auth;
     private final CurrentUserService currentUser;
     private final RestClient client;
+    @Autowired
     public NotificationService(AppNotificationRepository repository, AppUserRepository users, AniListAuthService auth, CurrentUserService currentUser) {
         this(repository, users, auth, currentUser, notificationClient());
     }

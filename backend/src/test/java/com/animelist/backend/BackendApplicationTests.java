@@ -8,9 +8,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 		"spring.datasource.username=sa",
 		"spring.datasource.password=",
 		"spring.datasource.hikari.data-source-properties.sslmode=",
-		"spring.flyway.enabled=false",
-		"spring.jpa.hibernate.ddl-auto=create-drop",
-		"app.cookie-secure=false"
+	"spring.flyway.enabled=false",
+	"spring.jpa.hibernate.ddl-auto=create-drop",
+	"spring.main.lazy-initialization=false",
+	"app.cookie-secure=false"
 })
 class BackendApplicationTests {
 
