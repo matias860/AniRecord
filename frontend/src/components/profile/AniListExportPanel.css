@@ -2,6 +2,16 @@
 .anilist-export-panel .section-heading { margin-bottom: .4rem; }
 .anilist-export-panel p { line-height: 1.5; margin: .6rem 0; font-size: .85rem; }
 .anilist-export-intro,.anilist-export-note { color: var(--muted); }
+.anilist-import-card { display:grid; gap:.65rem; margin:.85rem 0; padding:.8rem; border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line)); border-radius:.85rem; background:color-mix(in srgb,var(--accent) 5%,transparent); }
+.anilist-import-copy { display:flex; align-items:flex-start; gap:.7rem; min-width:0; }
+.anilist-import-copy > span:last-child { display:grid; gap:.2rem; min-width:0; }
+.anilist-import-copy strong { font-size:.85rem; }
+.anilist-import-copy small { color:var(--muted); font-size:.72rem; line-height:1.45; }
+.anilist-import-icon { flex:0 0 auto; width:2rem; height:2rem; display:grid; place-items:center; border-radius:.65rem; color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
+.anilist-import-icon svg { width:1rem; }
+.anilist-import-card > button { justify-self:start; min-height:40px; padding:.45rem .7rem; font-size:.75rem; }
+.anilist-import-result { display:flex; align-items:center; gap:.4rem; margin:0 !important; color:color-mix(in srgb,var(--accent) 76%,white); }
+.anilist-import-result svg { width:1rem; }
 .anilist-export-details { font-size: .78rem; color: var(--muted); }
 .anilist-export-details summary { cursor: pointer; width: fit-content; padding: .25rem 0; }
 .anilist-export-error { color: #fb7185; overflow-wrap: anywhere; }
@@ -56,4 +66,5 @@
 @media (max-width: 560px) {
   .anilist-export-heading { align-items: stretch; flex-direction: column; }
   .anilist-export-heading .media-type-switch { align-self: flex-start; }
+  .anilist-import-card > button { width:100%; justify-content:center; }
 }

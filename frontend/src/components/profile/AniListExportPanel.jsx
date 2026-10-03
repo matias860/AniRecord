@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSelector } from 'react-redux'
-import { ArrowUpRight, RefreshCw, Upload, Check, Minus, Pause, Image as ImageIcon } from 'lucide-react'
+import { useDispatch, useSelector } from 'react-redux'
+import { ArrowDownToLine, ArrowUpRight, RefreshCw, Upload, Check, Minus, Pause, Image as ImageIcon } from 'lucide-react'
 import apiClient from '../../api/apiClient.js'
+import { synchronizeAniListLibrary } from '../../features/library/librarySlice.js'
 import MediaTypeSwitch from '../common/MediaTypeSwitch.jsx'
 import './AniListExportPanel.css'
 
@@ -39,7 +40,9 @@ function SelectionCheckbox({ checked, partial = false, onChange }) {
 }
 
 export default function AniListExportPanel() {
+  const dispatch = useDispatch()
   const accountType = useSelector((state) => state.auth.accountType)
+  const importStatus = useSelector((state) => state.library.syncStatus)
   const [mediaType, setMediaType] = useState('ANIME')
   const [preview, setPreview] = useState(null)
   const [phase, setPhase] = useState('idle')
@@ -48,6 +51,8 @@ export default function AniListExportPanel() {
   const [selected, setSelected] = useState(new Set())
   const [total, setTotal] = useState(0)
   const [activeEntry, setActiveEntry] = useState(null)
+  const [importResult, setImportResult] = useState(null)
+  const [importError, setImportError] = useState('')
   const stop = useRef(false)
   const mounted = useRef(true)
   const busy = useRef(false)
@@ -92,6 +97,17 @@ export default function AniListExportPanel() {
     } finally { busy.current = false }
   }
 
+  const importFromAniList = async () => {
+    if (working || importStatus === 'loading') return
+    setImportError(''); setImportResult(null)
+    try {
+      const result = await dispatch(synchronizeAniListLibrary()).unwrap()
+      if (mounted.current) setImportResult(result)
+    } catch (reason) {
+      if (mounted.current) setImportError(reason.message)
+    }
+  }
+
   if (accountType !== 'ANILIST') return null
   const working = phase === 'loading' || phase === 'sending' || phase === 'stopping'
   const reviewing = phase === 'review'
@@ -110,6 +126,18 @@ export default function AniListExportPanel() {
   return <section className="anilist-export-panel" aria-labelledby="anilist-export-heading">
     <div className="section-heading anilist-export-heading"><div><span className="eyebrow">Tu biblioteca conectada</span><h2 id="anilist-export-heading"><ArrowUpRight /> Sincronizar con AniList</h2></div><MediaTypeSwitch value={mediaType} onChange={changeMediaType} ariaLabel="Elegir biblioteca para sincronizar" /></div>
     <p className="anilist-export-intro">Combina tu biblioteca sin retroceder el progreso ni reemplazar puntuaciones existentes en AniList.</p>
+    <div className="anilist-import-card">
+      <div className="anilist-import-copy">
+        <span className="anilist-import-icon"><ArrowDownToLine aria-hidden="true" /></span>
+        <span><strong>Traer cambios desde AniList</strong><small>Agrega obras y favoritos que todavía no estén en AniRecord y actualiza sus fichas. Tus entradas existentes conservan progreso, estado y puntaje.</small></span>
+      </div>
+      <button type="button" className="secondary-button" disabled={working || importStatus === 'loading'} onClick={importFromAniList}>
+        <RefreshCw className={importStatus === 'loading' ? 'spin' : ''} />
+        {importStatus === 'loading' ? 'Trayendo cambios…' : 'Actualizar desde AniList'}
+      </button>
+      {importError && <p role="alert" className="anilist-export-error">{importError}</p>}
+      {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} fichas actualizadas · {importResult.personFavoritesCreated || 0} favoritos nuevos</p>}
+    </div>
     <details className="anilist-export-details"><summary>Qué se sincroniza</summary><p>Los {itemPlural} nuevos se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniList se conserva; AniRecord completa una puntuación únicamente cuando allí no hay ninguna. Los estados de pausa o abandono de AniList también se respetan. Fechas, notas y otros datos no se modifican.</p></details>
     {error && <p role="alert" className="anilist-export-error">{error}</p>}
     <div aria-live="polite" role="status">

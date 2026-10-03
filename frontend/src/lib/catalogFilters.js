@@ -19,6 +19,7 @@ const countries = new Set(['JP', 'KR', 'CN'])
 const searchLimit = 100
 const categoryLimit = 20
 const categoryLengthLimit = 80
+const maximumCatalogYear = new Date().getFullYear() + 3
 
 export function filtersFromSearchParams(searchParams, type) {
   return normalizeCatalogFilters({
@@ -83,7 +84,7 @@ function cleanSearch(value) {
 function cleanYear(value) {
   if (typeof value !== 'string' || !/^\d{4}$/.test(value)) return ''
   const year = Number(value)
-  return year >= 1940 && year <= 2100 ? String(year) : ''
+  return year >= 1940 && year <= maximumCatalogYear ? String(year) : ''
 }
 
 function allowedValue(value, allowed) {

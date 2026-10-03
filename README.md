@@ -58,7 +58,7 @@ operaciones destructivas. Las ampliaciones recientes que necesita producción
 se aplican mediante inicializadores idempotentes que solo crean o agregan
 estructuras y nunca eliminan datos.
 
-## Sincronización manual hacia AniList
+## Sincronización con AniList
 
 Las cuentas conectadas con AniList tienen en su perfil una sección para revisar y
 enviar anime, manga y novelas de AniRecord a AniList. Se comparan estado,
@@ -66,11 +66,17 @@ progreso y puntuación (convertida a la escala de 100 de AniList), y se pueden
 seleccionar las entradas a enviar. No se eliminan entradas remotas ni se exportan
 notas, fechas o favoritos.
 
+Desde la misma sección se pueden traer manualmente las novedades de AniList. Las
+obras y favoritos ausentes se agregan a AniRecord y las fichas existentes reciben
+metadatos recientes sin reemplazar su progreso, estado ni puntuación. Cuando una
+versión de AniRecord requiere actualizar esos datos, la importación se ejecuta una
+vez al entrar y la versión queda registrada al terminar correctamente.
+
 La vista previa es privada por usuario, dura dos horas y se invalida si el backend
 se reinicia. Cada envío vuelve a comprobar los valores locales y remotos. Si hay
 un cambio posterior, un error o una interrupción, se detiene el proceso y se debe
 revisar otra vez; los cambios ya aplicados permanecen en AniList y no se duplican.
-Mantener la página abierta durante el envío. No hay sincronización al iniciar sesión.
+Mantener la página abierta durante el envío hacia AniList.
 
 El token OAuth permanece cifrado en el servidor. Las escrituras no tienen reintentos
 automáticos y las peticiones de exportación se espacian al menos 2,5 segundos por

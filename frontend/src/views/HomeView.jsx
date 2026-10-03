@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play, RefreshCw, X } from 'lucide-react'
+import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -14,7 +14,6 @@ import TopNineShowcase from '../components/home/TopNineShowcase.jsx'
 import PageState from '../components/common/PageState.jsx'
 import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setWatchingPage } from '../features/home/homeSlice.js'
 import { fetchLibrary, incrementProgress, synchronizeAniListLibrary } from '../features/library/librarySlice.js'
-import { addToast } from '../features/toast/toastSlice.js'
 import { fetchWeeklyRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { fetchCurrentTopNine } from '../features/topNine/topNineSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
@@ -54,15 +53,11 @@ export default function HomeView() {
   const [recommendationModal, setRecommendationModal] = useState(false)
   const [topNineOpen, setTopNineOpen] = useState(false)
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
-  const [optimisticDismissal, setOptimisticDismissal] = useState(null)
   const localDismissedCommit = window.localStorage.getItem(syncPromptKey)
-  const optimisticCommit = optimisticDismissal?.userId === auth.userId ? optimisticDismissal.commit : null
-  const dismissedCommit = optimisticCommit || auth.lastSyncPromptCommit || localDismissedCommit
+  const dismissedCommit = auth.lastSyncPromptCommit || localDismissedCommit
   const pendingCommits = commitsSince(dismissedCommit)
   const synchronizationRecommended = pendingCommits.some((entry) => entry.recommended)
-  const visibleCommits = pendingCommits.slice(0, 6).map((entry) => entry.commit.slice(0, 7))
-  const commitSummary = `${visibleCommits.join(' · ')}${pendingCommits.length > visibleCommits.length ? ` · +${pendingCommits.length - visibleCommits.length}` : ''}`
-  const showSyncPrompt = auth.accountType === 'ANILIST' && dismissedCommit !== appCommit
+  const automaticSyncKey = `${syncPromptKey}:automatic:${appCommit}`
   const { season: selectedSeasonName, year: selectedSeasonYear } = seasonAtOffset(home.seasonOffset)
   const selectedSeasonKey = `${selectedSeasonName}-${selectedSeasonYear}`
   const selectedSeasonEntries = useMemo(
@@ -87,6 +82,32 @@ export default function HomeView() {
         .catch(() => {})
     }
   }, [auth.accountType, auth.authenticated, auth.lastSyncPromptCommit, auth.userId, dispatch, syncPromptKey])
+
+  useEffect(() => {
+    if (!auth.authenticated || !auth.userId || auth.accountType !== 'ANILIST'
+        || dismissedCommit === appCommit || library.status !== 'succeeded') return
+
+    const acknowledgeCurrentVersion = () => {
+      window.localStorage.setItem(syncPromptKey, appCommit)
+      dispatch(acknowledgeSyncPrompt(appCommit)).unwrap()
+        .then(() => window.localStorage.removeItem(syncPromptKey))
+        .catch(() => {})
+    }
+
+    if (!synchronizationRecommended) {
+      acknowledgeCurrentVersion()
+      return
+    }
+    if (window.sessionStorage.getItem(automaticSyncKey)) return
+    window.sessionStorage.setItem(automaticSyncKey, 'started')
+    dispatch(synchronizeAniListLibrary()).unwrap()
+      .then(acknowledgeCurrentVersion)
+      .catch(() => {
+        // The global toast reports the failure. Keeping the stored commit unchanged
+        // allows a new attempt in the next browser session or a manual retry in Perfil.
+      })
+  }, [auth.accountType, auth.authenticated, auth.userId, automaticSyncKey, dismissedCommit,
+    dispatch, library.status, synchronizationRecommended, syncPromptKey])
 
   useEffect(() => {
     if (auth.authenticated && library.status === 'succeeded' && home.status === 'idle') dispatch(fetchAiringSchedule())
@@ -173,63 +194,9 @@ export default function HomeView() {
       })
   }, [library.items, selectedSeasonEntries, selectedSeasonName, selectedSeasonYear])
 
-  const closeSyncPrompt = () => {
-    const previousCommit = dismissedCommit
-    window.localStorage.setItem(syncPromptKey, appCommit)
-    setOptimisticDismissal({ userId: auth.userId, commit: appCommit })
-    dispatch(acknowledgeSyncPrompt(appCommit)).unwrap()
-      .then(() => window.localStorage.removeItem(syncPromptKey))
-      .catch(() => {
-        if (previousCommit) window.localStorage.setItem(syncPromptKey, previousCommit)
-        else window.localStorage.removeItem(syncPromptKey)
-        setOptimisticDismissal(previousCommit ? { userId: auth.userId, commit: previousCommit } : null)
-        dispatch(addToast({
-          type: 'error',
-          title: 'No se guardó entre dispositivos',
-          message: 'No pudimos registrar esta decisión en tu cuenta. Inténtalo nuevamente.',
-        }))
-      })
-  }
-
-  const synchronize = async () => {
-    try {
-      const result = await dispatch(synchronizeAniListLibrary()).unwrap()
-      const people = result.personFavoritesCreated || 0
-      dispatch(addToast({
-        type: 'success',
-        title: 'Sincronización terminada',
-        message: people
-          ? `Se agregaron ${people} favoritos de AniList (${result.characterFavoritesCreated} personajes y ${result.staffFavoritesCreated} seiyūs).`
-          : 'La biblioteca se actualizó, pero no había personajes o seiyūs favoritos nuevos.',
-      }))
-      closeSyncPrompt()
-    } catch {
-      // The global toast keeps the error visible and the modal open for retrying.
-    }
-  }
-
   return (
     <>
       <AnimatePresence>
-        {showSyncPrompt && <motion.div key="sync-prompt" className="commit-sync-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.section className="commit-sync-modal" role="dialog" aria-modal="true" aria-labelledby="commit-sync-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
-            <button className="commit-sync-close" type="button" onClick={closeSyncPrompt} aria-label="Cerrar"><X /></button>
-            <div className="commit-sync-icon"><RefreshCw /></div>
-            <span className="eyebrow">Nueva actualización</span>
-            <h2 id="commit-sync-title">¿Actualizamos tu biblioteca?</h2>
-            <p>{synchronizationRecommended
-              ? 'Esta versión modifica la base o los metadatos. Conviene traer la información reciente de AniList; tu progreso, estados y puntajes no se modificarán.'
-              : 'Esta versión contiene cambios de interfaz o funcionamiento que no afectan los datos de tu biblioteca. Puedes continuar sin sincronizar.'}</p>
-            <div className="commit-sync-version"><small>{pendingCommits.length > 1 ? 'Commits' : 'Versión'} {commitSummary}</small><span className={synchronizationRecommended ? 'recommended' : 'optional'}>{synchronizationRecommended ? 'Conviene sincronizar' : 'No hace falta sincronizar'}</span></div>
-            <div className="commit-sync-actions">
-              <button type="button" className="secondary-button" onClick={closeSyncPrompt}>Ahora no</button>
-              <button type="button" className="primary-button" disabled={library.syncStatus === 'loading'} onClick={synchronize}>
-                <RefreshCw className={library.syncStatus === 'loading' ? 'spin' : ''} />
-                {library.syncStatus === 'loading' ? 'Sincronizando...' : synchronizationRecommended ? 'Sincronizar ahora' : 'Sincronizar igual'}
-              </button>
-            </div>
-          </motion.section>
-        </motion.div>}
         {recommendationModal && <WeeklyRecommendationModal key="recommendation-modal" onClose={() => setRecommendationModal(false)} />}
       </AnimatePresence>
       <section className="welcome-row">

@@ -17,7 +17,8 @@ import { catalogRequestFilters, emptyCatalogFilters, filtersFromSearchParams, no
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
-const years = Array.from({ length: 161 }, (_, index) => 2100 - index)
+const maximumCatalogYear = new Date().getFullYear() + 3
+const years = Array.from({ length: maximumCatalogYear - 1939 }, (_, index) => maximumCatalogYear - index)
 export default function CatalogView() {
   const { mediaType } = useParams()
   const navigate = useNavigate()

@@ -24,12 +24,13 @@ test('editable search keeps a trailing space and trims only the backend request'
 })
 
 test('manga URL filters preserve valid values and remove anime-only values', () => {
-  const params = new URLSearchParams('year=2050&season=WINTER&country=KR&format=NOVEL&status=HIATUS&sort=SCORE&genre=Drama&tag=Time%20Loop')
+  const validYear = new Date().getFullYear() + 3
+  const params = new URLSearchParams(`year=${validYear}&season=WINTER&country=KR&format=NOVEL&status=HIATUS&sort=SCORE&genre=Drama&tag=Time%20Loop`)
   const filters = filtersFromSearchParams(params, 'MANGA')
 
   assert.deepEqual(filters, {
     search: '',
-    year: '2050',
+    year: String(validYear),
     season: '',
     genre: ['Drama'],
     tag: ['Time Loop'],
@@ -38,6 +39,13 @@ test('manga URL filters preserve valid values and remove anime-only values', () 
     status: 'HIATUS',
     sort: 'SCORE',
   })
+})
+
+test('catalog years stop three years after the current year', () => {
+  const maximumYear = new Date().getFullYear() + 3
+
+  assert.equal(normalizeCatalogFilters({ year: String(maximumYear), genre: [], tag: [] }, 'ANIME').year, String(maximumYear))
+  assert.equal(normalizeCatalogFilters({ year: String(maximumYear + 1), genre: [], tag: [] }, 'ANIME').year, '')
 })
 
 test('serializing normalized filters produces a stable shareable URL', () => {
