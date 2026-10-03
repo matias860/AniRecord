@@ -6,6 +6,7 @@ import com.animelist.backend.entity.Media;
 import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.AccountType;
+import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.TrackingStatus;
 import java.util.List;
 import java.util.Optional;
@@ -66,6 +67,12 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
     List<LibraryEntry> findByUserIdAndMediaMediaTypeAndTrackingStatus(
             Long userId, MediaType mediaType,
             TrackingStatus trackingStatus
+    );
+
+    @EntityGraph(attributePaths = "media")
+    List<LibraryEntry> findByUserIdAndMediaMediaTypeAndTrackingStatusAndMediaReleaseSeasonAndMediaReleaseYear(
+            Long userId, MediaType mediaType, TrackingStatus trackingStatus,
+            ReleaseSeason releaseSeason, Integer releaseYear
     );
 
     @Query("select distinct entry.media from LibraryEntry entry where entry.user.accountType = :accountType")

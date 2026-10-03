@@ -16,6 +16,7 @@ import com.animelist.backend.entity.PersonFavorite;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.ActivityType;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.exception.ResourceNotFoundException;
@@ -26,6 +27,7 @@ import com.animelist.backend.repository.AppUserRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -204,8 +206,19 @@ public class LibraryService {
 
     @Transactional(readOnly = true)
     public List<AiringMediaResponse> findUpcomingEpisodes() {
-        List<LibraryEntry> entries = libraryEntryRepository
-                .findByUserIdAndMediaMediaTypeAndTrackingStatus(currentUser.require().getId(), MediaType.ANIME, TrackingStatus.IN_PROGRESS);
+        Long userId = currentUser.require().getId();
+        LocalDate today = LocalDate.now();
+        ReleaseSeason currentSeason = switch ((today.getMonthValue() - 1) / 3) {
+            case 0 -> ReleaseSeason.WINTER;
+            case 1 -> ReleaseSeason.SPRING;
+            case 2 -> ReleaseSeason.SUMMER;
+            default -> ReleaseSeason.FALL;
+        };
+        List<LibraryEntry> entries = new ArrayList<>(libraryEntryRepository
+                .findByUserIdAndMediaMediaTypeAndTrackingStatus(userId, MediaType.ANIME, TrackingStatus.IN_PROGRESS));
+        entries.addAll(libraryEntryRepository
+                .findByUserIdAndMediaMediaTypeAndTrackingStatusAndMediaReleaseSeasonAndMediaReleaseYear(
+                        userId, MediaType.ANIME, TrackingStatus.PLANNED, currentSeason, today.getYear()));
         List<Integer> ids = entries.stream()
                 .map(entry -> entry.getMedia().getAnilistId())
                 .toList();

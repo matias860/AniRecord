@@ -165,7 +165,11 @@ export default function HomeView() {
       && item.releaseSeason === selectedSeasonName && item.releaseYear === selectedSeasonYear)
       .map((item) => {
         const currentMedia = seasonMediaById.get(item.anilistId)
-        return currentMedia ? { ...item, releaseStartDate: currentMedia.releaseStartDate ?? item.releaseStartDate } : item
+        return currentMedia ? {
+          ...item,
+          releaseStartDate: currentMedia.releaseStartDate ?? item.releaseStartDate,
+          releaseStatus: currentMedia.releaseStatus ?? item.releaseStatus,
+        } : item
       })
   }, [library.items, selectedSeasonEntries, selectedSeasonName, selectedSeasonYear])
 

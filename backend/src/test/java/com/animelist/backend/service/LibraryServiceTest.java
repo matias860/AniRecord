@@ -22,6 +22,7 @@ import com.animelist.backend.entity.Media;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.entity.PersonFavorite;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.enums.PersonType;
 import com.animelist.backend.exception.BusinessException;
@@ -215,6 +216,33 @@ class LibraryServiceTest {
                 () -> libraryService.add(new AddLibraryEntryRequest(21, TrackingStatus.PLANNED))
         );
         verifyNoInteractions(aniListClient);
+    }
+
+    @Test
+    void upcomingEpisodesIncludePlannedAnimeFromTheCurrentSeason() {
+        LocalDate today = LocalDate.now();
+        ReleaseSeason season = switch ((today.getMonthValue() - 1) / 3) {
+            case 0 -> ReleaseSeason.WINTER;
+            case 1 -> ReleaseSeason.SPRING;
+            case 2 -> ReleaseSeason.SUMMER;
+            default -> ReleaseSeason.FALL;
+        };
+        LibraryEntry watching = entry(3, 12, TrackingStatus.IN_PROGRESS);
+        LibraryEntry planned = entry(0, 12, TrackingStatus.PLANNED);
+        planned.getMedia().setAnilistId(22);
+        planned.getMedia().setReleaseSeason(season);
+        planned.getMedia().setReleaseYear(today.getYear());
+        when(libraryEntryRepository.findByUserIdAndMediaMediaTypeAndTrackingStatus(
+                1L, MediaType.ANIME, TrackingStatus.IN_PROGRESS)).thenReturn(List.of(watching));
+        when(libraryEntryRepository
+                .findByUserIdAndMediaMediaTypeAndTrackingStatusAndMediaReleaseSeasonAndMediaReleaseYear(
+                        1L, MediaType.ANIME, TrackingStatus.PLANNED, season, today.getYear()))
+                .thenReturn(List.of(planned));
+        when(aniListClient.getAiringMedia(List.of(21, 22))).thenReturn(List.of());
+
+        assertEquals(List.of(), libraryService.findUpcomingEpisodes());
+
+        verify(aniListClient).getAiringMedia(List.of(21, 22));
     }
 
     @Test

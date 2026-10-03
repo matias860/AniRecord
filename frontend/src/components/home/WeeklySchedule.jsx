@@ -2,6 +2,7 @@ import { CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import StyledSelect from '../common/StyledSelect.jsx'
+import { hasPendingEpisode, isUpcomingPremiere } from '../../lib/schedule.js'
 
 const days = [
   { day: 1, label: 'L', name: 'Lunes' }, { day: 2, label: 'M', name: 'Martes' },
@@ -23,26 +24,45 @@ export default function WeeklySchedule({ entries, airingEntries, liveDataAvailab
     <div className="section-heading"><div><span className="eyebrow">{seasonOffset === 0 ? 'Tu semana' : 'Tu lista planeada'}</span><h2><CalendarDays /> {seasonOffset === 0 ? 'Próximas emisiones' : `Temporada ${seasonLabel}`}</h2></div><div className="schedule-controls"><StyledSelect className="schedule-select" ariaLabel="Temporada del calendario" value={String(seasonOffset)} onChange={onSeasonChange} options={seasonOptions} />{seasonOffset === 0 && <span className={`live-pill ${liveDataAvailable ? '' : 'unavailable'}`}><i /> {liveDataAvailable ? 'En emisión' : 'Datos guardados'}</span>}</div></div>
     <AnimatePresence mode="wait" initial={false}><motion.div key={seasonOffset} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: .25, ease: 'easeOut' }}>
       {seasonOffset === 0
-        ? liveDataAvailable ? <CurrentWeek entries={airingEntries} /> : <SavedSchedule entries={scheduled} />
+        ? <CurrentWeek entries={scheduled} liveDataAvailable={liveDataAvailable} />
         : <FutureSeason entries={scheduled} />}
     </motion.div></AnimatePresence>
   </section>
 }
 
-function SavedSchedule({ entries }) {
-  if (!entries.length) return <div className="schedule-preview-empty">No hay fechas guardadas para los anime de esta temporada. Tu biblioteca sigue disponible.</div>
-  const knownGroups = days.map((item) => ({ ...item, entries: entries.filter((entry) => entry.day === item.day) }))
-  return <div className="schedule-scroll"><div className="schedule-grid"><div className="schedule-line" />{knownGroups.map((item) => <div className="schedule-day" key={item.name}>
-    <span className="day-dot">{item.label}</span><small>{item.name}</small><div className="day-covers">{item.entries.map((entry) => <Link to={`/media/${entry.anilistId}`} className="airing-cover" key={entry.anilistId} title={`${entry.title} · horario no disponible`}><img src={entry.coverImage} alt={entry.title} /><span>—</span></Link>)}{!item.entries.length && <span className="no-airing">—</span>}</div>
-  </div>)}</div></div>
+function CurrentWeek({ entries, liveDataAvailable }) {
+  if (!entries.length) return <div className="schedule-preview-empty">No tienes anime en esta temporada dentro de Viendo o Pendientes.</div>
+  const today = new Date().getDay()
+  const byDay = days.map((item) => ({ ...item, entries: entries.filter((entry) => entry.day === item.day) }))
+  const unknownEntries = entries.filter((entry) => entry.day == null)
+  return <>
+    <div className="schedule-scroll"><div className="schedule-grid"><div className="schedule-line" />{byDay.map((item) => <div className={`schedule-day ${today === item.day ? 'today' : ''}`} key={item.name}>
+      <span className="day-dot">{item.label}</span><small>{item.name}</small><div className="day-covers">{item.entries.map((entry) => <CurrentScheduleCover entry={entry} liveDataAvailable={liveDataAvailable} key={entry.anilistId} />)}{!item.entries.length && <span className="no-airing">—</span>}</div>
+    </div>)}</div></div>
+    {!!unknownEntries.length && <div className="schedule-undated"><strong>Fecha por confirmar</strong><div>{unknownEntries.map((entry) => <CurrentScheduleCover entry={entry} liveDataAvailable={liveDataAvailable} key={entry.anilistId} />)}</div></div>}
+  </>
 }
 
-function CurrentWeek({ entries }) {
-  const today = new Date().getDay()
-  const byDay = days.map((item) => ({ ...item, entries: entries.filter((entry) => new Date(entry.nextAiringEpisode.airingAt * 1000).getDay() === item.day) }))
-  return <div className="schedule-scroll"><div className="schedule-grid"><div className="schedule-line" />{byDay.map((item) => <div className={`schedule-day ${today === item.day ? 'today' : ''}`} key={item.name}>
-    <span className="day-dot">{item.label}</span><small>{item.name}</small><div className="day-covers">{item.entries.map((entry) => <Link to={`/media/${entry.anilistId}`} className={`airing-cover ${entry.nextAiringEpisode.episode - 1 > entry.currentProgress ? 'episode-pending' : ''}`} key={entry.anilistId} title={`${entry.title} · Episodio ${entry.nextAiringEpisode.episode}`}><img src={entry.coverImage} alt={entry.title} /><span>EP {entry.nextAiringEpisode.episode}</span></Link>)}{!item.entries.length && <span className="no-airing">—</span>}</div>
-  </div>)}</div></div>
+function CurrentScheduleCover({ entry, liveDataAvailable }) {
+  const nextEpisode = entry.airing?.nextAiringEpisode
+  const upcoming = isUpcomingPremiere(entry)
+  const pending = hasPendingEpisode(entry)
+  const label = upcoming ? 'Estreno' : pending ? `EP ${nextEpisode.episode - 1}` : nextEpisode ? `EP ${nextEpisode.episode}` : 'Al día'
+  const dateLabel = upcoming
+    ? entry.releaseStartDate
+      ? formatShortDate(entry.releaseStartDate)
+      : nextEpisode ? formatTimestamp(nextEpisode.airingAt) : null
+    : null
+  const titleDetail = upcoming
+    ? `Estreno ${dateLabel}`
+    : nextEpisode ? `Próximo episodio ${nextEpisode.episode}` : liveDataAvailable ? 'Sin próximo episodio anunciado' : 'Horario no disponible'
+
+  return <div className={`airing-item ${upcoming ? 'upcoming' : ''}`}>
+    <Link to={`/media/${entry.anilistId}`} className={`airing-cover ${pending ? 'episode-pending' : ''}`} title={`${entry.title} · ${titleDetail}`}>
+      <img src={entry.coverImage} alt={entry.title} /><span>{label}</span>
+    </Link>
+    {upcoming && <small>{dateLabel ? `Estrena ${dateLabel}` : 'Estreno sin fecha'}</small>}
+  </div>
 }
 
 function FutureSeason({ entries }) {
@@ -64,4 +84,9 @@ function ScheduleDay({ group, unknown = false }) {
 function formatShortDate(date) {
   if (!date) return 'Sin fecha'
   return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(`${date}T12:00:00`))
+}
+
+function formatTimestamp(timestamp) {
+  if (!timestamp) return null
+  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(timestamp * 1000))
 }
