@@ -41,11 +41,11 @@ class AppNotificationRepositoryTest {
         notification.setOccurredAt(LocalDateTime.now());
         repository.saveAndFlush(notification);
 
-        var responses = repository.findByUserIdOrderByOccurredAtDesc(user.getId(), PageRequest.of(0, 10));
+        var responses = repository.findResponsesByUserId(user.getId(), PageRequest.of(0, 10));
 
         assertThat(responses).singleElement().satisfies(response -> {
-            assertThat(response.getTitle()).isEqualTo("Nueva secuela");
-            assertThat(response.getRead()).isFalse();
+            assertThat(response.title()).isEqualTo("Nueva secuela");
+            assertThat(response.read()).isFalse();
         });
     }
 }

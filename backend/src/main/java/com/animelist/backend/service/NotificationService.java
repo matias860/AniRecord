@@ -315,9 +315,8 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> findRecent(int limit) {
-        return repository.findByUserIdOrderByOccurredAtDesc(
-                currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100)))
-                .stream().map(this::response).toList();
+        return repository.findResponsesByUserId(
+                currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100)));
     }
     public long unreadCount() { return repository.countByUserIdAndReadFalse(currentUser.require().getId()); }
     @Transactional public void read(Long id) { Long uid=currentUser.require().getId(); repository.findById(id).filter(n->n.getUser().getId().equals(uid)).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
@@ -346,10 +345,4 @@ public class NotificationService {
     }
     private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case AIRING_EPISODE -> "Se estrenó el episodio " + number(item.get("episode")); case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); }; }
     private Integer number(Object value) { return value instanceof Number number ? number.intValue() : null; }
-    private NotificationResponse response(AppNotification notification) {
-        return new NotificationResponse(
-                notification.getId(), notification.getNotificationType(), notification.getAnilistMediaId(),
-                notification.getTitle(), notification.getCoverImage(), notification.getMessage(),
-                notification.getEpisode(), Boolean.TRUE.equals(notification.getRead()), notification.getOccurredAt());
-    }
 }

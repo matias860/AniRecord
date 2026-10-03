@@ -16,11 +16,13 @@ apiClient.interceptors.response.use(
       window.localStorage.removeItem('persist:anime-list-v2')
       window.location.replace('/')
     }
-    const message =
-      error.response?.data?.message ||
-      (error.code === 'ECONNABORTED'
-        ? 'El servidor tardó demasiado en responder.'
-        : 'No se pudo conectar con el backend.')
+    const status = error.response?.status
+    let fallbackMessage = 'No se pudo conectar con el backend.'
+    if (error.code === 'ECONNABORTED') fallbackMessage = 'El servidor tardó demasiado en responder.'
+    else if ([502, 503, 504].includes(status)) fallbackMessage = `El backend no está disponible temporalmente (HTTP ${status}).`
+    else if (status === 404) fallbackMessage = 'No se encontró la ruta del backend (HTTP 404).'
+    else if (status) fallbackMessage = `El backend respondió con un error (HTTP ${status}).`
+    const message = error.response?.data?.message || fallbackMessage
     const wrappedError = new Error(message, { cause: error })
     wrappedError.status = error.response?.status
     wrappedError.code = error.code

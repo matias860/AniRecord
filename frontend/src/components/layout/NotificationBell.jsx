@@ -12,7 +12,9 @@ export default function NotificationBell({ hovered, onMouseEnter }) {
   const { items, status, error } = useSelector((state) => state.notifications); const unread = items.filter((item) => !item.read).length
   useEffect(() => {
     if (status !== 'idle') return
-    dispatch(fetchNotifications()).then(() => dispatch(syncNotifications()))
+    dispatch(fetchNotifications()).then((action) => {
+      if (fetchNotifications.fulfilled.match(action)) dispatch(syncNotifications())
+    })
   }, [dispatch, status])
   useEffect(() => {
     const refresh = () => { if (document.visibilityState === 'visible') dispatch(syncNotifications()) }
@@ -27,15 +29,20 @@ export default function NotificationBell({ hovered, onMouseEnter }) {
     setOpen(next)
     if (!next) return
     const result = status !== 'loading' ? await dispatch(fetchNotifications()) : null
-    const visibleItems = fetchNotifications.fulfilled.match(result) ? result.payload : items
+    const loaded = fetchNotifications.fulfilled.match(result)
+    const visibleItems = loaded ? result.payload : items
     const visibleUnreadIds = visibleItems.filter((item) => !item.read).map((item) => item.id)
     if (visibleUnreadIds.length) await dispatch(markNotificationsRead(visibleUnreadIds))
-    dispatch(syncNotifications())
+    if (loaded) dispatch(syncNotifications())
+  }
+  const retry = async () => {
+    const result = await dispatch(fetchNotifications())
+    if (fetchNotifications.fulfilled.match(result)) dispatch(syncNotifications())
   }
   return <div className="notification-root" ref={root} onMouseEnter={onMouseEnter}>{hovered && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}<button className="notification-button" onClick={toggle} aria-label={unread > 0 ? `Notificaciones sin leer: ${unread}` : 'Notificaciones'} aria-expanded={open} aria-controls="notification-popover"><Bell />{unread > 0 && <span className="notification-unread-dot" aria-hidden="true" />}</button>
     <AnimatePresence>{open && <motion.div id="notification-popover" role="dialog" aria-label="Notificaciones" className="notification-popover" initial={{ opacity: 0, y: -8, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: .98 }}>
       <header><div><span className="eyebrow">Novedades</span><h3>Notificaciones</h3></div>{unread > 0 && <button onClick={() => dispatch(markAllNotificationsRead())}><CheckCheck /> Leer todas</button>}</header>
-      <div className="notification-list">{status === 'loading' && !items.length ? <p>Cargando novedades…</p> : error && !items.length ? <div className="notification-error"><p>{error}</p><button onClick={() => dispatch(fetchNotifications())}>Reintentar</button></div> : items.length ? items.slice(0, 10).map((item) => <NotificationItem item={item} onSelect={() => select(item)} key={item.id} />) : <p>No hay novedades todavía.</p>}</div>
+      <div className="notification-list">{status === 'loading' && !items.length ? <p>Cargando novedades…</p> : error && !items.length ? <div className="notification-error"><p>{error}</p><button onClick={retry}>Reintentar</button></div> : items.length ? items.slice(0, 10).map((item) => <NotificationItem item={item} onSelect={() => select(item)} key={item.id} />) : <p>No hay novedades todavía.</p>}</div>
     </motion.div>}</AnimatePresence></div>
 }
 
