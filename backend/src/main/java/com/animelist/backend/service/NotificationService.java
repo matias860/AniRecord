@@ -1,7 +1,6 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.dto.notification.NotificationResponse;
-import com.animelist.backend.dto.notification.NotificationRow;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.enums.NotificationType;
 import com.animelist.backend.enums.AccountType;
@@ -12,6 +11,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.Duration;
+import java.sql.Timestamp;
 import java.net.http.HttpClient;
 import java.util.*;
 import org.springframework.data.domain.PageRequest;
@@ -350,17 +350,32 @@ public class NotificationService {
     }
     private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case AIRING_EPISODE -> "Se estrenó el episodio " + number(item.get("episode")); case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); }; }
     private Integer number(Object value) { return value instanceof Number number ? number.intValue() : null; }
-    private NotificationResponse response(NotificationRow row) {
+    private NotificationResponse response(Object[] row) {
         NotificationType type;
         try {
-            type = NotificationType.valueOf(row.getType());
+            type = NotificationType.valueOf(Objects.toString(row[1], ""));
         } catch (IllegalArgumentException | NullPointerException exception) {
             LOGGER.warn("Se ignoró una notificación con tipo histórico incompatible: notificationId={}, type={}",
-                    row.getId(), row.getType());
+                    row[0], row[1]);
             return null;
         }
         return new NotificationResponse(
-                row.getId(), type, row.getAnilistMediaId(), row.getTitle(), row.getCoverImage(),
-                row.getMessage(), row.getEpisode(), row.getRead(), row.getOccurredAt());
+                longValue(row[0]), type, integerValue(row[2]), Objects.toString(row[3], "Sin título"),
+                stringValue(row[4]), stringValue(row[5]), integerValue(row[6]), booleanValue(row[7]),
+                localDateTime(row[8]));
+    }
+    private Long longValue(Object value) { return value instanceof Number number ? number.longValue() : null; }
+    private Integer integerValue(Object value) { return value instanceof Number number ? number.intValue() : null; }
+    private String stringValue(Object value) { return value == null ? null : value.toString(); }
+    private Boolean booleanValue(Object value) {
+        if (value instanceof Boolean bool) return bool;
+        if (value instanceof Number number) return number.intValue() != 0;
+        return Boolean.parseBoolean(Objects.toString(value, "false"));
+    }
+    private LocalDateTime localDateTime(Object value) {
+        if (value instanceof LocalDateTime dateTime) return dateTime;
+        if (value instanceof Timestamp timestamp) return timestamp.toLocalDateTime();
+        if (value instanceof java.time.OffsetDateTime dateTime) return dateTime.toLocalDateTime();
+        throw new IllegalArgumentException("Fecha de notificación incompatible");
     }
 }

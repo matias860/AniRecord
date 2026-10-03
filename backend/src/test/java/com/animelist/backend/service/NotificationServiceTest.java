@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import com.animelist.backend.dto.notification.NotificationRow;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.AccountType;
@@ -37,13 +36,8 @@ class NotificationServiceTest {
         user.setId(5L);
         when(currentUser.require()).thenReturn(user);
 
-        NotificationRow invalid = mock(NotificationRow.class);
-        when(invalid.getId()).thenReturn(1L);
-        when(invalid.getType()).thenReturn("AIRING");
-        NotificationRow valid = mock(NotificationRow.class);
-        when(valid.getId()).thenReturn(2L);
-        when(valid.getType()).thenReturn("AIRING_EPISODE");
-        when(valid.getTitle()).thenReturn("Anime");
+        Object[] invalid = { 1L, "AIRING", null, "Histórica", null, null, null, false, LocalDateTime.now() };
+        Object[] valid = { 2L, "AIRING_EPISODE", 20, "Anime", null, "Nuevo episodio", 2, false, LocalDateTime.now() };
         when(notifications.findRowsByUserId(any(), any())).thenReturn(List.of(invalid, valid));
         NotificationService service = new NotificationService(
                 notifications, users, auth, currentUser, mock(RestClient.class));

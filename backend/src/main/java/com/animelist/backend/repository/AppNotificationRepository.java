@@ -1,6 +1,5 @@
 package com.animelist.backend.repository;
 
-import com.animelist.backend.dto.notification.NotificationRow;
 import com.animelist.backend.entity.AppNotification;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -16,15 +15,13 @@ public interface AppNotificationRepository extends JpaRepository<AppNotification
      * while an additive schema migration is still being applied in production.
      */
     @Query(value = """
-        select id as "id", notification_type as "type",
-            anilist_media_id as "anilistMediaId", title as "title",
-            cover_image as "coverImage", message as "message", episode as "episode",
-            is_read as "read", occurred_at as "occurredAt"
+        select id, notification_type, anilist_media_id, title,
+            cover_image, message, episode, is_read, occurred_at
         from app_notification
         where user_id = :userId
         order by occurred_at desc
         """, nativeQuery = true)
-    List<NotificationRow> findRowsByUserId(
+    List<Object[]> findRowsByUserId(
             @org.springframework.data.repository.query.Param("userId") Long userId,
             Pageable pageable);
     long countByUserIdAndReadFalse(Long userId);

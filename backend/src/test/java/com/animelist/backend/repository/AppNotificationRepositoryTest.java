@@ -44,9 +44,9 @@ class AppNotificationRepositoryTest {
         var responses = repository.findRowsByUserId(user.getId(), PageRequest.of(0, 10));
 
         assertThat(responses).singleElement().satisfies(response -> {
-            assertThat(response.getTitle()).isEqualTo("Nueva secuela");
-            assertThat(response.getType()).isEqualTo("RELATED_MEDIA_ADDITION");
-            assertThat(response.getRead()).isFalse();
+            assertThat(response[3]).isEqualTo("Nueva secuela");
+            assertThat(response[1].toString()).isEqualTo("RELATED_MEDIA_ADDITION");
+            assertThat(response[7]).isEqualTo(false);
         });
     }
 }
