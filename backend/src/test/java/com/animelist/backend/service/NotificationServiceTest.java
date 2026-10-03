@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import com.animelist.backend.dto.notification.NotificationRow;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.AccountType;
@@ -13,6 +14,7 @@ import com.animelist.backend.repository.AppNotificationRepository;
 import com.animelist.backend.repository.AppUserRepository;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
@@ -26,6 +28,32 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class NotificationServiceTest {
+    @Test void skipsHistoricalNotificationTypesInsteadOfFailingTheWholeList() {
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AppUserRepository users = mock(AppUserRepository.class);
+        AniListAuthService auth = mock(AniListAuthService.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser();
+        user.setId(5L);
+        when(currentUser.require()).thenReturn(user);
+
+        NotificationRow invalid = mock(NotificationRow.class);
+        when(invalid.getId()).thenReturn(1L);
+        when(invalid.getType()).thenReturn("AIRING");
+        NotificationRow valid = mock(NotificationRow.class);
+        when(valid.getId()).thenReturn(2L);
+        when(valid.getType()).thenReturn("AIRING_EPISODE");
+        when(valid.getTitle()).thenReturn("Anime");
+        when(notifications.findRowsByUserId(any(), any())).thenReturn(List.of(invalid, valid));
+        NotificationService service = new NotificationService(
+                notifications, users, auth, currentUser, mock(RestClient.class));
+
+        var result = service.findRecent(10);
+
+        assertEquals(1, result.size());
+        assertEquals(2L, result.get(0).id());
+    }
+
     @Test void reportsFailedSynchronizationWhenAniListCannotBeReached() {
         AppNotificationRepository notifications = mock(AppNotificationRepository.class);
         AppUserRepository users = mock(AppUserRepository.class);

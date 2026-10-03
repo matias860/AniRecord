@@ -1,6 +1,7 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.dto.notification.NotificationResponse;
+import com.animelist.backend.dto.notification.NotificationRow;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.enums.NotificationType;
 import com.animelist.backend.enums.AccountType;
@@ -315,8 +316,12 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> findRecent(int limit) {
-        return repository.findResponsesByUserId(
-                currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100)));
+        return repository.findRowsByUserId(
+                currentUser.require().getId(), PageRequest.of(0, Math.min(limit, 100)))
+                .stream()
+                .map(this::response)
+                .filter(Objects::nonNull)
+                .toList();
     }
     public long unreadCount() { return repository.countByUserIdAndReadFalse(currentUser.require().getId()); }
     @Transactional public void read(Long id) { Long uid=currentUser.require().getId(); repository.findById(id).filter(n->n.getUser().getId().equals(uid)).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
@@ -345,4 +350,17 @@ public class NotificationService {
     }
     private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case AIRING_EPISODE -> "Se estrenó el episodio " + number(item.get("episode")); case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); }; }
     private Integer number(Object value) { return value instanceof Number number ? number.intValue() : null; }
+    private NotificationResponse response(NotificationRow row) {
+        NotificationType type;
+        try {
+            type = NotificationType.valueOf(row.getType());
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            LOGGER.warn("Se ignoró una notificación con tipo histórico incompatible: notificationId={}, type={}",
+                    row.getId(), row.getType());
+            return null;
+        }
+        return new NotificationResponse(
+                row.getId(), type, row.getAnilistMediaId(), row.getTitle(), row.getCoverImage(),
+                row.getMessage(), row.getEpisode(), row.getRead(), row.getOccurredAt());
+    }
 }

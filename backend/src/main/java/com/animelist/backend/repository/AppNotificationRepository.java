@@ -1,6 +1,6 @@
 package com.animelist.backend.repository;
 
-import com.animelist.backend.dto.notification.NotificationResponse;
+import com.animelist.backend.dto.notification.NotificationRow;
 import com.animelist.backend.entity.AppNotification;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -15,17 +15,16 @@ public interface AppNotificationRepository extends JpaRepository<AppNotification
      * Only select fields required by the UI. This keeps notification reads working
      * while an additive schema migration is still being applied in production.
      */
-    @Query("""
-        select new com.animelist.backend.dto.notification.NotificationResponse(
-            notification.id, notification.notificationType, notification.anilistMediaId,
-            notification.title, notification.coverImage, notification.message,
-            notification.episode, coalesce(notification.read, false), notification.occurredAt
-        )
-        from AppNotification notification
-        where notification.user.id = :userId
-        order by notification.occurredAt desc
-        """)
-    List<NotificationResponse> findResponsesByUserId(
+    @Query(value = """
+        select id as "id", notification_type as "type",
+            anilist_media_id as "anilistMediaId", title as "title",
+            cover_image as "coverImage", message as "message", episode as "episode",
+            is_read as "read", occurred_at as "occurredAt"
+        from app_notification
+        where user_id = :userId
+        order by occurred_at desc
+        """, nativeQuery = true)
+    List<NotificationRow> findRowsByUserId(
             @org.springframework.data.repository.query.Param("userId") Long userId,
             Pageable pageable);
     long countByUserIdAndReadFalse(Long userId);

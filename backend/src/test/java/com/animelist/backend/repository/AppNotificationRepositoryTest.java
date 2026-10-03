@@ -41,11 +41,12 @@ class AppNotificationRepositoryTest {
         notification.setOccurredAt(LocalDateTime.now());
         repository.saveAndFlush(notification);
 
-        var responses = repository.findResponsesByUserId(user.getId(), PageRequest.of(0, 10));
+        var responses = repository.findRowsByUserId(user.getId(), PageRequest.of(0, 10));
 
         assertThat(responses).singleElement().satisfies(response -> {
-            assertThat(response.title()).isEqualTo("Nueva secuela");
-            assertThat(response.read()).isFalse();
+            assertThat(response.getTitle()).isEqualTo("Nueva secuela");
+            assertThat(response.getType()).isEqualTo("RELATED_MEDIA_ADDITION");
+            assertThat(response.getRead()).isFalse();
         });
     }
 }
