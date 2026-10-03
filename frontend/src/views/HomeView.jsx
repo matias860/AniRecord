@@ -94,12 +94,12 @@ export default function HomeView() {
         .catch(() => {})
     }
 
+    if (window.sessionStorage.getItem(automaticSyncKey)) return
+    window.sessionStorage.setItem(automaticSyncKey, 'started')
     if (!synchronizationRecommended) {
       acknowledgeCurrentVersion()
       return
     }
-    if (window.sessionStorage.getItem(automaticSyncKey)) return
-    window.sessionStorage.setItem(automaticSyncKey, 'started')
     dispatch(synchronizeAniListLibrary()).unwrap()
       .then(acknowledgeCurrentVersion)
       .catch(() => {
