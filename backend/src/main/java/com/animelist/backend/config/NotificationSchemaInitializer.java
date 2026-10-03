@@ -41,6 +41,9 @@ public class NotificationSchemaInitializer implements ApplicationRunner {
 
         jdbc.execute("ALTER TABLE app_notification ADD COLUMN IF NOT EXISTS source_key VARCHAR(180)");
         jdbc.execute("ALTER TABLE app_notification ALTER COLUMN anilist_notification_id DROP NOT NULL");
+        jdbc.execute("UPDATE app_notification SET is_read = FALSE WHERE is_read IS NULL");
+        jdbc.execute("ALTER TABLE app_notification ALTER COLUMN is_read SET DEFAULT FALSE");
+        jdbc.execute("ALTER TABLE app_notification ALTER COLUMN is_read SET NOT NULL");
         jdbc.execute("""
             CREATE UNIQUE INDEX IF NOT EXISTS uk_notification_user_source_key
             ON app_notification(user_id, source_key)
