@@ -26,6 +26,26 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 class NotificationServiceTest {
+    @Test void reportsFailedSynchronizationWhenAniListCannotBeReached() {
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AppUserRepository users = mock(AppUserRepository.class);
+        AniListAuthService auth = mock(AniListAuthService.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser();
+        user.setId(6L);
+        user.setAccountType(AccountType.ANILIST);
+        user.setNotificationsInitializedAt(LocalDateTime.now());
+        when(currentUser.require()).thenReturn(user);
+        when(auth.validToken(user)).thenThrow(new IllegalStateException("AniList unavailable"));
+        NotificationService service = new NotificationService(
+                notifications, users, auth, currentUser, mock(RestClient.class));
+
+        NotificationService.SyncResult result = service.syncSafely();
+
+        assertFalse(result.successful());
+        assertEquals(0, result.added());
+    }
+
     @Test void importsEveryAiringEpisodeWithANumber() {
         assertTrue(NotificationService.shouldImport("AiringNotification", 1));
         assertTrue(NotificationService.shouldImport("AiringNotification", 2));

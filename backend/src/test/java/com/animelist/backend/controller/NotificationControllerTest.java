@@ -29,9 +29,14 @@ class NotificationControllerTest {
         NotificationService service = mock(NotificationService.class);
         NotificationController controller = new NotificationController(service);
         List<NotificationResponse> stored = List.of();
+        when(service.syncSafely()).thenReturn(new NotificationService.SyncResult(true, 2));
         when(service.findRecent(10)).thenReturn(stored);
 
-        assertEquals(stored, controller.sync(10));
+        var response = controller.sync(10);
+
+        assertEquals(2, response.added());
+        assertEquals(true, response.successful());
+        assertEquals(stored, response.notifications());
 
         verify(service).syncSafely();
         verify(service).findRecent(10);

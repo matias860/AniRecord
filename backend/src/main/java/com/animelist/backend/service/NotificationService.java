@@ -64,35 +64,41 @@ public class NotificationService {
         return RestClient.builder().requestFactory(requestFactory).build();
     }
 
-    public int syncSafely() {
+    public SyncResult syncSafely() {
         try {
             var user = currentUser.require();
-            if (user.getAccountType() == AccountType.LOCAL) return 0;
-            return user.getNotificationsInitializedAt() == null ? initialSync() : sync();
+            if (user.getAccountType() == AccountType.LOCAL) return new SyncResult(true, 0);
+            String token = auth.validToken(user);
+            if (token == null) return new SyncResult(false, 0);
+            int added = sync(user.getNotificationsInitializedAt() == null, token);
+            return new SyncResult(true, added);
         }
         catch (RuntimeException exception) {
             LOGGER.warn("No se pudieron sincronizar las notificaciones de AniList; se conserva el historial local", exception);
-            return 0;
+            return new SyncResult(false, 0);
         }
     }
+
+    public record SyncResult(boolean successful, int added) {}
 
     @Transactional
     @SuppressWarnings("unchecked")
     public int sync() {
-        return sync(false);
+        String token = auth.validToken();
+        return token == null ? 0 : sync(false, token);
     }
 
     @Transactional
     @SuppressWarnings("unchecked")
     public int initialSync() {
-        return sync(true);
+        String token = auth.validToken();
+        return token == null ? 0 : sync(true, token);
     }
 
     @Transactional
     @SuppressWarnings("unchecked")
-    private int sync(boolean markImportedAsRead) {
+    private int sync(boolean markImportedAsRead, String token) {
         var user=currentUser.require();
-        String token = auth.validToken(); if (token == null) return 0;
         Integer originalBackfillPage = user.getNotificationBackfillPage();
         Integer originalCatchupPage = user.getNotificationCatchupPage();
         Integer originalCatchupAnchorId = user.getNotificationCatchupAnchorId();
@@ -315,6 +321,7 @@ public class NotificationService {
     }
     public long unreadCount() { return repository.countByUserIdAndReadFalse(currentUser.require().getId()); }
     @Transactional public void read(Long id) { Long uid=currentUser.require().getId(); repository.findById(id).filter(n->n.getUser().getId().equals(uid)).ifPresent(item -> { item.setRead(true); repository.save(item); }); }
+    @Transactional public void read(List<Long> ids) { if (!ids.isEmpty()) repository.markAsRead(currentUser.require().getId(), ids.stream().distinct().limit(100).toList()); }
     @Transactional public void readAll() { repository.markAllAsRead(currentUser.require().getId()); }
 
     @SuppressWarnings("unchecked")

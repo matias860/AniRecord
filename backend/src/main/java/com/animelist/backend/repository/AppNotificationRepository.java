@@ -15,4 +15,9 @@ public interface AppNotificationRepository extends JpaRepository<AppNotification
     @Modifying
     @Query("update AppNotification notification set notification.read = true where notification.user.id = :userId and notification.read = false")
     int markAllAsRead(@org.springframework.data.repository.query.Param("userId") Long userId);
+    @Modifying
+    @Query("update AppNotification notification set notification.read = true where notification.user.id = :userId and notification.id in :ids")
+    int markAsRead(
+            @org.springframework.data.repository.query.Param("userId") Long userId,
+            @org.springframework.data.repository.query.Param("ids") List<Long> ids);
 }
