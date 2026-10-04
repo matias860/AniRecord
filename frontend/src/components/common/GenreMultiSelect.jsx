@@ -1,12 +1,16 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Check, ChevronDown, Search, X } from 'lucide-react'
 
 export default function GenreMultiSelect({ genres = [], tags = [], value, onChange, className = '' }) {
   const dropdownId = useId()
   const details = useRef(null)
+  const trigger = useRef(null)
+  const popover = useRef(null)
   const searchInput = useRef(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const [popoverStyle, setPopoverStyle] = useState(undefined)
   const legacyValue = Array.isArray(value)
   const selectedGenres = legacyValue ? value : value?.genre ?? []
   const selectedTags = legacyValue ? [] : value?.tag ?? []
@@ -32,7 +36,9 @@ export default function GenreMultiSelect({ genres = [], tags = [], value, onChan
       if (event.detail !== dropdownId) closeDropdown(details, setOpen, setQuery)
     }
     const closeOutside = (event) => {
-      if (details.current && !details.current.contains(event.target)) closeDropdown(details, setOpen, setQuery)
+      const insideTrigger = details.current?.contains(event.target)
+      const insidePopover = popover.current?.contains(event.target)
+      if (!insideTrigger && !insidePopover) closeDropdown(details, setOpen, setQuery)
     }
     const closeOnEscape = (event) => {
       if (event.key === 'Escape') closeDropdown(details, setOpen, setQuery)
@@ -51,6 +57,51 @@ export default function GenreMultiSelect({ genres = [], tags = [], value, onChan
     if (open) window.requestAnimationFrame(() => searchInput.current?.focus())
   }, [open])
 
+  const positionPopover = useCallback(() => {
+    const triggerRect = trigger.current?.getBoundingClientRect()
+    if (!triggerRect) return
+
+    const viewportWidth = document.documentElement.clientWidth
+    const viewportHeight = window.innerHeight
+    const margin = 12
+    const gap = 8
+    const triggerStyles = window.getComputedStyle(trigger.current)
+    const theme = Object.fromEntries(
+      ['--accent', '--accent-2', '--user-bg', '--user-surface']
+        .map((property) => [property, triggerStyles.getPropertyValue(property).trim()])
+        .filter(([, value]) => value),
+    )
+
+    if (viewportWidth <= 460) {
+      setPopoverStyle({ ...theme, top: 72, right: margin, bottom: margin, left: margin, width: 'auto', maxHeight: 'none' })
+      return
+    }
+
+    const width = Math.min(620, viewportWidth - margin * 2)
+    const left = Math.min(Math.max(triggerRect.right - width, margin), viewportWidth - width - margin)
+    const spaceBelow = viewportHeight - triggerRect.bottom - gap - margin
+    const spaceAbove = triggerRect.top - gap - margin
+    const placeAbove = spaceBelow < 360 && spaceAbove > spaceBelow
+    const availableHeight = Math.max(200, placeAbove ? spaceAbove : spaceBelow)
+    const maxHeight = Math.min(480, availableHeight)
+
+    setPopoverStyle(placeAbove
+      ? { ...theme, right: 'auto', bottom: viewportHeight - triggerRect.top + gap, left, width, maxHeight }
+      : { ...theme, top: triggerRect.bottom + gap, right: 'auto', bottom: 'auto', left, width, maxHeight })
+  }, [])
+
+  useEffect(() => {
+    if (!open) return undefined
+    const frame = window.requestAnimationFrame(positionPopover)
+    window.addEventListener('resize', positionPopover)
+    window.addEventListener('scroll', positionPopover, true)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      window.removeEventListener('resize', positionPopover)
+      window.removeEventListener('scroll', positionPopover, true)
+    }
+  }, [open, positionPopover])
+
   const handleToggle = (event) => {
     const nextOpen = event.currentTarget.open
     setOpen(nextOpen)
@@ -59,8 +110,8 @@ export default function GenreMultiSelect({ genres = [], tags = [], value, onChan
   }
 
   return <details ref={details} open={open} onToggle={handleToggle} className={`genre-multi-select ${className}`} data-field-label="Categorías">
-    <summary><span>{selectedCount ? `${selectedCount} seleccionada${selectedCount === 1 ? '' : 's'}` : 'Todas'}</span><ChevronDown /></summary>
-    {open && <div className="genre-multi-popover">
+    <summary ref={trigger}><span>{selectedCount ? `${selectedCount} seleccionada${selectedCount === 1 ? '' : 's'}` : 'Todas'}</span><ChevronDown /></summary>
+    {open && createPortal(<div ref={popover} className="genre-multi-popover" style={popoverStyle}>
       <header><div><strong>Categorías</strong><small>Géneros y etiquetas de AniList</small></div>{selectedCount > 0 && <button type="button" onClick={clear}><X /> Limpiar</button>}</header>
       {tags.length > 0 && <label className="category-search"><Search /><input ref={searchInput} value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar categoría…" /></label>}
       <div className="category-options">
@@ -68,7 +119,7 @@ export default function GenreMultiSelect({ genres = [], tags = [], value, onChan
         {groupedTags.map(([category, categoryTags]) => <CategoryGroup key={category} title={category}>{categoryTags.map((tag) => <CategoryOption key={tag.name} label={tag.name} description={tag.description} selected={selectedTags.includes(tag.name)} onClick={() => toggleTag(tag.name)} />)}</CategoryGroup>)}
         {!filteredGenres.length && !groupedTags.length && <p className="category-empty">No encontramos esa categoría.</p>}
       </div>
-    </div>}
+    </div>, document.body)}
   </details>
 }
 
