@@ -1,70 +1,84 @@
-.anilist-export-panel { margin: 1rem 0; padding: 1rem; border: 1px solid var(--line); border-radius: 1rem; background: var(--user-surface,var(--surface)); }
-.anilist-export-panel .section-heading { margin-bottom: .4rem; }
-.anilist-export-panel p { line-height: 1.5; margin: .6rem 0; font-size: .85rem; }
-.anilist-export-intro,.anilist-export-note { color: var(--muted); }
-.anilist-import-card { display:grid; gap:.65rem; margin:.85rem 0; padding:.8rem; border:1px solid color-mix(in srgb,var(--accent) 22%,var(--line)); border-radius:.85rem; background:color-mix(in srgb,var(--accent) 5%,transparent); }
-.anilist-import-copy { display:flex; align-items:flex-start; gap:.7rem; min-width:0; }
-.anilist-import-copy > span:last-child { display:grid; gap:.2rem; min-width:0; }
-.anilist-import-copy strong { font-size:.85rem; }
-.anilist-import-copy small { color:var(--muted); font-size:.72rem; line-height:1.45; }
-.anilist-import-icon { flex:0 0 auto; width:2rem; height:2rem; display:grid; place-items:center; border-radius:.65rem; color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,transparent); }
-.anilist-import-icon svg { width:1rem; }
-.anilist-import-card > button { justify-self:start; min-height:40px; padding:.45rem .7rem; font-size:.75rem; }
-.anilist-import-result { display:flex; align-items:center; gap:.4rem; margin:0 !important; color:color-mix(in srgb,var(--accent) 76%,white); }
-.anilist-import-result svg { width:1rem; }
-.anilist-export-details { font-size: .78rem; color: var(--muted); }
-.anilist-export-details summary { cursor: pointer; width: fit-content; padding: .25rem 0; }
-.anilist-export-error { color: #fb7185; overflow-wrap: anywhere; }
-.anilist-export-selection,.anilist-export-entry { display: flex; gap: .65rem; align-items: center; cursor: pointer; }
-.anilist-export-selection { margin: .65rem 0; font-size: .8rem; }
-.anilist-export-checkbox-input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; clip-path: inset(50%); }
-.anilist-export-checkbox { flex: 0 0 auto; width: 1.25rem; height: 1.25rem; display: grid; place-items: center; border: 1px solid color-mix(in srgb,var(--accent) 32%,var(--line)); border-radius: .38rem; color: #fff; background: color-mix(in srgb,var(--user-bg,#0a0c14) 78%,var(--user-surface,var(--surface))); box-shadow: inset 0 1px 0 rgba(255,255,255,.04),0 4px 12px rgba(0,0,0,.15); transition: border-color .18s,background .18s,box-shadow .18s,transform .18s; }
-.anilist-export-checkbox svg { width: .82rem; height: .82rem; stroke-width: 3; opacity: 0; transform: scale(.55); transition: opacity .15s,transform .18s; }
-.anilist-export-checkbox-input:checked + .anilist-export-checkbox,.anilist-export-checkbox.is-partial { border-color: color-mix(in srgb,var(--accent) 78%,#fff); background: linear-gradient(145deg,color-mix(in srgb,var(--accent) 92%,#fff),color-mix(in srgb,var(--accent) 76%,#171124)); box-shadow: 0 5px 16px color-mix(in srgb,var(--accent) 25%,transparent),inset 0 1px 0 rgba(255,255,255,.2); }
-.anilist-export-checkbox-input:checked + .anilist-export-checkbox svg,.anilist-export-checkbox.is-partial svg { opacity: 1; transform: scale(1); }
-.anilist-export-selection:hover .anilist-export-checkbox,.anilist-export-entry:hover .anilist-export-checkbox { border-color: color-mix(in srgb,var(--accent) 70%,#fff); transform: translateY(-1px); }
-.anilist-export-checkbox-input:focus-visible + .anilist-export-checkbox { outline: 2px solid color-mix(in srgb,var(--accent) 75%,#fff); outline-offset: 3px; }
-.anilist-export-checkbox-input:disabled + .anilist-export-checkbox { opacity: .45; cursor: not-allowed; }
-.anilist-export-changes { max-height: 20rem; overflow-y: auto; border: 1px solid var(--line); border-radius: .7rem; }
-.anilist-export-entry { padding: .6rem .75rem; border-bottom: 1px solid var(--line); }
-.anilist-export-entry:hover { background: color-mix(in srgb,var(--accent) 5%,transparent); }
-.anilist-export-entry:last-child { border-bottom: 0; }
-.anilist-export-entry > span { min-width: 0; overflow-wrap: anywhere; font-size: .82rem; }
-.anilist-export-entry small { display: block; color: var(--muted); line-height: 1.5; font-size: .72rem; }
-.anilist-export-cover { position: relative; flex: 0 0 auto; width: 36px; height: 50px; overflow: hidden; border-radius: 5px; background: var(--surface-2); display: grid; place-items: center; color: var(--muted); }
-.anilist-export-cover img { width: 100%; height: 100%; object-fit: cover; }
-.anilist-export-cover > svg { width: 20px; }
-.anilist-export-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .7rem; }
-.anilist-export-actions button { min-height: 44px; padding: .5rem .8rem; font-size: .8rem; }
-.anilist-export-transfer { display: flex; align-items: center; gap: .85rem; padding: .8rem; margin-top: .85rem; border: 1px solid color-mix(in srgb,var(--accent) 30%,var(--line)); border-radius: .85rem; background: linear-gradient(110deg,color-mix(in srgb,var(--accent) 9%,transparent),transparent); }
-.anilist-export-transfer .anilist-export-cover { width: 60px; height: 84px; border-radius: 7px; box-shadow: 0 4px 14px #0003; }
-.anilist-export-cover-scan { position: absolute; inset: 0; background: linear-gradient(transparent 35%,color-mix(in srgb,var(--accent) 60%,transparent) 90%,#fff9); transform: translateY(-100%); animation: anilist-scan 2.3s ease-in-out infinite; }
-.anilist-export-transfer-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .22rem; }
-.anilist-export-transfer-label { color: var(--accent); font-size: .65rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-.anilist-export-transfer-copy > strong { font-size: .95rem; line-height: 1.35; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.anilist-export-transfer-meta { font-size: .75rem; color: var(--muted); }
-.anilist-export-transfer-copy > small { font-size: .68rem; color: var(--muted); line-height: 1.4; }
-.anilist-export-meter { flex: 0 0 auto; display: grid; justify-items: center; gap: .25rem; font-size: .72rem; font-variant-numeric: tabular-nums; font-weight: 700; }
-.anilist-export-meter > span > span { color: var(--muted); font-weight: 400; }
-.anilist-export-ring { width: 48px; height: 48px; position: relative; display: grid; place-items: center; color: var(--accent); }
-.anilist-export-ring > svg:first-child { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); fill: none; stroke-width: 3; }
-.anilist-export-ring > svg:last-child { width: 18px; height: 18px; }
-.ring-track { stroke: var(--line); }
-.ring-value { stroke: currentColor; stroke-linecap: round; transition: stroke-dasharray .4s ease; }
-.anilist-export-upload-icon { animation: anilist-upload 1.5s ease-in-out infinite; }
-.anilist-export-loading { display: flex; gap: .5rem; align-items: center; color: var(--muted); }
-.anilist-export-loading svg { width: 16px; animation: anilist-spin 1.4s linear infinite; }
-.anilist-export-panel :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-@keyframes anilist-scan { to { transform: translateY(100%); } }
-@keyframes anilist-upload { 50% { transform: translateY(-3px); opacity: .5; } }
-@keyframes anilist-spin { to { transform: rotate(360deg); } }
-@media (max-width: 420px) { .anilist-export-transfer { gap: .6rem; padding: .65rem; } .anilist-export-transfer .anilist-export-cover { width: 48px; height: 68px; } .anilist-export-transfer-copy > strong { font-size: .82rem; } .anilist-export-transfer-label { font-size: .58rem; } .anilist-export-ring { width: 40px; height: 40px; } }
-@media (prefers-reduced-motion: reduce) { .anilist-export-panel *, .anilist-export-panel *::before { animation: none !important; transition: none !important; } .anilist-export-cover-scan { display: none; } }
-.anilist-export-heading { align-items: flex-end; gap: 1rem; }
-.anilist-export-heading .media-type-switch { flex: 0 0 auto; }
-
-@media (max-width: 560px) {
-  .anilist-export-heading { align-items: stretch; flex-direction: column; }
-  .anilist-export-heading .media-type-switch { align-self: flex-start; }
-  .anilist-import-card > button { width:100%; justify-content:center; }
-}
+.anilist-sync-section { margin: 1.25rem 0; }
+.anilist-sync-heading { margin-bottom: .8rem; }
+.anilist-sync-heading p { margin: .3rem 0 0; color: var(--muted); font-size: .82rem; }
+.anilist-sync-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.85rem; align-items:stretch; }
+.anilist-sync-card { --direction:var(--accent); position:relative; min-width:0; min-height:390px; display:flex; flex-direction:column; gap:.72rem; padding:1rem; overflow:hidden; border:1px solid color-mix(in srgb,var(--direction) 30%,var(--line)); border-radius:1rem; background:linear-gradient(145deg,color-mix(in srgb,var(--direction) 7%,var(--user-surface,var(--surface))),var(--user-surface,var(--surface)) 56%); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); }
+.anilist-sync-card::before { content:""; position:absolute; inset:0 0 auto; height:3px; background:linear-gradient(90deg,var(--direction),color-mix(in srgb,var(--direction) 15%,transparent)); }
+.anilist-sync-card.is-import { --direction:#3db4f2; }
+.anilist-sync-card p { line-height:1.5; margin:0; font-size:.8rem; }
+.anilist-direction-route { display:flex; align-items:center; gap:.45rem; width:fit-content; color:var(--muted); }
+.anilist-direction-route span { padding:.28rem .52rem; border:1px solid color-mix(in srgb,var(--direction) 25%,var(--line)); border-radius:999px; color:color-mix(in srgb,var(--direction) 74%,white); background:color-mix(in srgb,var(--direction) 8%,transparent); font-size:.62rem; font-weight:800; letter-spacing:.035em; }
+.anilist-direction-route svg { width:.9rem; height:.9rem; color:var(--direction); }
+.anilist-card-title { display:flex; align-items:center; gap:.7rem; }
+.anilist-card-title > div { min-width:0; }
+.anilist-card-title small { display:block; margin-bottom:.1rem; color:var(--direction); font-size:.6rem; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.anilist-card-title h3 { margin:0; font-size:1.15rem; line-height:1.2; letter-spacing:-.025em; }
+.anilist-card-icon { flex:0 0 auto; width:2.35rem; height:2.35rem; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--direction) 35%,var(--line)); border-radius:.75rem; color:var(--direction); background:color-mix(in srgb,var(--direction) 12%,transparent); box-shadow:0 8px 24px color-mix(in srgb,var(--direction) 10%,transparent); }
+.anilist-card-icon svg { width:1.15rem; }
+.anilist-card-description { min-height:2.5rem; color:var(--muted); }
+.anilist-safe-note { display:flex; align-items:flex-start; gap:.55rem; padding:.65rem; border:1px solid color-mix(in srgb,var(--direction) 18%,var(--line)); border-radius:.72rem; background:color-mix(in srgb,var(--direction) 5%,transparent); }
+.anilist-safe-note > svg { flex:0 0 auto; width:1rem; color:var(--direction); }
+.anilist-safe-note > span { display:grid; gap:.08rem; min-width:0; }
+.anilist-safe-note strong { font-size:.7rem; }
+.anilist-safe-note small { color:var(--muted); font-size:.64rem; line-height:1.4; }
+.anilist-sync-card .media-type-switch { align-self:flex-start; }
+.anilist-export-details { font-size:.74rem; color:var(--muted); }
+.anilist-export-details summary { cursor:pointer; width:fit-content; padding:.15rem 0; color:color-mix(in srgb,var(--direction) 62%,white); font-weight:700; }
+.anilist-export-details p { margin:.45rem 0 0; }
+.anilist-export-error { color:#fb7185; overflow-wrap:anywhere; }
+.anilist-import-spacer { flex:1; min-height:.35rem; }
+.anilist-import-result { display:flex; align-items:flex-start; gap:.4rem; padding:.65rem; border-radius:.7rem; color:#9ae6ff; background:rgba(61,180,242,.09); }
+.anilist-import-result svg { flex:0 0 auto; width:1rem; }
+.anilist-export-selection,.anilist-export-entry { display:flex; gap:.65rem; align-items:center; cursor:pointer; }
+.anilist-export-selection { margin:.15rem 0; font-size:.75rem; }
+.anilist-export-checkbox-input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; clip-path:inset(50%); }
+.anilist-export-checkbox { flex:0 0 auto; width:1.25rem; height:1.25rem; display:grid; place-items:center; border:1px solid color-mix(in srgb,var(--direction) 32%,var(--line)); border-radius:.38rem; color:#fff; background:color-mix(in srgb,var(--user-bg,#0a0c14) 78%,var(--user-surface,var(--surface))); box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 4px 12px rgba(0,0,0,.15); transition:border-color .18s,background .18s,box-shadow .18s,transform .18s; }
+.anilist-export-checkbox svg { width:.82rem; height:.82rem; stroke-width:3; opacity:0; transform:scale(.55); transition:opacity .15s,transform .18s; }
+.anilist-export-checkbox-input:checked + .anilist-export-checkbox,.anilist-export-checkbox.is-partial { border-color:color-mix(in srgb,var(--direction) 78%,#fff); background:linear-gradient(145deg,color-mix(in srgb,var(--direction) 92%,#fff),color-mix(in srgb,var(--direction) 76%,#171124)); box-shadow:0 5px 16px color-mix(in srgb,var(--direction) 25%,transparent),inset 0 1px 0 rgba(255,255,255,.2); }
+.anilist-export-checkbox-input:checked + .anilist-export-checkbox svg,.anilist-export-checkbox.is-partial svg { opacity:1; transform:scale(1); }
+.anilist-export-selection:hover .anilist-export-checkbox,.anilist-export-entry:hover .anilist-export-checkbox { border-color:color-mix(in srgb,var(--direction) 70%,#fff); transform:translateY(-1px); }
+.anilist-export-checkbox-input:focus-visible + .anilist-export-checkbox { outline:2px solid color-mix(in srgb,var(--direction) 75%,#fff); outline-offset:3px; }
+.anilist-export-changes { max-height:20rem; overflow-y:auto; border:1px solid var(--line); border-radius:.7rem; }
+.anilist-export-entry { padding:.6rem; border-bottom:1px solid var(--line); }
+.anilist-export-entry:hover { background:color-mix(in srgb,var(--direction) 5%,transparent); }
+.anilist-export-entry:last-child { border-bottom:0; }
+.anilist-export-entry > span { min-width:0; overflow-wrap:anywhere; font-size:.78rem; }
+.anilist-export-entry small { display:block; color:var(--muted); line-height:1.45; font-size:.68rem; }
+.anilist-export-cover { position:relative; flex:0 0 auto; width:36px; height:50px; overflow:hidden; border-radius:5px; background:var(--surface-2); display:grid; place-items:center; color:var(--muted); }
+.anilist-export-cover img { width:100%; height:100%; object-fit:cover; }
+.anilist-export-cover > svg { width:20px; }
+.anilist-export-actions { display:grid; gap:.5rem; margin-top:auto; padding-top:.2rem; }
+.anilist-sync-button { width:100%; min-height:44px; display:flex; align-items:center; justify-content:center; gap:.5rem; padding:.6rem .8rem; border:1px solid color-mix(in srgb,var(--direction) 45%,var(--line)); border-radius:.75rem; color:#fff; background:linear-gradient(135deg,color-mix(in srgb,var(--direction) 86%,#171124),color-mix(in srgb,var(--direction) 60%,#0b0d16)); box-shadow:0 8px 22px color-mix(in srgb,var(--direction) 16%,transparent); font-size:.76rem; font-weight:800; transition:transform .18s,border-color .18s,filter .18s; }
+.anilist-sync-button:hover:not(:disabled) { transform:translateY(-1px); filter:brightness(1.08); border-color:color-mix(in srgb,var(--direction) 76%,white); }
+.anilist-sync-button:disabled { cursor:not-allowed; opacity:.55; }
+.anilist-sync-button svg { flex:0 0 auto; width:1rem; }
+.anilist-sync-button.is-import { --direction:#3db4f2; margin-top:auto; }
+.anilist-sync-button.is-confirm { --direction:#22c55e; }
+.anilist-sync-button.is-stop { --direction:#ef4444; }
+.anilist-export-transfer { display:flex; align-items:center; gap:.65rem; padding:.7rem; border:1px solid color-mix(in srgb,var(--direction) 30%,var(--line)); border-radius:.75rem; background:linear-gradient(110deg,color-mix(in srgb,var(--direction) 9%,transparent),transparent); }
+.anilist-export-transfer .anilist-export-cover { width:50px; height:70px; border-radius:7px; box-shadow:0 4px 14px #0003; }
+.anilist-export-cover-scan { position:absolute; inset:0; background:linear-gradient(transparent 35%,color-mix(in srgb,var(--direction) 60%,transparent) 90%,#fff9); transform:translateY(-100%); animation:anilist-scan 2.3s ease-in-out infinite; }
+.anilist-export-transfer-copy { flex:1; min-width:0; display:flex; flex-direction:column; gap:.18rem; }
+.anilist-export-transfer-label { color:var(--direction); font-size:.58rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.anilist-export-transfer-copy > strong { font-size:.82rem; line-height:1.3; overflow-wrap:anywhere; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.anilist-export-transfer-meta { font-size:.68rem; color:var(--muted); }
+.anilist-export-transfer-copy > small { font-size:.62rem; color:var(--muted); line-height:1.35; }
+.anilist-export-meter { flex:0 0 auto; display:grid; justify-items:center; gap:.2rem; font-size:.68rem; font-variant-numeric:tabular-nums; font-weight:700; }
+.anilist-export-meter > span > span { color:var(--muted); font-weight:400; }
+.anilist-export-ring { width:42px; height:42px; position:relative; display:grid; place-items:center; color:var(--direction); }
+.anilist-export-ring > svg:first-child { position:absolute; inset:0; width:100%; height:100%; transform:rotate(-90deg); fill:none; stroke-width:3; }
+.anilist-export-ring > svg:last-child { width:16px; height:16px; }
+.ring-track { stroke:var(--line); }
+.ring-value { stroke:currentColor; stroke-linecap:round; transition:stroke-dasharray .4s ease; }
+.anilist-export-upload-icon { animation:anilist-upload 1.5s ease-in-out infinite; }
+.anilist-export-loading { display:flex; gap:.5rem; align-items:center; color:var(--muted); }
+.anilist-export-loading svg { width:16px; animation:anilist-spin 1.4s linear infinite; }
+.anilist-sync-section :focus-visible { outline:2px solid var(--direction,var(--accent)); outline-offset:3px; }
+.sync-pulse { animation:anilist-pulse 1.1s ease-in-out infinite; }
+@keyframes anilist-scan { to { transform:translateY(100%); } }
+@keyframes anilist-upload { 50% { transform:translateY(-3px); opacity:.5; } }
+@keyframes anilist-spin { to { transform:rotate(360deg); } }
+@keyframes anilist-pulse { 50% { transform:translateY(2px); opacity:.55; } }
+@media (max-width:900px) { .anilist-sync-grid { grid-template-columns:1fr; } .anilist-sync-card { min-height:0; } .anilist-import-spacer { display:none; } }
+@media (max-width:420px) { .anilist-sync-card { padding:.8rem; } .anilist-card-description { min-height:0; } .anilist-export-transfer { gap:.5rem; padding:.6rem; } .anilist-export-transfer .anilist-export-cover { width:44px; height:62px; } .anilist-export-ring { width:38px; height:38px; } }
+@media (prefers-reduced-motion:reduce) { .anilist-sync-section *, .anilist-sync-section *::before { animation:none !important; transition:none !important; } .anilist-export-cover-scan { display:none; } }

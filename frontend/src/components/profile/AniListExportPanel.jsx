@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { ArrowDownToLine, ArrowUpRight, RefreshCw, Upload, Check, Minus, Pause, Image as ImageIcon } from 'lucide-react'
+import { ArrowDownToLine, ArrowRight, ArrowUpRight, RefreshCw, Upload, Check, Minus, Pause, ShieldCheck, Image as ImageIcon } from 'lucide-react'
 import apiClient from '../../api/apiClient.js'
 import { synchronizeAniListLibrary } from '../../features/library/librarySlice.js'
 import MediaTypeSwitch from '../common/MediaTypeSwitch.jsx'
@@ -123,65 +123,76 @@ export default function AniListExportPanel() {
     setMediaType(nextType); setPreview(null); setPhase('idle'); setError(''); setCompleted(0); setTotal(0); setSelected(new Set()); setActiveEntry(null)
   }
 
-  return <section className="anilist-export-panel" aria-labelledby="anilist-export-heading">
-    <div className="section-heading anilist-export-heading"><div><span className="eyebrow">Tu biblioteca conectada</span><h2 id="anilist-export-heading"><ArrowUpRight /> Sincronizar con AniList</h2></div><MediaTypeSwitch value={mediaType} onChange={changeMediaType} ariaLabel="Elegir biblioteca para sincronizar" /></div>
-    <p className="anilist-export-intro">Combina tu biblioteca sin retroceder el progreso ni reemplazar puntuaciones existentes en AniList.</p>
-    <div className="anilist-import-card">
-      <div className="anilist-import-copy">
-        <span className="anilist-import-icon"><ArrowDownToLine aria-hidden="true" /></span>
-        <span><strong>Traer cambios desde AniList</strong><small>Agrega obras y favoritos que todavía no estén en AniRecord y actualiza sus fichas. Tus entradas existentes conservan progreso, estado y puntaje.</small></span>
-      </div>
-      <button type="button" className="secondary-button" disabled={working || importStatus === 'loading'} onClick={importFromAniList}>
-        <RefreshCw className={importStatus === 'loading' ? 'spin' : ''} />
-        {importStatus === 'loading' ? 'Trayendo cambios…' : 'Actualizar desde AniList'}
-      </button>
-      {importError && <p role="alert" className="anilist-export-error">{importError}</p>}
-      {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} fichas actualizadas · {importResult.personFavoritesCreated || 0} favoritos nuevos</p>}
-    </div>
-    <details className="anilist-export-details"><summary>Qué se sincroniza</summary><p>Los {itemPlural} nuevos se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniList se conserva; AniRecord completa una puntuación únicamente cuando allí no hay ninguna. Los estados de pausa o abandono de AniList también se respetan. Fechas, notas y otros datos no se modifican.</p></details>
-    {error && <p role="alert" className="anilist-export-error">{error}</p>}
-    <div aria-live="polite" role="status">
-      {phase === 'loading' && <p className="anilist-export-loading"><RefreshCw aria-hidden="true" /> Comparando tu biblioteca…</p>}
-      {showTransfer && <div className={`anilist-export-transfer is-${phase}`}>
-        <Cover key={`${activeEntry.entryId}-${activeEntry.coverImage}`} entry={activeEntry} uploading={sending} />
-        <div className="anilist-export-transfer-copy">
-          <span className="anilist-export-transfer-label">{phase === 'done' ? 'Biblioteca sincronizada' : phase === 'stopped' ? 'Envío detenido' : phase === 'stopping' ? 'Terminando la entrada actual' : 'Enviando a AniList'}</span>
-          <strong>{phase === 'done' ? 'Todo al día' : activeEntry.title}</strong>
-          <span className="anilist-export-transfer-meta">{phase === 'done' ? `${completed} ${completed === 1 ? `${itemName} sincronizado` : `${itemPlural} sincronizados`}` : `${statusLabel(activeEntry.after.status, mediaType)} · ${activeEntry.before ? 'Actualizando entrada' : 'Agregando a tu lista'}`}</span>
-          <small>{sending ? 'Mantené esta página abierta.' : phase === 'stopped' ? 'Lo enviado se conserva. Revisá de nuevo para continuar.' : 'Tus cambios ya están en AniList.'}</small>
+  return <section className="anilist-sync-section" aria-labelledby="anilist-sync-heading">
+    <div className="section-heading anilist-sync-heading"><div><span className="eyebrow">Tu biblioteca conectada</span><h2 id="anilist-sync-heading"><RefreshCw /> Sincronización con AniList</h2><p>Elegí la dirección según dónde hiciste los cambios.</p></div></div>
+    <div className="anilist-sync-grid">
+      <article className="anilist-sync-card is-export" aria-labelledby="anilist-export-heading">
+        <div className="anilist-direction-route" aria-label="De AniRecord hacia AniList"><span>AniRecord</span><ArrowRight /><span>AniList</span></div>
+        <div className="anilist-card-title"><span className="anilist-card-icon"><ArrowUpRight /></span><div><small>Enviar cambios</small><h3 id="anilist-export-heading">Actualizar AniList</h3></div></div>
+        <p className="anilist-card-description">Combina tu biblioteca sin retroceder el progreso ni reemplazar puntuaciones que ya existan en AniList.</p>
+        <div className="anilist-safe-note"><ShieldCheck /><span><strong>Envío protegido</strong><small>Primero revisás cada cambio y elegís cuáles confirmar.</small></span></div>
+        <MediaTypeSwitch value={mediaType} onChange={changeMediaType} ariaLabel="Elegir biblioteca para enviar a AniList" />
+        <details className="anilist-export-details"><summary>Qué se envía</summary><p>Los {itemPlural} nuevos se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniList se conserva; AniRecord completa una puntuación únicamente cuando allí no hay ninguna. Los estados de pausa o abandono de AniList también se respetan. Fechas, notas y otros datos no se modifican.</p></details>
+        {error && <p role="alert" className="anilist-export-error">{error}</p>}
+        <div aria-live="polite" role="status">
+          {phase === 'loading' && <p className="anilist-export-loading"><RefreshCw aria-hidden="true" /> Comparando tu biblioteca…</p>}
+          {showTransfer && <div className={`anilist-export-transfer is-${phase}`}>
+            <Cover key={`${activeEntry.entryId}-${activeEntry.coverImage}`} entry={activeEntry} uploading={sending} />
+            <div className="anilist-export-transfer-copy">
+              <span className="anilist-export-transfer-label">{phase === 'done' ? 'Biblioteca sincronizada' : phase === 'stopped' ? 'Envío detenido' : phase === 'stopping' ? 'Terminando la entrada actual' : 'Enviando a AniList'}</span>
+              <strong>{phase === 'done' ? 'Todo al día' : activeEntry.title}</strong>
+              <span className="anilist-export-transfer-meta">{phase === 'done' ? `${completed} ${completed === 1 ? `${itemName} sincronizado` : `${itemPlural} sincronizados`}` : `${statusLabel(activeEntry.after.status, mediaType)} · ${activeEntry.before ? 'Actualizando entrada' : 'Agregando a tu lista'}`}</span>
+              <small>{sending ? 'Mantené esta página abierta.' : phase === 'stopped' ? 'Lo enviado se conserva. Revisá de nuevo para continuar.' : 'Tus cambios ya están en AniList.'}</small>
+            </div>
+            <div className="anilist-export-meter">
+              <div className="anilist-export-ring" role="progressbar" aria-label={`${itemPlural} confirmados en AniList`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={completed} aria-valuetext={`${completed} de ${total} confirmados`}>
+                <svg viewBox="0 0 48 48" aria-hidden="true"><circle className="ring-track" cx="24" cy="24" r="20" /><circle className="ring-value" cx="24" cy="24" r="20" pathLength="100" strokeDasharray={`${percent} 100`} /></svg>
+                {phase === 'done' ? <Check aria-hidden="true" /> : phase === 'stopped' ? <Pause aria-hidden="true" /> : <Upload className="anilist-export-upload-icon" aria-hidden="true" />}
+              </div>
+              <span>{completed}<span> / {total}</span></span>
+            </div>
+          </div>}
         </div>
-        <div className="anilist-export-meter">
-          <div className="anilist-export-ring" role="progressbar" aria-label={`${itemPlural} confirmados en AniList`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={completed} aria-valuetext={`${completed} de ${total} confirmados`}>
-            <svg viewBox="0 0 48 48" aria-hidden="true"><circle className="ring-track" cx="24" cy="24" r="20" /><circle className="ring-value" cx="24" cy="24" r="20" pathLength="100" strokeDasharray={`${percent} 100`} /></svg>
-            {phase === 'done' ? <Check aria-hidden="true" /> : phase === 'stopped' ? <Pause aria-hidden="true" /> : <Upload className="anilist-export-upload-icon" aria-hidden="true" />}
-          </div>
-          <span>{completed}<span> / {total}</span></span>
+        {reviewing && preview && <>
+          <p><strong>Destino: {preview.username}</strong> · {additions} para agregar · {preview.changes.length - additions} para actualizar · {preview.unchanged} sin cambios.</p>
+          {preview.changes.length ? <>
+            <p>Este es el resultado combinado: AniList conserva sus puntuaciones y nunca recibe un progreso menor.</p>
+            <label className="anilist-export-selection"><SelectionCheckbox checked={selected.size === preview.changes.length} partial={selected.size > 0 && selected.size < preview.changes.length} onChange={(event) => setSelected(new Set(event.target.checked ? preview.changes.map((entry) => entry.entryId) : []))} /> Seleccionar todos los cambios</label>
+            <div className="anilist-export-changes" role="region" aria-label="Vista previa de cambios" tabIndex={0}>
+              {preview.changes.map((entry) => <label key={entry.entryId} className="anilist-export-entry">
+                <SelectionCheckbox checked={selected.has(entry.entryId)} onChange={(event) => setSelected((previous) => {
+                  const next = new Set(previous)
+                  if (event.target.checked) next.add(entry.entryId); else next.delete(entry.entryId)
+                  return next
+                })} />
+                <Cover key={`${entry.entryId}-${entry.coverImage}`} entry={entry} />
+                <span><strong>{entry.title}</strong><small>AniList: {describe(entry.before, entry, mediaType)}</small><small>Resultado seguro: {describe(entry.after, entry, mediaType)}</small></span>
+              </label>)}
+            </div>
+            <p className="anilist-export-note">Se envían gradualmente para respetar los límites de AniList. Puedes detener el proceso entre entradas.</p>
+          </> : <p>Tus {itemPlural} ya están al día. No hay nada que enviar.</p>}
+        </>}
+        <div className="anilist-export-actions">
+          {!working && <button type="button" className="anilist-sync-button is-export" onClick={review}><ArrowUpRight /> <span>{preview ? 'Revisar de nuevo' : 'Revisar cambios para enviar'}</span></button>}
+          {reviewing && selected.size > 0 && <button type="button" className="anilist-sync-button is-confirm" onClick={apply}><Upload /> <span>Confirmar y enviar {selected.size} {selected.size === 1 ? 'cambio' : 'cambios'}</span></button>}
+          {(phase === 'sending' || phase === 'stopping') && <button type="button" className="anilist-sync-button is-stop" disabled={phase === 'stopping'} onClick={() => { stop.current = true; setPhase('stopping') }}><Pause /> <span>Detener envío</span></button>}
         </div>
-      </div>}
-    </div>
-    {reviewing && preview && <>
-      <p><strong>Destino: {preview.username}</strong> · {additions} para agregar · {preview.changes.length - additions} para actualizar · {preview.unchanged} sin cambios.</p>
-      {preview.changes.length ? <>
-        <p>Este es el resultado combinado: AniList conserva sus puntuaciones y nunca recibe un progreso menor.</p>
-        <label className="anilist-export-selection"><SelectionCheckbox checked={selected.size === preview.changes.length} partial={selected.size > 0 && selected.size < preview.changes.length} onChange={(event) => setSelected(new Set(event.target.checked ? preview.changes.map((entry) => entry.entryId) : []))} /> Seleccionar todos los cambios</label>
-        <div className="anilist-export-changes" role="region" aria-label="Vista previa de cambios" tabIndex={0}>
-          {preview.changes.map((entry) => <label key={entry.entryId} className="anilist-export-entry">
-            <SelectionCheckbox checked={selected.has(entry.entryId)} onChange={(event) => setSelected((previous) => {
-              const next = new Set(previous)
-              if (event.target.checked) next.add(entry.entryId); else next.delete(entry.entryId)
-              return next
-            })} />
-            <Cover key={`${entry.entryId}-${entry.coverImage}`} entry={entry} />
-            <span><strong>{entry.title}</strong><small>AniList: {describe(entry.before, entry, mediaType)}</small><small>Resultado seguro: {describe(entry.after, entry, mediaType)}</small></span>
-          </label>)}
-        </div>
-        <p className="anilist-export-note">Se envían gradualmente para respetar los límites de AniList. Puedes detener el proceso entre entradas.</p>
-      </> : <p>Tus animes ya están al día. No hay nada que enviar.</p>}
-    </>}
-    <div className="anilist-export-actions">
-      {!working && <button type="button" className="reset-theme" onClick={review}><RefreshCw /> {preview ? 'Revisar de nuevo' : 'Revisar cambios'}</button>}
-      {reviewing && selected.size > 0 && <button type="button" className="primary-button" onClick={apply}>Confirmar y enviar {selected.size} {selected.size === 1 ? 'cambio' : 'cambios'}</button>}
-      {(phase === 'sending' || phase === 'stopping') && <button type="button" className="reset-theme" disabled={phase === 'stopping'} onClick={() => { stop.current = true; setPhase('stopping') }}>Detener envío</button>}
+      </article>
+
+      <article className="anilist-sync-card is-import" aria-labelledby="anilist-import-heading">
+        <div className="anilist-direction-route" aria-label="De AniList hacia AniRecord"><span>AniList</span><ArrowRight /><span>AniRecord</span></div>
+        <div className="anilist-card-title"><span className="anilist-card-icon"><ArrowDownToLine /></span><div><small>Traer cambios</small><h3 id="anilist-import-heading">Actualizar AniRecord</h3></div></div>
+        <p className="anilist-card-description">Incorpora lo que agregaste en AniList y actualiza la información de tus obras dentro de AniRecord.</p>
+        <div className="anilist-safe-note"><ShieldCheck /><span><strong>Datos locales protegidos</strong><small>Las entradas existentes conservan progreso, estado y puntaje.</small></span></div>
+        <details className="anilist-export-details"><summary>Qué se trae</summary><p>Se agregan obras, personajes y seiyūs que todavía no estén en AniRecord. Las fichas existentes reciben portadas, fechas y metadatos recientes sin modificar el seguimiento personal.</p></details>
+        <div className="anilist-import-spacer" />
+        {importError && <p role="alert" className="anilist-export-error">{importError}</p>}
+        {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} fichas actualizadas · {importResult.personFavoritesCreated || 0} favoritos nuevos</p>}
+        <button type="button" className="anilist-sync-button is-import" disabled={working || importStatus === 'loading'} onClick={importFromAniList}>
+          <ArrowDownToLine className={importStatus === 'loading' ? 'sync-pulse' : ''} />
+          <span>{importStatus === 'loading' ? 'Trayendo cambios…' : 'Traer cambios a AniRecord'}</span>
+        </button>
+      </article>
     </div>
   </section>
 }
