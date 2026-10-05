@@ -1,6 +1,16 @@
-export const CURRENT_VERSION = '1.8.2'
+export const CURRENT_VERSION = '1.8.3'
 
 export const RELEASES = [
+  {
+    version: '1.8.3',
+    date: '5 de octubre de 2026',
+    title: 'Versiones mejor organizadas',
+    summary: 'Ordenamos el historial para que sea más fácil encontrar los cambios importantes.',
+    changes: [
+      { type: 'Visual', text: 'La lista principal ahora muestra solamente las versiones grandes.' },
+      { type: 'Mejora', text: 'Las correcciones pequeñas se pueden desplegar dentro de la versión a la que pertenecen.' },
+    ],
+  },
   {
     version: '1.8.2',
     date: '5 de octubre de 2026',
