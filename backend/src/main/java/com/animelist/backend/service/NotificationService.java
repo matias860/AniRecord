@@ -144,7 +144,8 @@ public class NotificationService {
             if (result.reachedKnownBoundary() || !result.hasNextPage()) break;
         }
         boolean unresolved = result != null && !result.reachedKnownBoundary() && result.hasNextPage();
-        user.setNotificationBackfillPage(!markImportedAsRead && unresolved ? pageNumber : null);
+        user.setNotificationBackfillPage(unresolved ? pageNumber : null);
+        user.setNotificationBackfillAsRead(markImportedAsRead && unresolved ? true : null);
         user.setNotificationCatchupPage(null);
         user.setNotificationCatchupAnchorId(null);
         return added;
@@ -244,11 +245,13 @@ public class NotificationService {
         }
 
         while (requests < MAX_PAGES_PER_SYNC) {
-            PageResult result = syncPage(user, token, backfillPage, false);
+            PageResult result = syncPage(user, token, backfillPage,
+                    Boolean.TRUE.equals(user.getNotificationBackfillAsRead()));
             added += result.added();
             requests++;
             if (!result.hasNextPage()) {
                 user.setNotificationBackfillPage(null);
+                user.setNotificationBackfillAsRead(null);
                 break;
             }
             backfillPage++;
@@ -261,6 +264,7 @@ public class NotificationService {
         user.setNotificationCatchupPage(null);
         user.setNotificationCatchupAnchorId(null);
         user.setNotificationBackfillPage(null);
+        user.setNotificationBackfillAsRead(null);
     }
 
     private void resetNotificationCursors(com.animelist.backend.entity.AppUser user, Integer currentHeadId) {

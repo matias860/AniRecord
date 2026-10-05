@@ -27,6 +27,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import java.util.Comparator;
 
 @Service
 public class TopNineService {
@@ -59,13 +61,21 @@ public class TopNineService {
         AppUser viewer = currentUser.optional().orElse(null);
         Map<Integer, Long> ownEntries = viewer == null ? Map.of() : library.findSummaries(viewer.getId(), null, null).stream()
                 .collect(Collectors.toMap(entry -> entry.anilistId(), entry -> entry.id(), (first, ignored) -> first));
-        List<TopNineSubmissionResponse> published = submissions.findDistinctByPeriodStartOrderByPublishedAtDesc(period.startsAt()).stream()
-                .limit(MAX_COMMUNITY_SUBMISSIONS)
-                .map(item -> toResponse(item, viewer, ownEntries))
-                .toList();
-        TopNineSubmissionResponse mine = viewer == null ? null : submissions
-                .findByUserIdAndPeriodStart(viewer.getId(), period.startsAt())
-                .map(item -> toResponse(item, viewer, ownEntries)).orElse(null);
+        List<Long> publishedIds = submissions.findIdsByPeriodStartOrderByPublishedAtDesc(
+                period.startsAt(), PageRequest.of(0, MAX_COMMUNITY_SUBMISSIONS));
+        List<TopNineSubmission> publishedRows = publishedIds.isEmpty() ? List.of()
+                : submissions.findDistinctByIdIn(publishedIds).stream()
+                        .sorted(Comparator.comparing(TopNineSubmission::getPublishedAt).reversed()).toList();
+        TopNineSubmission mineRow = viewer == null ? null : submissions
+                .findByUserIdAndPeriodStart(viewer.getId(), period.startsAt()).orElse(null);
+        List<Long> authorIds = java.util.stream.Stream.concat(publishedRows.stream(), java.util.stream.Stream.ofNullable(mineRow))
+                .map(item -> item.getUser().getId()).distinct().toList();
+        Map<Long, LocalDateTime> avatarUpdates = authorIds.isEmpty() ? Map.of()
+                : assets.findUpdatedAtByUserIds(authorIds, ProfileAssetType.AVATAR).stream()
+                        .collect(Collectors.toMap(row -> ((Number) row[0]).longValue(), row -> (LocalDateTime) row[1]));
+        List<TopNineSubmissionResponse> published = publishedRows.stream()
+                .map(item -> toResponse(item, viewer, ownEntries, avatarUpdates)).toList();
+        TopNineSubmissionResponse mine = mineRow == null ? null : toResponse(mineRow, viewer, ownEntries, avatarUpdates);
         return new CurrentTopNineResponse(promptResponse(period), mine, published);
     }
 
@@ -119,9 +129,17 @@ public class TopNineService {
     }
 
     private TopNineSubmissionResponse toResponse(TopNineSubmission submission, AppUser viewer, Map<Integer, Long> ownEntries) {
+        return toResponse(submission, viewer, ownEntries, null);
+    }
+
+    private TopNineSubmissionResponse toResponse(TopNineSubmission submission, AppUser viewer,
+            Map<Integer, Long> ownEntries, Map<Long, LocalDateTime> avatarUpdates) {
         AppUser author = submission.getUser();
         boolean own = viewer != null && viewer.getId().equals(author.getId());
-        String avatar = assets.findUpdatedAt(author.getId(), ProfileAssetType.AVATAR)
+        java.util.Optional<LocalDateTime> avatarUpdated = avatarUpdates == null
+                ? assets.findUpdatedAt(author.getId(), ProfileAssetType.AVATAR)
+                : java.util.Optional.ofNullable(avatarUpdates.get(author.getId()));
+        String avatar = avatarUpdated
                 .map(updated -> "/api/profile/users/" + author.getId() + "/avatar?v="
                         + updated.atZone(ARGENTINA).toEpochSecond())
                 .orElse(author.getAvatarUrl());

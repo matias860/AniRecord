@@ -12,6 +12,7 @@ import java.util.Locale;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 public class LocalAuthService {
@@ -40,7 +41,11 @@ public class LocalAuthService {
         user.setDisplayName(request.displayName().trim());
         user.setAnilistUserId(null);
         user.setAnilistUsername(null);
-        user = users.save(user);
+        try {
+            user = users.saveAndFlush(user);
+        } catch (DataIntegrityViolationException exception) {
+            throw new BusinessException("Ese nombre de usuario ya está en uso");
+        }
         return result(user, newSession(user));
     }
 

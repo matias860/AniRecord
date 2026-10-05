@@ -18,7 +18,7 @@ class LocalAuthServiceTest {
         AppUserRepository users = mock(AppUserRepository.class);
         AppSessionRepository sessions = mock(AppSessionRepository.class);
         when(users.existsByLocalUsernameIgnoreCase("alca")).thenReturn(false);
-        when(users.save(any(AppUser.class))).thenAnswer(invocation -> {
+        when(users.saveAndFlush(any(AppUser.class))).thenAnswer(invocation -> {
             AppUser user = invocation.getArgument(0); user.setId(9L); return user;
         });
         when(sessions.save(any(AppSession.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -29,9 +29,22 @@ class LocalAuthServiceTest {
         assertEquals(AccountType.LOCAL.name(), result.status().accountType());
         assertEquals("alca", result.status().username());
         assertFalse(result.status().needsImport());
-        verify(users).save(argThat(user -> user.getAccountType() == AccountType.LOCAL
+        verify(users).saveAndFlush(argThat(user -> user.getAccountType() == AccountType.LOCAL
                 && user.getAnilistUserId() == null && !user.getPasswordHash().equals("contraseña-segura")));
         verify(sessions).save(argThat(session -> session.getToken().equals(TokenSecurity.digest(result.sessionToken()))
                 && !session.getToken().equals(result.sessionToken())));
+    }
+
+    @Test void translatesAConcurrentDuplicateRegistrationIntoAConflict() {
+        AppUserRepository users = mock(AppUserRepository.class);
+        when(users.existsByLocalUsernameIgnoreCase("alca")).thenReturn(false);
+        when(users.saveAndFlush(any(AppUser.class)))
+                .thenThrow(new org.springframework.dao.DataIntegrityViolationException("duplicate"));
+        LocalAuthService service = new LocalAuthService(users, mock(AppSessionRepository.class));
+
+        var error = assertThrows(com.animelist.backend.exception.BusinessException.class,
+                () -> service.register(new LocalRegisterRequest("AlCa", "Alca", "contraseña-segura")));
+
+        assertEquals("Ese nombre de usuario ya está en uso", error.getMessage());
     }
 }

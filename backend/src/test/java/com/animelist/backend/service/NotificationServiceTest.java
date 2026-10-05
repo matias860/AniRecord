@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -253,6 +255,54 @@ class NotificationServiceTest {
         assertEquals(null, user.getNotificationCatchupPage());
         assertEquals(null, user.getNotificationCatchupAnchorId());
         assertEquals(Set.of(500, 450, 400, 350), storedIds);
+        server.verify();
+    }
+
+    @Test void initialSynchronizationContinuesItsHistoryAndKeepsItRead() {
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AppUserRepository users = mock(AppUserRepository.class);
+        AniListAuthService auth = mock(AniListAuthService.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser();
+        user.setId(12L); user.setAccountType(AccountType.ANILIST);
+        when(currentUser.require()).thenReturn(user);
+        when(auth.validToken()).thenReturn("token");
+        Set<Integer> storedIds = new HashSet<>();
+        Map<Integer, Boolean> readState = new HashMap<>();
+        when(notifications.existsByUserIdAndAnilistNotificationId(any(), any()))
+                .thenAnswer(invocation -> storedIds.contains(invocation.getArgument(1, Integer.class)));
+        when(notifications.save(any(AppNotification.class))).thenAnswer(invocation -> {
+            AppNotification notification = invocation.getArgument(0);
+            storedIds.add(notification.getAnilistNotificationId());
+            readState.put(notification.getAnilistNotificationId(), notification.getRead());
+            return notification;
+        });
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        AtomicInteger response = new AtomicInteger();
+        server.expect(times(8), requestTo("https://graphql.anilist.co"))
+                .andRespond(request -> switch (response.getAndIncrement()) {
+                    case 0 -> withSuccess(page(6, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 1 -> withSuccess(page(5, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 2 -> withSuccess(page(4, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 3, 6 -> withSuccess(page(6, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 4 -> withSuccess(page(3, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    case 5 -> withSuccess(page(2, true), MediaType.APPLICATION_JSON).createResponse(request);
+                    default -> withSuccess(page(1, false), MediaType.APPLICATION_JSON).createResponse(request);
+                });
+        NotificationService service = new NotificationService(notifications, users, auth, currentUser, builder.build());
+
+        assertEquals(3, service.initialSync());
+        assertEquals(4, user.getNotificationBackfillPage());
+        assertEquals(Boolean.TRUE, user.getNotificationBackfillAsRead());
+        assertEquals(2, service.sync());
+        assertEquals(6, user.getNotificationBackfillPage());
+        assertEquals(1, service.sync());
+
+        assertEquals(null, user.getNotificationBackfillPage());
+        assertEquals(null, user.getNotificationBackfillAsRead());
+        assertEquals(Set.of(1, 2, 3, 4, 5, 6), storedIds);
+        assertTrue(readState.values().stream().allMatch(Boolean.TRUE::equals));
         server.verify();
     }
 

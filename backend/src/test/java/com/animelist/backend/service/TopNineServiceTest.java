@@ -84,6 +84,26 @@ class TopNineServiceTest {
         verify(submissions, never()).saveAndFlush(any());
     }
 
+    @Test void limitsCommunityRowsInTheDatabaseAndLoadsAvatarsInOneBatch() {
+        AppUser author = new AppUser(); author.setId(20L); author.setDisplayName("Autora");
+        TopNineSubmission submission = new TopNineSubmission();
+        submission.setId(30L); submission.setUser(author); submission.setPublishedAt(java.time.LocalDateTime.now(clock));
+        when(currentUser.optional()).thenReturn(Optional.empty());
+        when(submissions.findIdsByPeriodStartOrderByPublishedAtDesc(any(), any()))
+                .thenReturn(List.of(30L));
+        when(submissions.findDistinctByIdIn(List.of(30L))).thenReturn(List.of(submission));
+        when(assets.findUpdatedAtByUserIds(List.of(20L), com.animelist.backend.enums.ProfileAssetType.AVATAR))
+                .thenReturn(List.of());
+
+        var response = service.current();
+
+        assertEquals(1, response.submissions().size());
+        verify(submissions).findIdsByPeriodStartOrderByPublishedAtDesc(any(), argThat(page ->
+                page.getPageNumber() == 0 && page.getPageSize() == 24));
+        verify(assets).findUpdatedAtByUserIds(List.of(20L), com.animelist.backend.enums.ProfileAssetType.AVATAR);
+        verify(assets, never()).findUpdatedAt(anyLong(), any());
+    }
+
     private LibraryEntry entry(long id, String title, String genres) {
         Media media = new Media();
         media.setId(id);

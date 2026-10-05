@@ -11,31 +11,36 @@ import com.animelist.backend.security.TokenSecurity;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.Duration;
+import java.net.http.HttpClient;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 
 @Service
 public class AniListAuthService {
     private final AniListConnectionRepository connections;
     private final AppUserRepository users;
     private final AppSessionRepository sessions;
+    private final OAuthLoginTicketRepository loginTickets;
     private final CurrentUserService currentUser;
-    private final RestClient client = RestClient.create();
+    private final RestClient client;
     private final String clientId, clientSecret, redirectUri;
     private final SecretCipher tokenCipher;
     private final OAuthStateToken oauthStateToken;
 
     public AniListAuthService(AniListConnectionRepository connections, AppUserRepository users,
             AppSessionRepository sessions, CurrentUserService currentUser,
+            OAuthLoginTicketRepository loginTickets,
             @Value("${anilist.oauth.client-id:}") String clientId,
             @Value("${anilist.oauth.client-secret:}") String clientSecret,
             @Value("${anilist.oauth.redirect-uri:http://localhost:8080/api/auth/callback}") String redirectUri,
             @Value("${app.token-encryption-key:}") String tokenEncryptionKey) {
-        this.connections=connections; this.users=users; this.sessions=sessions; this.currentUser=currentUser;
+        this.connections=connections; this.users=users; this.sessions=sessions; this.currentUser=currentUser; this.loginTickets=loginTickets;
         this.clientId=clientId; this.clientSecret=clientSecret; this.redirectUri=redirectUri;
         String encryptionSecret = tokenEncryptionKey.isBlank() ? clientSecret : tokenEncryptionKey;
         boolean productionOAuth = redirectUri.startsWith("https://");
@@ -45,6 +50,10 @@ public class AniListAuthService {
         String ephemeralDevelopmentSecret = TokenSecurity.randomToken();
         this.tokenCipher = new SecretCipher(encryptionSecret.isBlank() ? ephemeralDevelopmentSecret : encryptionSecret);
         this.oauthStateToken = new OAuthStateToken(clientSecret.isBlank() ? ephemeralDevelopmentSecret : clientSecret);
+        HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(4)).build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(10));
+        this.client = RestClient.builder().requestFactory(requestFactory).build();
     }
 
     public AuthStatusResponse status() { return currentUser.optional()
@@ -83,10 +92,13 @@ public class AniListAuthService {
         AniListConnection connection=connections.findById(user.getId()).orElseGet(AniListConnection::new);
         connection.setUser(user); connection.setAccessToken(tokenCipher.encrypt(accessToken));
         Number seconds=(Number)token.getOrDefault("expires_in",31536000); connection.setTokenExpiresAt(LocalDateTime.now().plusSeconds(seconds.longValue())); connections.save(connection);
-        sessions.deleteByExpiresAtBefore(LocalDateTime.now());
-        String rawSession = TokenSecurity.randomToken();
-        AppSession session=new AppSession(); session.setToken(TokenSecurity.digest(rawSession)); session.setUser(user); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
-        return new LoginResult(rawSession, user.getId(), user.getAnilistUsername(), user.getLastAniListSyncAt()==null);
+        LocalDateTime now = LocalDateTime.now();
+        loginTickets.deleteByExpiresAtBefore(now);
+        String rawTicket = TokenSecurity.randomToken();
+        OAuthLoginTicket ticket = new OAuthLoginTicket();
+        ticket.setToken(TokenSecurity.digest(rawTicket)); ticket.setUser(user); ticket.setExpiresAt(now.plusMinutes(3));
+        loginTickets.save(ticket);
+        return new LoginResult(rawTicket, user.getId(), user.getAnilistUsername(), user.getLastAniListSyncAt()==null);
     }
 
     @Transactional public String validToken() { return validToken(currentUser.require()); }
@@ -108,11 +120,11 @@ public class AniListAuthService {
         sessions.deleteById(TokenSecurity.digest(sessionToken));
     }
     @Transactional public String claim(String ticket) {
-        AppSession pendingSession=sessions.findByTokenAndExpiresAtAfter(TokenSecurity.digest(ticket), LocalDateTime.now())
+        OAuthLoginTicket pendingTicket=loginTickets.findByTokenAndExpiresAtAfter(TokenSecurity.digest(ticket), LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException("El acceso venció"));
-        sessions.delete(pendingSession);
+        loginTickets.delete(pendingTicket);
         String rawSession=TokenSecurity.randomToken();
-        AppSession session=new AppSession(); session.setToken(TokenSecurity.digest(rawSession)); session.setUser(pendingSession.getUser()); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
+        AppSession session=new AppSession(); session.setToken(TokenSecurity.digest(rawSession)); session.setUser(pendingTicket.getUser()); session.setExpiresAt(LocalDateTime.now().plusDays(30)); sessions.save(session);
         return rawSession;
     }
     @Transactional public void refreshProfile() { AppUser user=currentUser.require(); updateImages(user, fetchViewer(validToken(user))); users.save(user); }
@@ -130,5 +142,5 @@ public class AniListAuthService {
     }
     private String enc(String value){return URLEncoder.encode(value, StandardCharsets.UTF_8);}
     public record AuthorizationRequest(String url, String state) {}
-    public record LoginResult(String sessionToken, Long userId, String username, boolean firstLogin) {}
+    public record LoginResult(String ticket, Long userId, String username, boolean firstLogin) {}
 }

@@ -12,7 +12,6 @@ import com.animelist.backend.dto.library.LibraryImportResponse;
 import com.animelist.backend.dto.library.UpdateLibraryEntryRequest;
 import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
-import com.animelist.backend.entity.PersonFavorite;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.ActivityType;
 import com.animelist.backend.enums.MediaType;
@@ -31,9 +30,11 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,8 +48,10 @@ public class LibraryService {
     private final ActivityHistoryService activityHistoryService;
     private final CurrentUserService currentUser;
     private final AniListAuthService aniListAuthService;
-    private final PersonFavoriteRepository personFavoriteRepository;
+    private final LibraryImportWriter importWriter;
+    private final ConcurrentHashMap<Long, ImportLock> importLocks = new ConcurrentHashMap<>();
 
+    @Autowired
     public LibraryService(
             LibraryEntryRepository libraryEntryRepository,
             MediaRepository mediaRepository,
@@ -57,7 +60,7 @@ public class LibraryService {
             ActivityHistoryService activityHistoryService,
             CurrentUserService currentUser,
             AniListAuthService aniListAuthService,
-            PersonFavoriteRepository personFavoriteRepository
+            LibraryImportWriter importWriter
     ) {
         this.libraryEntryRepository = libraryEntryRepository;
         this.mediaRepository = mediaRepository;
@@ -66,7 +69,16 @@ public class LibraryService {
         this.activityHistoryService = activityHistoryService;
         this.currentUser = currentUser;
         this.aniListAuthService = aniListAuthService;
-        this.personFavoriteRepository = personFavoriteRepository;
+        this.importWriter = importWriter;
+    }
+
+    LibraryService(LibraryEntryRepository libraryEntryRepository, MediaRepository mediaRepository,
+            AniListClient aniListClient, AppUserRepository appUserRepository,
+            ActivityHistoryService activityHistoryService, CurrentUserService currentUser,
+            AniListAuthService aniListAuthService, PersonFavoriteRepository personFavoriteRepository) {
+        this(libraryEntryRepository, mediaRepository, aniListClient, appUserRepository, activityHistoryService,
+                currentUser, aniListAuthService,
+                new LibraryImportWriter(libraryEntryRepository, mediaRepository, appUserRepository, personFavoriteRepository));
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +170,9 @@ public class LibraryService {
         int nextProgress = entry.getProgress() + 1;
         validateReleased(entry);
         validateProgress(nextProgress, entry.getMedia().getTotalUnits());
+        if (entry.getTrackingStatus() == TrackingStatus.PLANNED) {
+            entry.setTrackingStatus(TrackingStatus.IN_PROGRESS);
+        }
         entry.setProgress(nextProgress);
         applyAutomaticRules(entry);
         entry = libraryEntryRepository.save(entry);
@@ -299,87 +314,39 @@ public class LibraryService {
         }
     }
 
-    @Transactional
     public LibraryImportResponse importFromAniList() {
         AppUser user=currentUser.require();
         return importForUser(user.getId(), user.getAnilistUsername());
     }
 
-    @Transactional
-    public synchronized LibraryImportResponse importForUser(Long userId, String username) {
-        AppUser profile=appUserRepository.findById(userId).orElseThrow();
-        String accessToken = aniListAuthService.validToken(profile);
-        if (accessToken == null || accessToken.isBlank()) {
-            throw new BusinessException("La conexión con AniList venció. Vuelve a iniciar sesión.");
-        }
-        AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim(), accessToken);
-        List<AniListPersonFavorite> externalFavorites = aniListClient.getUserPersonFavorites(username.trim(), accessToken);
-        int created = 0;
-        int updated = 0;
-        int anime = 0;
-        int manga = 0;
-        int characterFavoritesCreated = 0;
-        int staffFavoritesCreated = 0;
-
-        for (AniListLibraryItem item : externalLibrary.entries()) {
-            LibraryEntry existingEntry = libraryEntryRepository
-                    .findByUserIdAndMediaAnilistId(userId, item.media().anilistId())
-                    .orElse(null);
-            if (existingEntry != null) {
-                copyExternalMedia(item.media(), existingEntry.getMedia());
-                mediaRepository.save(existingEntry.getMedia());
-                updated++;
-                if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
-                continue;
+    public LibraryImportResponse importForUser(Long userId, String username) {
+        ImportLock holder = importLocks.compute(userId, (ignored, current) -> {
+            ImportLock selected = current == null ? new ImportLock() : current;
+            selected.references++;
+            return selected;
+        });
+        holder.lock.lock();
+        try {
+            AppUser profile = appUserRepository.findById(userId).orElseThrow();
+            String accessToken = aniListAuthService.validToken(profile);
+            if (accessToken == null || accessToken.isBlank()) {
+                throw new BusinessException("La conexión con AniList venció. Vuelve a iniciar sesión.");
             }
-
-            Media media = mediaRepository.findByAnilistId(item.media().anilistId()).orElseGet(Media::new);
-            copyExternalMedia(item.media(), media);
-            media = mediaRepository.save(media);
-
-            LibraryEntry entry = new LibraryEntry();
-            entry.setMedia(media);
-            entry.setUser(profile);
-            created++;
-            entry.setProgress(item.progress());
-            entry.setPersonalScore(item.personalScore());
-            entry.setRewatchCount(item.rewatchCount());
-            entry.setTrackingStatus(item.trackingStatus());
-            entry.setStartedAt(item.startedAt());
-            entry.setCompletedAt(item.completedAt());
-            libraryEntryRepository.save(entry);
-
-            if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
+            AniListLibraryExport externalLibrary = aniListClient.getUserLibrary(username.trim(), accessToken);
+            List<AniListPersonFavorite> externalFavorites = aniListClient.getUserPersonFavorites(username.trim(), accessToken);
+            return importWriter.apply(userId, externalLibrary, externalFavorites);
+        } finally {
+            holder.lock.unlock();
+            importLocks.computeIfPresent(userId, (ignored, current) -> {
+                current.references--;
+                return current.references == 0 ? null : current;
+            });
         }
+    }
 
-        Set<String> existingFavoriteKeys = personFavoriteRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(item -> item.getPersonType().name() + ":" + item.getAnilistId())
-                .collect(Collectors.toSet());
-        for (AniListPersonFavorite item : externalFavorites) {
-            String key = item.personType().name() + ":" + item.anilistId();
-            if (!existingFavoriteKeys.add(key)) continue;
-            PersonFavorite favorite = new PersonFavorite();
-            favorite.setUser(profile);
-            favorite.setAnilistId(item.anilistId());
-            favorite.setPersonType(item.personType());
-            favorite.setName(item.name());
-            favorite.setNativeName(item.nativeName());
-            favorite.setImageUrl(item.imageUrl());
-            personFavoriteRepository.save(favorite);
-            if (item.personType() == com.animelist.backend.enums.PersonType.CHARACTER) characterFavoritesCreated++;
-            else staffFavoritesCreated++;
-        }
-
-        if (profile.getLastAniListSyncAt() == null) {
-            profile.setDisplayName(externalLibrary.username());
-            profile.setAvatarUrl(externalLibrary.avatarUrl());
-            profile.setBannerUrl(externalLibrary.bannerUrl());
-        }
-        profile.setLastAniListSyncAt(LocalDateTime.now());
-        appUserRepository.save(profile);
-
-        return new LibraryImportResponse(externalLibrary.username(), anime + manga, anime, manga, created, updated,
-                characterFavoritesCreated + staffFavoritesCreated, characterFavoritesCreated, staffFavoritesCreated);
+    private static final class ImportLock {
+        private final ReentrantLock lock = new ReentrantLock();
+        private int references;
     }
 
     private boolean isTotalProgress(LibraryEntry entry) {

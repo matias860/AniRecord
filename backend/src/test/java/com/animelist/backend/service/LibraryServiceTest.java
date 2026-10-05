@@ -108,6 +108,19 @@ class LibraryServiceTest {
     }
 
     @Test
+    void incrementingAReleasedPlannedAnimeStartsWatchingIt() {
+        LibraryEntry entry = entry(0, 12, TrackingStatus.PLANNED);
+        entry.getMedia().setReleaseStatus(com.animelist.backend.enums.ReleaseStatus.RELEASING);
+        mockEntry(1L, entry);
+
+        LibraryEntryResponse response = libraryService.incrementProgress(1L);
+
+        assertEquals(1, response.progress());
+        assertEquals(TrackingStatus.IN_PROGRESS, response.trackingStatus());
+        assertNotNull(response.startedAt());
+    }
+
+    @Test
     void completedStatusSetsKnownTotalAsProgress() {
         LibraryEntry entry = entry(4, 12, TrackingStatus.IN_PROGRESS);
         mockEntry(1L, entry);

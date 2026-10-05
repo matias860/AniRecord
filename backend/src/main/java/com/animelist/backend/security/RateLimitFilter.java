@@ -6,12 +6,13 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import com.animelist.backend.service.CurrentUserService;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.time.Instant;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -19,8 +20,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final int MAX_WINDOWS = 20_000;
-    private final ConcurrentHashMap<String, Window> windows = new ConcurrentHashMap<>();
-    private final AtomicLong nextCleanupAt = new AtomicLong();
+    private final Cache<String, Window> windows = Caffeine.newBuilder()
+            .maximumSize(MAX_WINDOWS)
+            .expireAfterAccess(Duration.ofHours(1))
+            .build();
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -51,35 +54,33 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     private boolean allowed(HttpServletRequest request, Limit limit) {
         String ip = clientAddress(request);
+        Limit proxyLimit = new Limit(limit.group(), Math.max(limit.requests() * 100, 1_000), limit.seconds());
+        if (!allow("proxy:" + request.getRemoteAddr() + ':' + limit.group(), proxyLimit)) return false;
         Optional<String> session = sessionKey(request);
-        Limit ipLimit = session.isPresent() ? new Limit(limit.group(), limit.requests() * 20, limit.seconds()) : limit;
-        if (!allow("ip:" + ip + ':' + limit.group(), ipLimit)) return false;
+        if (!allow("ip:" + ip + ':' + limit.group(), limit)) return false;
         return session.map(value -> allow("session:" + value + ':' + limit.group(), limit)).orElse(true);
     }
 
     private boolean allow(String key, Limit limit) {
         long now = Instant.now().getEpochSecond();
-        cleanupExpiredWindows(now);
-        if (!windows.containsKey(key) && windows.size() >= MAX_WINDOWS) return false;
-        Window window = windows.compute(key, (ignored, previous) -> {
+        Window window = windows.asMap().compute(key, (ignored, previous) -> {
             if (previous == null || now >= previous.expiresAt()) return new Window(1, now + limit.seconds());
             return new Window(previous.count() + 1, previous.expiresAt());
         });
         return window.count() <= limit.requests();
     }
 
-    private void cleanupExpiredWindows(long now) {
-        if (windows.size() <= 10_000) return;
-        long scheduled = nextCleanupAt.get();
-        if (now < scheduled || !nextCleanupAt.compareAndSet(scheduled, now + 60)) return;
-        windows.entrySet().removeIf(entry -> now >= entry.getValue().expiresAt());
-    }
-
     private String clientAddress(HttpServletRequest request) {
-        String forwarded = request.getHeader("X-Forwarded-For");
+        if (request.getHeader("X-Vercel-Id") == null) return request.getRemoteAddr();
+        String forwarded = request.getHeader("X-Vercel-Forwarded-For");
+        if (forwarded == null || forwarded.isBlank()) forwarded = request.getHeader("X-Forwarded-For");
         if (forwarded == null || forwarded.isBlank() || forwarded.length() > 512) return request.getRemoteAddr();
         String client = forwarded.split(",", 2)[0].trim();
-        return client.isBlank() ? request.getRemoteAddr() : client;
+        return validAddress(client) ? client : request.getRemoteAddr();
+    }
+
+    private boolean validAddress(String value) {
+        return !value.isBlank() && value.length() <= 64 && value.matches("[0-9a-fA-F:.]+");
     }
 
     private Optional<String> sessionKey(HttpServletRequest request) {

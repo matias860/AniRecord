@@ -60,7 +60,34 @@ class SecurityFiltersTest {
         MockHttpServletResponse last = null;
         for (int attempt = 0; attempt < 13; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
+            request.addHeader("X-Vercel-Id", "gru1::abc");
             request.addHeader("X-Forwarded-For", "198.51.100.7, 203.0.113." + attempt);
+            last = new MockHttpServletResponse();
+            filter.doFilter(request, last, new MockFilterChain());
+        }
+        assertEquals(429, last.getStatus());
+    }
+
+    @Test void ignoresForwardedAddressesOutsideTheVercelProxy() throws Exception {
+        var filter = new RateLimitFilter();
+        MockHttpServletResponse last = null;
+        for (int attempt = 0; attempt < 13; attempt++) {
+            var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
+            request.setRemoteAddr("192.0.2.40");
+            request.addHeader("X-Forwarded-For", "198.51.100." + attempt);
+            last = new MockHttpServletResponse();
+            filter.doFilter(request, last, new MockFilterChain());
+        }
+        assertEquals(429, last.getStatus());
+    }
+
+    @Test void anArbitrarySessionCookieDoesNotRaiseTheIpLimit() throws Exception {
+        var filter = new RateLimitFilter();
+        MockHttpServletResponse last = null;
+        for (int attempt = 0; attempt < 13; attempt++) {
+            var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
+            request.setRemoteAddr("192.0.2.30");
+            request.setCookies(new Cookie(CurrentUserService.COOKIE, String.format("%064d", attempt)));
             last = new MockHttpServletResponse();
             filter.doFilter(request, last, new MockFilterChain());
         }

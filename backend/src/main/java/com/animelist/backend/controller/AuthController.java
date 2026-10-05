@@ -35,7 +35,7 @@ public class AuthController {
             LOGGER.warn("AniList OAuth callback rejected: providerError={}, missingCode={}, missingState={}", error != null, code == null, state == null);
             return redirectAfterOAuth("error",null);
         }
-        try { var result=auth.exchangeCode(code,state,cookie(request,OAUTH_STATE_COOKIE)); return redirectAfterOAuth("success",result.sessionToken()); }
+        try { var result=auth.exchangeCode(code,state,cookie(request,OAUTH_STATE_COOKIE)); return redirectAfterOAuth("success",result.ticket()); }
         catch(RuntimeException ex){
             LOGGER.warn("AniList OAuth callback failed: exception={}", ex.getClass().getSimpleName());
             return redirectAfterOAuth("error",null);

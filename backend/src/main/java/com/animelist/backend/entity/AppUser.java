@@ -62,6 +62,8 @@ public class AppUser {
     private Integer notificationCatchupPage;
     @Column(name = "notification_catchup_anchor_id")
     private Integer notificationCatchupAnchorId;
+    @Column(name = "notification_backfill_as_read")
+    private Boolean notificationBackfillAsRead;
     @Column(name = "last_sync_prompt_commit", length = 64)
     private String lastSyncPromptCommit;
     @Column(name = "created_at", nullable = false, updatable = false)
