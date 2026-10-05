@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, LogIn, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
+import { LogIn, ShieldCheck, Sparkles, UserPlus } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useLocation } from 'react-router-dom'
 import anilistLogo from '../assets/anilist-logo.svg'
 import { clearAuthError, localLogin, registerLocal } from '../features/auth/authSlice.js'
 import { currentReturnPath, oauthLoginUrl, rememberReturnPath } from '../lib/authNavigation.js'
+import BrandMark from '../components/common/BrandMark.jsx'
 
 export default function LoginView({ checkingSession = false }) {
   const dispatch = useDispatch()
@@ -30,7 +31,7 @@ export default function LoginView({ checkingSession = false }) {
   }
   return <main className="login-page dot-background">
     <section className={`login-card ${mode !== 'options' ? 'with-local-form' : ''}`}>
-      <div className="login-brand"><span><BookOpen /></span>Ani<strong>Record</strong></div>
+      <div className="login-brand"><span><BrandMark /></span>Ani<strong>Record</strong></div>
       {checkingSession && <p className="login-session-check" role="status">Comprobando si ya iniciaste sesión…</p>}
       {mode === 'options' ? <>
         <div className="login-art"><Sparkles /><img src={anilistLogo} alt="AniList" /></div>

@@ -1,6 +1,16 @@
-export const CURRENT_VERSION = '1.9.1'
+export const CURRENT_VERSION = '1.10.0'
 
 export const RELEASES = [
+  {
+    version: '1.10.0',
+    date: '5 de octubre de 2026',
+    title: 'Nuevo logo de AniRecord',
+    summary: 'AniRecord ahora tiene un símbolo propio y reconocible.',
+    changes: [
+      { type: 'Visual', text: 'Reemplazamos el libro genérico por un monograma de AniRecord en el encabezado y el inicio de sesión.' },
+      { type: 'Visual', text: 'El nuevo símbolo también identifica la pestaña del navegador y está preparado para una futura app.' },
+    ],
+  },
   {
     version: '1.9.1',
     date: '5 de octubre de 2026',

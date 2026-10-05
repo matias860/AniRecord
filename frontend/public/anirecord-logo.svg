@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title description">
+  <title id="title">AniRecord</title>
+  <desc id="description">Monograma AR de AniRecord</desc>
+  <defs>
+    <linearGradient id="background" x1="8" y1="6" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#a98cff"/>
+      <stop offset="0.5" stop-color="#8064ee"/>
+      <stop offset="1" stop-color="#5840c8"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="13" y1="11" x2="48" y2="53" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#fff"/>
+      <stop offset="1" stop-color="#eee9ff"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="17" fill="url(#background)"/>
+  <path d="M2 19C13 8 29 3 48 6c5 .8 9 2.5 14 5v-11H2v19Z" fill="#fff" opacity=".08"/>
+  <g fill="none" stroke="url(#shine)" stroke-width="4.25" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m11.5 46 12-28.2c.9-2.2 4.1-2.2 5 0L40 46M17 33.5h17"/>
+    <path d="M36 46V17.5h8.2c5.1 0 8.3 3.1 8.3 7.6 0 4.7-3.4 7.8-8.3 7.8H36m8.1 0L53 46"/>
+  </g>
+  <circle cx="48.5" cy="21.7" r="2.1" fill="#fff"/>
+</svg>

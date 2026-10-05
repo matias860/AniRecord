@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
-import { BookOpen, Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
+import { Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
@@ -7,6 +7,7 @@ import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
 import ChangelogModal, { VersionButton } from './ChangelogModal.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
+import BrandMark from '../common/BrandMark.jsx'
 import { logout } from '../../features/auth/authSlice.js'
 
 const links = [
@@ -52,7 +53,7 @@ export default function AppLayout() {
     <div className={`app-shell ${dotsEnabled ? 'dot-background' : ''}`} style={themeStyle}>
       <header className="topbar-wrap">
         <div className="topbar">
-          <NavLink className="brand" to="/"><span className="brand-mark"><BookOpen size={20} /></span><span>Ani<span>Record</span></span></NavLink>
+          <NavLink className="brand" to="/"><span className="brand-mark"><BrandMark /></span><span>Ani<span>Record</span></span></NavLink>
           <VersionButton onClick={() => setChangelogOpen(true)} />
           <nav className="main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
             {links.map(({ to, label, icon: Icon, end }) => (
