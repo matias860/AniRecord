@@ -14,8 +14,8 @@ export const fetchProfile = createAsyncThunk('profile/fetch', async (_, { signal
   return data
 }, { condition: (_, { getState }) => !['loading', 'succeeded'].includes(getState().profile.status) })
 
-export const saveProfile = createAsyncThunk('profile/save', async (_, { getState }) => {
-  const current = getState().profile
+export const saveProfile = createAsyncThunk('profile/save', async (changes = {}, { getState }) => {
+  const current = { ...getState().profile, ...changes }
   const profile = Object.fromEntries(editableKeys.map((key) => [key, current[key]]))
   const { data } = await apiClient.patch('/profile', profile)
   return data

@@ -12,7 +12,7 @@ export default function MediaCard({ media, onIncrement }) {
   return (
     <article className="media-card">
       <Link to={`/media/${media.anilistId}`} className={`cover-wrap ${media.episodePending ? 'episode-pending' : ''}`}>
-        <img src={media.coverImage} alt={`Portada de ${media.title}`} loading="lazy" />
+        <img src={media.coverImage} alt={`Portada de ${media.title}`} loading="lazy" decoding="async" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
         {media.personalScore != null && <span className="score-badge"><Star /> {media.personalScore}</span>}
         {isLiveAnime && <span className="airing-badge"><i /> Emisión</span>}

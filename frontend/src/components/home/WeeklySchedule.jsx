@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -12,17 +13,19 @@ const days = [
 ]
 
 export default function WeeklySchedule({ entries, airingEntries, liveDataAvailable = true, seasonLabel, seasonOptions, seasonOffset, onSeasonChange }) {
-  const airingById = new Map(airingEntries.map((entry) => [entry.anilistId, entry]))
-  const seasonalIds = new Set(entries.map((entry) => entry.anilistId))
-  const scheduleSource = seasonOffset === 0
-    ? [...entries, ...airingEntries.filter((entry) => !seasonalIds.has(entry.anilistId))]
-    : entries
-  const scheduled = scheduleSource.map((entry) => {
-    const airing = airingById.get(entry.anilistId)
-    const timestamp = airing?.nextAiringEpisode?.airingAt
-    const knownDate = timestamp ? new Date(timestamp * 1000) : entry.releaseStartDate ? new Date(`${entry.releaseStartDate}T12:00:00`) : null
-    return { ...entry, airing, day: knownDate ? knownDate.getDay() : null }
-  })
+  const scheduled = useMemo(() => {
+    const airingById = new Map(airingEntries.map((entry) => [entry.anilistId, entry]))
+    const seasonalIds = new Set(entries.map((entry) => entry.anilistId))
+    const scheduleSource = seasonOffset === 0
+      ? [...entries, ...airingEntries.filter((entry) => !seasonalIds.has(entry.anilistId))]
+      : entries
+    return scheduleSource.map((entry) => {
+      const airing = airingById.get(entry.anilistId)
+      const timestamp = airing?.nextAiringEpisode?.airingAt
+      const knownDate = timestamp ? new Date(timestamp * 1000) : entry.releaseStartDate ? new Date(`${entry.releaseStartDate}T12:00:00`) : null
+      return { ...entry, airing, day: knownDate ? knownDate.getDay() : null }
+    })
+  }, [airingEntries, entries, seasonOffset])
 
   return <section className="schedule-panel">
     <div className="section-heading"><div><span className="eyebrow">{seasonOffset === 0 ? 'Tu semana' : 'Tu lista planeada'}</span><h2><CalendarDays /> {seasonOffset === 0 ? 'Próximas emisiones' : `Temporada ${seasonLabel}`}</h2></div><div className="schedule-controls"><StyledSelect className="schedule-select" ariaLabel="Temporada del calendario" value={String(seasonOffset)} onChange={onSeasonChange} options={seasonOptions} />{seasonOffset === 0 && <span className={`live-pill ${liveDataAvailable ? '' : 'unavailable'}`}><i /> {liveDataAvailable ? 'En emisión' : 'Datos guardados'}</span>}</div></div>
@@ -63,7 +66,7 @@ function CurrentScheduleCover({ entry, liveDataAvailable }) {
 
   return <div className={`airing-item ${upcoming ? 'upcoming' : ''}`}>
     <Link to={`/media/${entry.anilistId}`} className={`airing-cover ${pending ? 'episode-pending' : ''}`} title={`${entry.title} · ${titleDetail}`}>
-      <img src={entry.coverImage} alt={entry.title} /><span>{label}</span>
+      <img src={entry.coverImage} alt={entry.title} loading="lazy" decoding="async" /><span>{label}</span>
     </Link>
     {upcoming && <small>{dateLabel ? `Estrena ${dateLabel}` : 'Estreno sin fecha'}</small>}
   </div>
@@ -82,7 +85,7 @@ function FutureSeason({ entries }) {
 
 function ScheduleDay({ group, unknown = false }) {
   const singleUnknown = unknown && group.entries.length === 1
-  return <section className={`compact-schedule-day ${unknown ? 'unknown' : ''} ${singleUnknown ? 'single-entry' : ''}`}><span className="day-dot">{group.label}</span><strong>{group.name}</strong><small>{group.entries.length} {group.entries.length === 1 ? 'anime' : 'animes'}</small><div className="compact-day-media future-covers">{group.entries.map((entry) => <Link className="future-cover" to={`/media/${entry.anilistId}`} key={entry.id} title={entry.title}><img src={entry.coverImage} alt={entry.title} /><small>{formatShortDate(entry.releaseStartDate)}</small></Link>)}</div></section>
+  return <section className={`compact-schedule-day ${unknown ? 'unknown' : ''} ${singleUnknown ? 'single-entry' : ''}`}><span className="day-dot">{group.label}</span><strong>{group.name}</strong><small>{group.entries.length} {group.entries.length === 1 ? 'anime' : 'animes'}</small><div className="compact-day-media future-covers">{group.entries.map((entry) => <Link className="future-cover" to={`/media/${entry.anilistId}`} key={entry.id} title={entry.title}><img src={entry.coverImage} alt={entry.title} loading="lazy" decoding="async" /><small>{formatShortDate(entry.releaseStartDate)}</small></Link>)}</div></section>
 }
 
 function formatShortDate(date) {

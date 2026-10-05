@@ -12,7 +12,7 @@ export default function ActivityTimeline({ entries, status, error }) {
 
 function TimelineEntry({ entry, index }) {
   const Icon = entry.activityType === 'ADDED' ? Plus : entry.activityType === 'REMOVED' ? Trash2 : entry.activityType === 'PROGRESS' ? RefreshCw : Clock3
-  return <motion.article className="timeline-entry" initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: Math.min(index, 8) * .04 }}><div className="timeline-node"><Icon /></div><Link to={`/media/${entry.anilistId}`}><img src={entry.coverImage} alt="" /><div><strong>{entry.title}</strong><p>{describe(entry)}</p><time>{formatDate(entry.createdAt)}</time></div></Link></motion.article>
+  return <motion.article className="timeline-entry" initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: Math.min(index, 8) * .04 }}><div className="timeline-node"><Icon /></div><Link to={`/media/${entry.anilistId}`}><img src={entry.coverImage} alt="" loading="lazy" decoding="async" /><div><strong>{entry.title}</strong><p>{describe(entry)}</p><time>{formatDate(entry.createdAt)}</time></div></Link></motion.article>
 }
 
 function describe(entry) {

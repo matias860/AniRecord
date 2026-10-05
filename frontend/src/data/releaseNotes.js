@@ -1,6 +1,19 @@
-export const CURRENT_VERSION = '1.8.3'
+export const CURRENT_VERSION = '1.9.0'
 
 export const RELEASES = [
+  {
+    version: '1.9.0',
+    date: '5 de octubre de 2026',
+    title: 'Una experiencia más rápida',
+    summary: 'Reducimos esperas y trabajo innecesario para que AniRecord responda mejor desde el primer momento.',
+    changes: [
+      { type: 'Rendimiento', text: 'El inicio y el catálogo ya se pueden recorrer mientras comprobamos tu sesión.' },
+      { type: 'Rendimiento', text: 'Las bibliotecas grandes hacen menos trabajo al pasar el cursor por sus portadas.' },
+      { type: 'Rendimiento', text: 'Las herramientas pesadas del perfil se cargan solamente cuando se necesitan.' },
+      { type: 'Visual', text: 'La navegación entre páginas empieza de inmediato y respeta la preferencia de reducir movimiento.' },
+      { type: 'Rendimiento', text: 'Las imágenes y estadísticas fuera de pantalla consumen menos recursos.' },
+    ],
+  },
   {
     version: '1.8.3',
     date: '5 de octubre de 2026',

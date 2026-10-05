@@ -15,13 +15,13 @@ const wait = (milliseconds, signal) => new Promise((resolve, reject) => {
 
 export const fetchAuth = createAsyncThunk('auth/status', async (_, { signal }) => {
   let lastError
-  for (let attempt = 0; attempt < 9; attempt += 1) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
     try {
       return (await apiClient.get('/auth/status', { timeout: 18000, signal })).data
     } catch (error) {
       lastError = error
       const serverCanRecover = !error.status || error.status >= 500
-      if (!serverCanRecover || attempt === 8 || signal.aborted) throw error
+      if (!serverCanRecover || attempt === 3 || signal.aborted) throw error
       await wait(2500, signal)
     }
   }

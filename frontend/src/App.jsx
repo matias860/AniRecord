@@ -30,23 +30,22 @@ export default function App() {
       apiClient.post('/auth/claim', { ticket }).finally(() => { window.history.replaceState({}, '', consumeReturnPath()); dispatch(fetchAuth()) })
     } else dispatch(fetchAuth())
   }, [auth.status, dispatch])
-  if (auth.status === 'idle' || auth.status === 'loading') return <div className="auth-loading dot-background"><ProfileLoader message="Despertando tu biblioteca… Esto puede tardar hasta dos minutos." /></div>
-  if (auth.status === 'failed') return <div className="auth-loading auth-wake-error dot-background"><ProfileLoader message="El servidor no pudo despertarse." /><p>{auth.error}</p><button className="primary-button" onClick={() => dispatch(fetchAuth())}><RefreshCw /> Reintentar conexión</button></div>
+  const authPending = auth.status === 'idle' || auth.status === 'loading'
   if (auth.authenticated && auth.needsImport) return <Suspense fallback={viewFallback}><ImportView /></Suspense>
   return (
     <Suspense fallback={viewFallback}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<HomeView />} />
-          <Route path="biblioteca" element={<RequireAuth authenticated={auth.authenticated}><LibraryView /></RequireAuth>} />
+          <Route path="biblioteca" element={<RequireAuth auth={auth}><LibraryView /></RequireAuth>} />
           <Route path="catalogo" element={<CatalogView />} />
           <Route path="catalogo/:mediaType" element={<CatalogView />} />
           <Route path="media/:anilistId" element={<MediaDetailView />} />
           <Route path="personajes/:anilistId" element={<CharacterDetailView />} />
           <Route path="seiyuus/:anilistId" element={<StaffDetailView />} />
           <Route path="profesionales/:anilistId" element={<StaffDetailView />} />
-          <Route path="perfil" element={<RequireAuth authenticated={auth.authenticated}><ProfileView /></RequireAuth>} />
-          <Route path="login" element={<LoginRoute authenticated={auth.authenticated} />} />
+          <Route path="perfil" element={<RequireAuth auth={auth}><ProfileView /></RequireAuth>} />
+          <Route path="login" element={<LoginRoute authenticated={auth.authenticated} pending={authPending} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
@@ -54,16 +53,20 @@ export default function App() {
   )
 }
 
-function RequireAuth({ authenticated, children }) {
+function RequireAuth({ auth, children }) {
   const location = useLocation()
-  if (authenticated) return children
+  const dispatch = useDispatch()
+  if (auth.authenticated) return children
+  if (auth.status === 'idle' || auth.status === 'loading') return viewFallback
+  if (auth.status === 'failed') return <div className="page-state full-page auth-route-error"><ProfileLoader message="No pudimos conectar con tu cuenta." /><p>{auth.error}</p><button className="primary-button" onClick={() => dispatch(fetchAuth())}><RefreshCw /> Reintentar conexión</button></div>
   return <Navigate to="/login" replace state={{ returnTo: currentReturnPath(location) }} />
 }
 
-function LoginRoute({ authenticated }) {
+function LoginRoute({ authenticated, pending }) {
   const destination = getReturnPath()
   useEffect(() => {
     if (authenticated) clearReturnPath()
   }, [authenticated])
-  return authenticated ? <Navigate to={destination} replace /> : <LoginView />
+  if (authenticated) return <Navigate to={destination} replace />
+  return <LoginView checkingSession={pending} />
 }

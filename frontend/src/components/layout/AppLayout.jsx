@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 import { BookOpen, Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
@@ -21,30 +21,35 @@ export default function AppLayout() {
   const { pathname } = useLocation()
   const outlet = useOutlet()
   const dispatch = useDispatch()
-  const profile = useSelector((state) => state.profile)
+  const profileStatus = useSelector((state) => state.profile.status)
+  const avatarUrl = useSelector((state) => state.profile.avatarUrl)
+  const backgroundColor = useSelector((state) => state.profile.backgroundColor)
+  const surfaceColor = useSelector((state) => state.profile.surfaceColor)
+  const accentColor = useSelector((state) => state.profile.accentColor)
+  const dotsEnabled = useSelector((state) => state.profile.dotsEnabled)
   const authenticated = useSelector((state) => state.auth.authenticated)
   useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) }, [pathname])
   const signOut = async () => { await dispatch(logout()); window.localStorage.removeItem('persist:anime-list'); window.localStorage.removeItem('persist:anime-list-v2'); window.location.replace('/') }
-  useEffect(() => { if (authenticated && profile.status === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profile.status])
+  useEffect(() => { if (authenticated && profileStatus === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profileStatus])
   const themeStyle = {
-    '--user-bg': profile.backgroundColor,
-    '--user-surface': profile.surfaceColor,
-    '--accent': profile.accentColor,
-    '--surface': profile.surfaceColor,
+    '--user-bg': backgroundColor,
+    '--user-surface': surfaceColor,
+    '--accent': accentColor,
+    '--surface': surfaceColor,
   }
   useEffect(() => {
     const root = document.documentElement
     const variables = {
-      '--user-bg': profile.backgroundColor,
-      '--user-surface': profile.surfaceColor,
-      '--surface': profile.surfaceColor,
-      '--accent': profile.accentColor,
+      '--user-bg': backgroundColor,
+      '--user-surface': surfaceColor,
+      '--surface': surfaceColor,
+      '--accent': accentColor,
     }
     Object.entries(variables).forEach(([name, value]) => value && root.style.setProperty(name, value))
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
-  }, [profile.accentColor, profile.backgroundColor, profile.surfaceColor])
+  }, [accentColor, backgroundColor, surfaceColor])
   return (
-    <div className={`app-shell ${profile.dotsEnabled ? 'dot-background' : ''}`} style={themeStyle}>
+    <div className={`app-shell ${dotsEnabled ? 'dot-background' : ''}`} style={themeStyle}>
       <header className="topbar-wrap">
         <div className="topbar">
           <NavLink className="brand" to="/"><span className="brand-mark"><BookOpen size={20} /></span><span>Ani<span>Record</span></span></NavLink>
@@ -58,14 +63,14 @@ export default function AppLayout() {
             ))}
             <NavLink to={authenticated ? '/perfil' : '/login'} aria-label={authenticated ? 'Perfil' : 'Iniciar sesión'} title={authenticated ? 'Perfil' : 'Iniciar sesión'} onMouseEnter={() => setHovered(authenticated ? '/perfil' : '/login')} className={({ isActive }) => `nav-profile${isActive ? ' active' : ''}`}>
               {hovered === (authenticated ? '/perfil' : '/login') && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
-              <span className="nav-avatar">{authenticated && profile.avatarUrl ? <img src={profile.avatarUrl} alt="" /> : authenticated ? <UserRound size={18} /> : <LogIn size={18} />}</span>
+              <span className="nav-avatar">{authenticated && avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : authenticated ? <UserRound size={18} /> : <LogIn size={18} />}</span>
             </NavLink>
             {authenticated && <NotificationBell hovered={hovered === '/notificaciones'} onMouseEnter={() => setHovered('/notificaciones')} />}
           </nav>
           {authenticated && <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>}
         </div>
       </header>
-      <main className="page"><AnimatePresence mode="wait" initial={false}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: .22, ease: 'easeOut' }}>{outlet}</motion.div></AnimatePresence></main>
+      <main className="page"><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></main>
       <ToastViewport />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -8,8 +8,6 @@ import MediaCard from '../components/media/MediaCard.jsx'
 import HoverMediaGrid from '../components/media/HoverMediaGrid.jsx'
 import SeasonMarquee from '../components/home/SeasonMarquee.jsx'
 import RecommendationMarquee from '../components/home/RecommendationMarquee.jsx'
-import WeeklyRecommendationModal from '../components/home/WeeklyRecommendationModal.jsx'
-import TopNineComposer from '../components/home/TopNineComposer.jsx'
 import TopNineShowcase from '../components/home/TopNineShowcase.jsx'
 import PageState from '../components/common/PageState.jsx'
 import { fetchAiringSchedule, fetchSeason, setReadingPage, setSeasonOffset, setWatchingPage } from '../features/home/homeSlice.js'
@@ -24,6 +22,8 @@ const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano'
 const pageSize = 5
 const appCommit = import.meta.env.VITE_APP_COMMIT || 'development'
 const synchronizationHistory = import.meta.env.VITE_SYNC_HISTORY || [{ commit: appCommit, recommended: false }]
+const WeeklyRecommendationModal = lazy(() => import('../components/home/WeeklyRecommendationModal.jsx'))
+const TopNineComposer = lazy(() => import('../components/home/TopNineComposer.jsx'))
 
 function commitsSince(lastSeenCommit) {
   if (!lastSeenCommit) return synchronizationHistory.slice(0, 1)
@@ -197,7 +197,7 @@ export default function HomeView() {
   return (
     <>
       <AnimatePresence>
-        {recommendationModal && <WeeklyRecommendationModal key="recommendation-modal" onClose={() => setRecommendationModal(false)} />}
+        {recommendationModal && <Suspense fallback={null}><WeeklyRecommendationModal key="recommendation-modal" onClose={() => setRecommendationModal(false)} /></Suspense>}
       </AnimatePresence>
       <section className="welcome-row">
         <div><span className="eyebrow">Biblioteca personal</span><h1>¿Qué seguimos hoy?</h1><p>Todo tu anime y manga, ordenado en un solo lugar.</p></div>
@@ -210,7 +210,7 @@ export default function HomeView() {
         </motion.button>}</AnimatePresence>
         {topNine.prompt && <button className="home-top-nine-launch" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setTopNineOpen((open) => !open) : requestLogin(navigate, location)}><Grid3X3 /> {topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}</button>}
       </div>
-      <AnimatePresence initial={false}>{topNineOpen && auth.authenticated && topNine.prompt && <TopNineComposer key={topNine.prompt.key} prompt={topNine.prompt} mine={topNine.mine} onClose={() => setTopNineOpen(false)} />}</AnimatePresence>
+      <AnimatePresence initial={false}>{topNineOpen && auth.authenticated && topNine.prompt && <Suspense fallback={null}><TopNineComposer key={topNine.prompt.key} prompt={topNine.prompt} mine={topNine.mine} onClose={() => setTopNineOpen(false)} /></Suspense>}</AnimatePresence>
 
       {home.unavailable && <aside className="external-service-notice" role="status">
         <strong>Información en tiempo real temporalmente no disponible</strong>

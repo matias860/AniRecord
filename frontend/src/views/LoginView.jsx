@@ -6,7 +6,7 @@ import anilistLogo from '../assets/anilist-logo.svg'
 import { clearAuthError, localLogin, registerLocal } from '../features/auth/authSlice.js'
 import { currentReturnPath, oauthLoginUrl, rememberReturnPath } from '../lib/authNavigation.js'
 
-export default function LoginView() {
+export default function LoginView({ checkingSession = false }) {
   const dispatch = useDispatch()
   const location = useLocation()
   const { mutationStatus, error } = useSelector((state) => state.auth)
@@ -31,6 +31,7 @@ export default function LoginView() {
   return <main className="login-page dot-background">
     <section className={`login-card ${mode !== 'options' ? 'with-local-form' : ''}`}>
       <div className="login-brand"><span><BookOpen /></span>Ani<strong>Record</strong></div>
+      {checkingSession && <p className="login-session-check" role="status">Comprobando si ya iniciaste sesión…</p>}
       {mode === 'options' ? <>
         <div className="login-art"><Sparkles /><img src={anilistLogo} alt="AniList" /></div>
         <span className="eyebrow">Tu biblioteca personal</span>
