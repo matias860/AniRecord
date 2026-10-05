@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
+import ChangelogModal, { VersionButton } from './ChangelogModal.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
 import { logout } from '../../features/auth/authSlice.js'
 
@@ -16,6 +17,7 @@ const links = [
 
 export default function AppLayout() {
   const [hovered, setHovered] = useState(null)
+  const [changelogOpen, setChangelogOpen] = useState(false)
   const { pathname } = useLocation()
   const outlet = useOutlet()
   const dispatch = useDispatch()
@@ -46,6 +48,7 @@ export default function AppLayout() {
       <header className="topbar-wrap">
         <div className="topbar">
           <NavLink className="brand" to="/"><span className="brand-mark"><BookOpen size={20} /></span><span>Ani<span>Record</span></span></NavLink>
+          <VersionButton onClick={() => setChangelogOpen(true)} />
           <nav className="main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
             {links.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} onMouseEnter={() => setHovered(to)} className={({ isActive }) => isActive ? 'active' : ''}>
@@ -64,6 +67,7 @@ export default function AppLayout() {
       </header>
       <main className="page"><AnimatePresence mode="wait" initial={false}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -7 }} transition={{ duration: .22, ease: 'easeOut' }}>{outlet}</motion.div></AnimatePresence></main>
       <ToastViewport />
+      <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </div>
   )
 }
