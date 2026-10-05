@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight, Grid3X3, UserRound } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import './TopNineShowcase.css'
 
 const ROTATION_MS = 9000
 const COVER_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="240" height="360"%3E%3Crect width="100%25" height="100%25" fill="%2310182b"/%3E%3Cpath d="M60 70h120v190H60zM120 70v190" fill="none" stroke="%2334d058" stroke-width="12"/%3E%3C/svg%3E'

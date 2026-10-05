@@ -1,6 +1,15 @@
-export const CURRENT_VERSION = '1.9.0'
+export const CURRENT_VERSION = '1.9.1'
 
 export const RELEASES = [
+  {
+    version: '1.9.1',
+    date: '5 de octubre de 2026',
+    title: 'El 3×3 vuelve a estar en su lugar',
+    summary: 'Corregimos un detalle visual causado por la nueva carga rápida del inicio.',
+    changes: [
+      { type: 'Visual', text: 'El botón y las publicaciones 3×3 conservan su diseño desde que abre la página.' },
+    ],
+  },
   {
     version: '1.9.0',
     date: '5 de octubre de 2026',
