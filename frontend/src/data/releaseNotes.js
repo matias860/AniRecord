@@ -4,8 +4,8 @@ export const RELEASES = [
   {
     version: '1.9.1',
     date: '5 de octubre de 2026',
-    title: 'El 3×3 vuelve a estar en su lugar',
-    summary: 'Corregimos un detalle visual causado por la nueva carga rápida del inicio.',
+    title: 'Corrige el estilo inicial del 3×3',
+    summary: 'Corregimos la carga de los estilos del 3×3.',
     changes: [
       { type: 'Visual', text: 'El botón y las publicaciones 3×3 conservan su diseño desde que abre la página.' },
     ],
@@ -26,8 +26,8 @@ export const RELEASES = [
   {
     version: '1.8.3',
     date: '5 de octubre de 2026',
-    title: 'Versiones mejor organizadas',
-    summary: 'Ordenamos el historial para que sea más fácil encontrar los cambios importantes.',
+    title: 'Organiza las versiones menores',
+    summary: 'Ordenamos las correcciones dentro de cada versión principal.',
     changes: [
       { type: 'Visual', text: 'La lista principal ahora muestra solamente las versiones grandes.' },
       { type: 'Mejora', text: 'Las correcciones pequeñas se pueden desplegar dentro de la versión a la que pertenecen.' },
@@ -36,8 +36,8 @@ export const RELEASES = [
   {
     version: '1.8.2',
     date: '5 de octubre de 2026',
-    title: 'Detalles mejor alineados',
-    summary: 'Corregimos un detalle visual del nuevo historial de versiones.',
+    title: 'Alinea los tildes del historial',
+    summary: 'Corregimos la posición de los indicadores de cada cambio.',
     changes: [
       { type: 'Visual', text: 'Los tildes ahora mantienen la misma posición en todos los cambios.' },
     ],
@@ -45,8 +45,8 @@ export const RELEASES = [
   {
     version: '1.8.1',
     date: '5 de octubre de 2026',
-    title: 'Un historial más claro',
-    summary: 'Ajustamos el nuevo historial para que sea más cómodo de leer y entender.',
+    title: 'Mejora el historial de versiones',
+    summary: 'Ajustamos la presentación y el texto del historial.',
     changes: [
       { type: 'Visual', text: 'El historial ahora tiene un ícono propio y muestra la fecha completa de cada versión.' },
       { type: 'Visual', text: 'Agrandamos y centramos la descripción de cada cambio.' },
