@@ -8,6 +8,7 @@ import NotificationBell from './NotificationBell.jsx'
 import ChangelogModal, { VersionButton } from './ChangelogModal.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
 import BrandMark from '../common/BrandMark.jsx'
+import PwaUpdateToast from '../common/PwaUpdateToast.jsx'
 import { logout } from '../../features/auth/authSlice.js'
 
 const links = [
@@ -47,6 +48,8 @@ export default function AppLayout() {
       '--accent': accentColor,
     }
     Object.entries(variables).forEach(([name, value]) => value && root.style.setProperty(name, value))
+    const themeMeta = document.querySelector('meta[name="theme-color"]')
+    if (themeMeta && backgroundColor) themeMeta.setAttribute('content', backgroundColor)
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
   }, [accentColor, backgroundColor, surfaceColor])
   return (
@@ -73,6 +76,7 @@ export default function AppLayout() {
       </header>
       <main className="page"><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></main>
       <ToastViewport />
+      <PwaUpdateToast />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
     </div>
   )

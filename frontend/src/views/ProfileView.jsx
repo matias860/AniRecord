@@ -15,6 +15,7 @@ import { fetchPersonFavorites } from '../features/favorites/favoritesSlice.js'
 const ImageCropModal = lazy(() => import('../components/profile/ImageCropModal.jsx'))
 const AniListExportPanel = lazy(() => import('../components/profile/AniListExportPanel.jsx'))
 const ThemeColorPicker = lazy(() => import('../components/profile/ThemeColorPicker.jsx'))
+const PwaSettingsPanel = lazy(() => import('../components/profile/PwaSettingsPanel.jsx'))
 const draftKeys = ['displayName', 'bio', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled']
 const defaultTheme = { backgroundColor: '#0a0c14', surfaceColor: '#171b29', accentColor: '#a88bff', dotsEnabled: true }
 const profileDraft = (profile) => Object.fromEntries(draftKeys.map((key) => [key, profile[key]]))
@@ -66,6 +67,7 @@ export default function ProfileView() {
       </div>
       <FavoritePeople entries={favorites.people} />
       <ViewportSection className="profile-deferred-section"><Suspense fallback={null}><AniListExportPanel /></Suspense></ViewportSection>
+      <ViewportSection className="profile-deferred-section"><Suspense fallback={null}><PwaSettingsPanel /></Suspense></ViewportSection>
       <div className="profile-layout">
         <section className="theme-panel"><div className="section-heading"><div><span className="eyebrow">Apariencia</span><h2><Palette /> Personalización</h2></div><button className="reset-theme" onClick={() => update(defaultTheme)}><RotateCcw /> Restaurar</button></div>
           <label className="profile-field"><span>Nombre mostrado</span><input value={draft.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>

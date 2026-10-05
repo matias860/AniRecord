@@ -1,6 +1,18 @@
-export const CURRENT_VERSION = '1.10.0'
+export const CURRENT_VERSION = '1.11.0'
 
 export const RELEASES = [
+  {
+    version: '1.11.0',
+    date: '5 de octubre de 2026',
+    title: 'AniRecord ahora se puede instalar',
+    summary: 'La página funciona como una app y puede avisarte sobre tus series sin que tengas que abrirla.',
+    changes: [
+      { type: 'App', text: 'AniRecord se puede instalar desde el navegador en celulares y computadoras compatibles.' },
+      { type: 'Notificaciones', text: 'Podés activar avisos para estrenos y episodios nuevos de tu biblioteca.' },
+      { type: 'Control', text: 'Cada dispositivo puede elegir qué avisos recibe y enviar una prueba.' },
+      { type: 'Rendimiento', text: 'La app guarda solamente su interfaz; tus datos personales siempre se consultan de forma segura.' },
+    ],
+  },
   {
     version: '1.10.0',
     date: '5 de octubre de 2026',

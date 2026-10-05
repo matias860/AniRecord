@@ -46,6 +46,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         if ("POST".equals(request.getMethod()) && path.matches("/api/library/\\d+/sync")) return new Limit("library-sync", 60, 600);
         if ("POST".equals(request.getMethod()) && path.matches("/api/profile/assets/(avatar|banner)")) return new Limit("profile-upload", 12, 3600);
         if ("POST".equals(request.getMethod()) && path.equals("/api/top-nine")) return new Limit("top-nine", 20, 3600);
+        if ("POST".equals(request.getMethod()) && path.equals("/api/push/test")) return new Limit("push-test", 5, 3600);
         if ("POST".equals(request.getMethod()) && path.equals("/api/recommendations")) return new Limit("recommendations", 20, 86400);
         if (path.startsWith("/api/anilist/") && !path.contains("/oauth/")) return new Limit("anilist", 120, 60);
         if (path.startsWith("/api/") && !isSafe(request.getMethod())) return new Limit("api-write", 300, 60);

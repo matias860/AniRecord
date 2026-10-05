@@ -16,6 +16,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
+import com.animelist.backend.enums.ReleaseStatus;
 
 public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long> {
 
@@ -83,4 +84,22 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
             @Param("mediaId") Long mediaId,
             @Param("accountType") AccountType accountType
     );
+
+    @Query("""
+            select distinct entry.media from LibraryEntry entry
+            where entry.media.mediaType = com.animelist.backend.enums.MediaType.ANIME
+              and entry.trackingStatus in :statuses
+              and entry.media.releaseStatus in :releaseStatuses
+            """)
+    List<Media> findDistinctAiringTrackedMedia(
+            @Param("statuses") List<TrackingStatus> statuses,
+            @Param("releaseStatuses") List<ReleaseStatus> releaseStatuses);
+
+    @Query("""
+            select distinct entry.user from LibraryEntry entry
+            where entry.media.id = :mediaId and entry.trackingStatus in :statuses
+            """)
+    List<AppUser> findDistinctUsersTrackingMedia(
+            @Param("mediaId") Long mediaId,
+            @Param("statuses") List<TrackingStatus> statuses);
 }

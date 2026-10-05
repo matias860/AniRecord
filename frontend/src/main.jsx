@@ -11,6 +11,9 @@ import App from './App.jsx'
 import { persistor, store } from './app/store.js'
 import './index.css'
 import './styles/mobile.css'
+import { initInstallPrompt } from './lib/pwaInstall.js'
+
+initInstallPrompt()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

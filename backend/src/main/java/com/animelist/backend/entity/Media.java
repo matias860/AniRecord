@@ -15,6 +15,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -86,6 +87,18 @@ public class Media {
 
     @Column(name = "last_synced_at")
     private LocalDateTime lastSyncedAt;
+
+    @Column(name = "next_airing_episode")
+    private Integer nextAiringEpisode;
+
+    @Column(name = "next_airing_at")
+    private Instant nextAiringAt;
+
+    @Column(name = "last_notified_episode")
+    private Integer lastNotifiedEpisode;
+
+    @Column(name = "airing_schedule_checked_at")
+    private Instant airingScheduleCheckedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
