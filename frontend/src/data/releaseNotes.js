@@ -1,6 +1,15 @@
-export const CURRENT_VERSION = '1.8.1'
+export const CURRENT_VERSION = '1.8.2'
 
 export const RELEASES = [
+  {
+    version: '1.8.2',
+    date: '5 de octubre de 2026',
+    title: 'Detalles mejor alineados',
+    summary: 'Corregimos un detalle visual del nuevo historial de versiones.',
+    changes: [
+      { type: 'Visual', text: 'Los tildes ahora mantienen la misma posición en todos los cambios.' },
+    ],
+  },
   {
     version: '1.8.1',
     date: '5 de octubre de 2026',
