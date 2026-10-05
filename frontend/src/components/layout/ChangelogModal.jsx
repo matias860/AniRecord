@@ -1,18 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, ChevronRight, History, Sparkles, X } from 'lucide-react'
+import { Check, ChevronRight, History, ScrollText, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { CURRENT_VERSION, RELEASES } from '../../data/releaseNotes.js'
 import './ChangelogModal.css'
 
 const STORAGE_KEY = 'anirecord:last-seen-version'
-const MONTHS = { agosto: 'ago', septiembre: 'sep', octubre: 'oct' }
-
-function shortDate(date) {
-  const [day, , month] = date.split(' ')
-  return `${day} ${MONTHS[month] || month.slice(0, 3)}`
-}
-
 export function VersionButton({ onClick }) {
   const [unseen, setUnseen] = useState(() => window.localStorage.getItem(STORAGE_KEY) !== CURRENT_VERSION)
 
@@ -54,7 +47,7 @@ export default function ChangelogModal({ open, onClose }) {
         <motion.div className="changelog-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
           <motion.section className="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title" initial={{ opacity: 0, y: 18, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
             <header className="changelog-header">
-              <span className="changelog-icon"><Sparkles aria-hidden="true" /></span>
+              <span className="changelog-icon"><ScrollText aria-hidden="true" /></span>
               <div>
                 <small>Novedades de AniRecord</small>
                 <h2 id="changelog-title">Historial de versiones</h2>
@@ -66,10 +59,11 @@ export default function ChangelogModal({ open, onClose }) {
               <nav className="release-list" aria-label="Versiones anteriores">
                 {RELEASES.map((release, index) => {
                   const active = release.version === selectedRelease.version
+                  const patch = release.version.split('.')[2] !== '0'
                   return (
-                    <button key={release.version} type="button" className={active ? 'active' : ''} onClick={() => setSelectedVersion(release.version)} aria-current={active ? 'true' : undefined}>
-                      <span>{index === 0 ? 'Actual' : shortDate(release.date)}</span>
-                      <strong>v{release.version}</strong>
+                    <button key={release.version} type="button" className={`${active ? 'active ' : ''}${patch ? 'patch' : ''}`.trim()} onClick={() => setSelectedVersion(release.version)} aria-current={active ? 'true' : undefined}>
+                      <span>{release.date}</span>
+                      <strong>v{release.version}{index === 0 && <i>Actual</i>}</strong>
                       <ChevronRight aria-hidden="true" />
                     </button>
                   )

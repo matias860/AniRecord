@@ -1,16 +1,27 @@
-export const CURRENT_VERSION = '1.8.0'
+export const CURRENT_VERSION = '1.8.1'
 
 export const RELEASES = [
+  {
+    version: '1.8.1',
+    date: '5 de octubre de 2026',
+    title: 'Un historial más claro',
+    summary: 'Ajustamos el nuevo historial para que sea más cómodo de leer y entender.',
+    changes: [
+      { type: 'Visual', text: 'El historial ahora tiene un ícono propio y muestra la fecha completa de cada versión.' },
+      { type: 'Visual', text: 'Agrandamos y centramos la descripción de cada cambio.' },
+      { type: 'Mejora', text: 'Simplificamos las explicaciones para contar claramente qué cambió.' },
+    ],
+  },
   {
     version: '1.8.0',
     date: '5 de octubre de 2026',
     title: 'Una base más sólida',
     summary: 'Mejoramos los procesos internos que mantienen tu cuenta, biblioteca y notificaciones seguras y consistentes.',
     changes: [
-      { type: 'Lógica', text: 'La importación desde AniList ahora trabaja por usuario y evita bloquear otras sincronizaciones.' },
-      { type: 'Seguridad', text: 'Reforzamos el inicio de sesión, los tickets temporales y los límites frente a solicitudes abusivas.' },
-      { type: 'Lógica', text: 'El historial inicial de notificaciones se recupera gradualmente aunque tenga cientos de entradas.' },
-      { type: 'Rendimiento', text: 'Los 3×3 públicos y las importaciones hacen menos trabajo en la base de datos.' },
+      { type: 'Lógica', text: 'Las actualizaciones desde AniList ya no frenan las sincronizaciones de otras personas.' },
+      { type: 'Seguridad', text: 'El inicio de sesión es más seguro y resistente a intentos repetidos.' },
+      { type: 'Lógica', text: 'Si tenés muchas notificaciones, AniRecord las recupera de a poco sin perder las anteriores.' },
+      { type: 'Rendimiento', text: 'Los 3×3 y las importaciones ahora cargan con menos trabajo.' },
     ],
   },
   {
@@ -45,7 +56,7 @@ export const RELEASES = [
     changes: [
       { type: 'Integración', text: 'Ya se pueden revisar y enviar cambios de manga a AniList sin pisar datos más recientes.' },
       { type: 'Rendimiento', text: 'Reducimos trabajo inicial y llamadas en segundo plano.' },
-      { type: 'Seguridad', text: 'Reforzamos validaciones, carga de imágenes y operaciones concurrentes.' },
+      { type: 'Seguridad', text: 'Hicimos más segura la carga de imágenes y evitamos que dos cambios al mismo tiempo se pisen.' },
     ],
   },
   {
