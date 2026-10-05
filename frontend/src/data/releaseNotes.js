@@ -7,7 +7,8 @@ export const RELEASES = [
     title: 'Nuevo logo de AniRecord',
     summary: 'AniRecord ahora tiene un símbolo propio y reconocible.',
     changes: [
-      { type: 'Visual', text: 'Reemplazamos el libro genérico por un monograma de AniRecord en el encabezado y el inicio de sesión.' },
+      { type: 'Visual', text: 'Reemplazamos el libro genérico por el monograma AR en League Spartan.' },
+      { type: 'Visual', text: 'El logo combina el color elegido en cada perfil con un degradado oscuro.' },
       { type: 'Visual', text: 'El nuevo símbolo también identifica la pestaña del navegador y está preparado para una futura app.' },
     ],
   },
