@@ -4,7 +4,7 @@ export const RELEASES = [
   {
     version: '1.9.1',
     date: '5 de octubre de 2026',
-    title: 'Corrige el estilo inicial del 3×3',
+    title: 'Corrección del 3×3',
     summary: 'Corregimos la carga de los estilos del 3×3.',
     changes: [
       { type: 'Visual', text: 'El botón y las publicaciones 3×3 conservan su diseño desde que abre la página.' },
@@ -21,36 +21,6 @@ export const RELEASES = [
       { type: 'Rendimiento', text: 'Las herramientas pesadas del perfil se cargan solamente cuando se necesitan.' },
       { type: 'Visual', text: 'La navegación entre páginas empieza de inmediato y respeta la preferencia de reducir movimiento.' },
       { type: 'Rendimiento', text: 'Las imágenes y estadísticas fuera de pantalla consumen menos recursos.' },
-    ],
-  },
-  {
-    version: '1.8.3',
-    date: '5 de octubre de 2026',
-    title: 'Organiza las versiones menores',
-    summary: 'Ordenamos las correcciones dentro de cada versión principal.',
-    changes: [
-      { type: 'Visual', text: 'La lista principal ahora muestra solamente las versiones grandes.' },
-      { type: 'Mejora', text: 'Las correcciones pequeñas se pueden desplegar dentro de la versión a la que pertenecen.' },
-    ],
-  },
-  {
-    version: '1.8.2',
-    date: '5 de octubre de 2026',
-    title: 'Alinea los tildes del historial',
-    summary: 'Corregimos la posición de los indicadores de cada cambio.',
-    changes: [
-      { type: 'Visual', text: 'Los tildes ahora mantienen la misma posición en todos los cambios.' },
-    ],
-  },
-  {
-    version: '1.8.1',
-    date: '5 de octubre de 2026',
-    title: 'Mejora el historial de versiones',
-    summary: 'Ajustamos la presentación y el texto del historial.',
-    changes: [
-      { type: 'Visual', text: 'El historial ahora tiene un ícono propio y muestra la fecha completa de cada versión.' },
-      { type: 'Visual', text: 'Agrandamos y centramos la descripción de cada cambio.' },
-      { type: 'Mejora', text: 'Simplificamos las explicaciones para contar claramente qué cambió.' },
     ],
   },
   {
