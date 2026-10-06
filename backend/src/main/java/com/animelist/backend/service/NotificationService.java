@@ -298,6 +298,7 @@ public class NotificationService {
             if (!shouldImport(typename, episode)) continue;
             if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
                 reachedKnownBoundary = true;
+                reconcileExistingAiring(user.getId(), item, typename, episode, externalId);
                 continue;
             }
             reachedKnownBoundary = false;
@@ -305,6 +306,14 @@ public class NotificationService {
             if (notification != null) {
                 notification.setUser(user);
                 notification.setRead(markImportedAsRead);
+                if (notification.getSourceKey() != null) {
+                    Optional<AppNotification> local = repository.findByUserIdAndSourceKey(user.getId(), notification.getSourceKey());
+                    if (local.isPresent()) {
+                        mergeImported(local.get(), notification, markImportedAsRead);
+                        reachedKnownBoundary = true;
+                        continue;
+                    }
+                }
                 repository.save(notification);
                 added++;
             }
@@ -349,10 +358,35 @@ public class NotificationService {
         Map<String, Object> cover = media != null && media.get("coverImage") instanceof Map ? (Map<String, Object>) media.get("coverImage") : null;
         AppNotification n = new AppNotification(); n.setAnilistNotificationId(externalId); n.setNotificationType(type);
         n.setAnilistMediaId(media == null ? number(item.get("mediaId")) : number(media.get("id")));
+        n.setSourceKey(airingSourceKey(typename, n.getAnilistMediaId(), episode));
         n.setTitle(titleMap == null ? Objects.toString(item.get("deletedMediaTitle"), "Obra eliminada") : Objects.toString(titleMap.get("userPreferred"), "Sin título"));
         n.setCoverImage(cover == null ? null : Objects.toString(cover.get("large"), null)); n.setEpisode(episode);
         n.setMessage(message(item, type)); Number created = (Number) item.get("createdAt");
         n.setOccurredAt(created == null ? LocalDateTime.now() : LocalDateTime.ofInstant(Instant.ofEpochSecond(created.longValue()), ZoneId.systemDefault())); return n;
+    }
+    private String airingSourceKey(String typename, Integer mediaId, Integer episode) {
+        return "AiringNotification".equals(typename) && mediaId != null && episode != null
+                ? "AIRING:" + mediaId + ':' + episode : null;
+    }
+    private void mergeImported(AppNotification target, AppNotification imported, boolean markImportedAsRead) {
+        target.setAnilistNotificationId(imported.getAnilistNotificationId());
+        target.setRead(Boolean.TRUE.equals(target.getRead()) || markImportedAsRead);
+        if (target.getCoverImage() == null) target.setCoverImage(imported.getCoverImage());
+        repository.save(target);
+    }
+    private void reconcileExistingAiring(Long userId, Map<String, Object> item, String typename, Integer episode, Integer externalId) {
+        AppNotification mapped = map(item, typename, episode, externalId);
+        if (mapped == null || mapped.getSourceKey() == null) return;
+        Optional<AppNotification> imported = repository.findByUserIdAndAnilistNotificationId(userId, externalId);
+        Optional<AppNotification> local = repository.findByUserIdAndSourceKey(userId, mapped.getSourceKey());
+        if (imported.isEmpty() || local.isEmpty() || imported.get() == local.get()
+                || Objects.equals(imported.get().getId(), local.get().getId())) return;
+        AppNotification importedNotification = imported.get();
+        importedNotification.setRead(Boolean.TRUE.equals(importedNotification.getRead()) || Boolean.TRUE.equals(local.get().getRead()));
+        repository.delete(local.get());
+        repository.flush();
+        importedNotification.setSourceKey(mapped.getSourceKey());
+        repository.save(importedNotification);
     }
     private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case AIRING_EPISODE -> "Se estrenó el episodio " + number(item.get("episode")); case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); }; }
     private Integer number(Object value) { return value instanceof Number number ? number.intValue() : null; }

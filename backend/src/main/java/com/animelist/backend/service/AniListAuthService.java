@@ -115,10 +115,6 @@ public class AniListAuthService {
                     return plain;
                 }).orElse(null);
     }
-    @Transactional public void logout(String sessionToken) {
-        if (sessionToken==null) return;
-        sessions.deleteById(TokenSecurity.digest(sessionToken));
-    }
     @Transactional public String claim(String ticket) {
         OAuthLoginTicket pendingTicket=loginTickets.findByTokenAndExpiresAtAfter(TokenSecurity.digest(ticket), LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException("El acceso venció"));

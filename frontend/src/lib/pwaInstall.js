@@ -14,6 +14,7 @@ export function initInstallPrompt() {
 
 export const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
 export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
 export const canPromptInstall = () => Boolean(deferredPrompt)
 export const shouldDismissPwaUpdate = (offsetY, velocityY) => offsetY > 72 || velocityY > 650
 export async function isAppInstalled() {
@@ -34,6 +35,16 @@ export async function promptInstall() {
   const choice = await prompt.userChoice
   window.dispatchEvent(new Event('anirecord:installable'))
   return choice.outcome === 'accepted'
+}
+
+export async function activePushSubscription() {
+  if (!('serviceWorker' in navigator)) return null
+  try {
+    const registration = await navigator.serviceWorker.getRegistration()
+    return registration ? await registration.pushManager.getSubscription() : null
+  } catch {
+    return null
+  }
 }
 
 export function urlBase64ToUint8Array(value) {

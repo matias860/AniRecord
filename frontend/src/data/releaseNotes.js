@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.11.2'
+export const CURRENT_VERSION = '1.11.3'
 
 export const RELEASES = [
+  {
+    version: '1.11.3',
+    date: '6 de octubre de 2026',
+    title: 'Correcciones de notificaciones',
+    summary: 'Corregimos la privacidad y los avisos duplicados en distintos dispositivos.',
+    changes: [
+      { type: 'Seguridad', text: 'Al cerrar sesión, el dispositivo deja de recibir avisos de esa cuenta.' },
+      { type: 'Notificaciones', text: 'Evitamos avisos repetidos al procesar envíos o traer episodios desde AniList.' },
+      { type: 'App', text: 'La ayuda de instalación reconoce correctamente los iPad que usan la vista de escritorio.' },
+    ],
+  },
   {
     version: '1.11.2',
     date: '6 de octubre de 2026',

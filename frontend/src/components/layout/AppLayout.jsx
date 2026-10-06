@@ -11,6 +11,7 @@ import BrandMark from '../common/BrandMark.jsx'
 import PwaUpdateToast from '../common/PwaUpdateToast.jsx'
 import { updatePwaBranding } from '../../lib/pwaBranding.js'
 import { logout } from '../../features/auth/authSlice.js'
+import { activePushSubscription } from '../../lib/pwaInstall.js'
 
 const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
@@ -32,7 +33,14 @@ export default function AppLayout() {
   const dotsEnabled = useSelector((state) => state.profile.dotsEnabled)
   const authenticated = useSelector((state) => state.auth.authenticated)
   useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) }, [pathname])
-  const signOut = async () => { await dispatch(logout()); window.localStorage.removeItem('persist:anime-list'); window.localStorage.removeItem('persist:anime-list-v2'); window.location.replace('/') }
+  const signOut = async () => {
+    const subscription = await activePushSubscription()
+    if (subscription) await subscription.unsubscribe().catch(() => false)
+    await dispatch(logout(subscription?.endpoint || null))
+    window.localStorage.removeItem('persist:anime-list')
+    window.localStorage.removeItem('persist:anime-list-v2')
+    window.location.replace('/')
+  }
   useEffect(() => { if (authenticated && profileStatus === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profileStatus])
   const themeStyle = {
     '--user-bg': backgroundColor,

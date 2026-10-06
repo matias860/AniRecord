@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface AppNotificationRepository extends JpaRepository<AppNotification, Long> {
     boolean existsByUserIdAndAnilistNotificationId(Long userId, Integer id);
+    Optional<AppNotification> findByUserIdAndAnilistNotificationId(Long userId, Integer id);
     boolean existsByUserIdAndSourceKey(Long userId, String sourceKey);
     Optional<AppNotification> findByUserIdAndSourceKey(Long userId, String sourceKey);
     /**

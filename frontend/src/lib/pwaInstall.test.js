@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isAppInstalled, shouldDismissPwaUpdate, subscriptionUsesKey, urlBase64ToUint8Array } from './pwaInstall.js'
+import { activePushSubscription, isAppInstalled, isIos, shouldDismissPwaUpdate, subscriptionUsesKey, urlBase64ToUint8Array } from './pwaInstall.js'
 
 const publicKey = 'AQIDBA'
 
@@ -59,6 +59,35 @@ test('reports an uninstalled app when no related web app is present', async () =
   } finally {
     if (originalWindow) Object.defineProperty(globalThis, 'window', originalWindow)
     else delete globalThis.window
+    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator)
+    else delete globalThis.navigator
+  }
+})
+
+test('recognizes iPadOS when Safari requests the desktop user agent', () => {
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X)', platform: 'MacIntel', maxTouchPoints: 5 },
+  })
+  try {
+    assert.equal(isIos(), true)
+  } finally {
+    if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator)
+    else delete globalThis.navigator
+  }
+})
+
+test('reads the active browser push endpoint for a private logout', async () => {
+  const subscription = { endpoint: 'https://push.example/device' }
+  const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { serviceWorker: { getRegistration: async () => ({ pushManager: { getSubscription: async () => subscription } }) } },
+  })
+  try {
+    assert.equal(await activePushSubscription(), subscription)
+  } finally {
     if (originalNavigator) Object.defineProperty(globalThis, 'navigator', originalNavigator)
     else delete globalThis.navigator
   }

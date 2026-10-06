@@ -7,6 +7,7 @@ import static org.mockito.Mockito.when;
 
 import com.animelist.backend.service.AniListAuthService;
 import com.animelist.backend.service.LocalAuthService;
+import com.animelist.backend.service.LogoutService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -17,7 +18,7 @@ class AuthControllerTest {
         AniListAuthService auth = mock(AniListAuthService.class);
         when(auth.authorizationRequest()).thenReturn(new AniListAuthService.AuthorizationRequest(
                 "https://anilist.co/oauth", "signed-state"));
-        AuthController controller = new AuthController(auth, mock(LocalAuthService.class), "https://anirecord.com.ar", true);
+        AuthController controller = new AuthController(auth, mock(LocalAuthService.class), mock(LogoutService.class), "https://anirecord.com.ar", true);
 
         var response = controller.login();
 

@@ -27,7 +27,7 @@ export const fetchAuth = createAsyncThunk('auth/status', async (_, { signal }) =
   }
   throw lastError
 })
-export const logout = createAsyncThunk('auth/logout', async () => { await apiClient.post('/auth/logout') })
+export const logout = createAsyncThunk('auth/logout', async (pushEndpoint = null) => { await apiClient.post('/auth/logout', { pushEndpoint }) })
 export const localLogin = createAsyncThunk('auth/localLogin', async (credentials, { rejectWithValue }) => {
   try { return (await apiClient.post('/auth/local-login', credentials)).data }
   catch (error) { return rejectWithValue(error.response?.data?.message || 'No se pudo iniciar sesión') }

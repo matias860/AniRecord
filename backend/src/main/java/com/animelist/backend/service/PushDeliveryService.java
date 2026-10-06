@@ -8,11 +8,9 @@ import com.animelist.backend.repository.PushSubscriptionRepository;
 import tools.jackson.databind.ObjectMapper;
 import java.time.Instant;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,14 +19,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class PushDeliveryService {
     private static final Logger LOGGER = LoggerFactory.getLogger(PushDeliveryService.class);
     private final PushDeliveryRepository deliveries;
+    private final PushDeliveryClaimService claims;
     private final PushSubscriptionRepository subscriptions;
     private final CurrentUserService currentUser;
     private final WebPushGateway gateway;
     private final ObjectMapper json;
 
-    public PushDeliveryService(PushDeliveryRepository deliveries, PushSubscriptionRepository subscriptions,
+    public PushDeliveryService(PushDeliveryRepository deliveries, PushDeliveryClaimService claims, PushSubscriptionRepository subscriptions,
             CurrentUserService currentUser, WebPushGateway gateway, ObjectMapper json) {
         this.deliveries = deliveries;
+        this.claims = claims;
         this.subscriptions = subscriptions;
         this.currentUser = currentUser;
         this.gateway = gateway;
@@ -38,7 +38,7 @@ public class PushDeliveryService {
     @Scheduled(initialDelayString = "${app.web-push.delivery-initial-delay:PT4M}", fixedDelayString = "${app.web-push.delivery-delay:PT1M}")
     public void deliverPending() {
         if (!gateway.available()) return;
-        deliveries.findReady(List.of("PENDING", "FAILED"), PageRequest.of(0, 50)).forEach(this::attempt);
+        claims.claim(50).forEach(this::attempt);
     }
 
     public void sendTest(String endpoint) {
@@ -62,7 +62,9 @@ public class PushDeliveryService {
     }
 
     private void attempt(PushDelivery delivery) {
-        PushSubscription subscription = delivery.getSubscription();
+        PushSubscription subscription = subscriptions.findById(delivery.getSubscription().getId())
+                .filter(PushSubscription::isEnabled).orElse(null);
+        if (subscription == null) return;
         try {
             var notification = delivery.getNotification();
             Map<String, Object> message = new LinkedHashMap<>();
@@ -92,7 +94,6 @@ public class PushDeliveryService {
 
     @Transactional
     protected void finish(PushDelivery delivery, String status, String error) {
-        delivery.setAttempts(delivery.getAttempts() + 1);
         delivery.setLastAttemptAt(Instant.now());
         delivery.setStatus(status);
         delivery.setLastError(error);

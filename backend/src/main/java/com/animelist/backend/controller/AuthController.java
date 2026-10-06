@@ -3,6 +3,7 @@ package com.animelist.backend.controller;
 import com.animelist.backend.dto.auth.AuthStatusResponse;
 import com.animelist.backend.dto.auth.LocalLoginRequest;
 import com.animelist.backend.dto.auth.LocalRegisterRequest;
+import com.animelist.backend.dto.auth.LogoutRequest;
 import com.animelist.backend.dto.auth.SyncPromptAcknowledgementRequest;
 import com.animelist.backend.service.*;
 import jakarta.servlet.http.*;
@@ -20,10 +21,10 @@ public class AuthController {
     private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
     private static final String PUBLIC_FRONTEND_URL = "https://anirecord.com.ar";
     private static final String OAUTH_STATE_COOKIE = "anirecord_oauth_state";
-    private final AniListAuthService auth; private final LocalAuthService localAuth; private final String frontendUrl; private final boolean secure;
-    public AuthController(AniListAuthService auth, LocalAuthService localAuth,
+    private final AniListAuthService auth; private final LocalAuthService localAuth; private final LogoutService sessionLogout; private final String frontendUrl; private final boolean secure;
+    public AuthController(AniListAuthService auth, LocalAuthService localAuth, LogoutService sessionLogout,
             @Value("${app.frontend-url:http://localhost:5173}") String frontendUrl,
-            @Value("${app.cookie-secure:true}") boolean secure){this.auth=auth;this.localAuth=localAuth;this.frontendUrl=canonicalFrontendUrl(frontendUrl);this.secure=secure;}
+            @Value("${app.cookie-secure:true}") boolean secure){this.auth=auth;this.localAuth=localAuth;this.sessionLogout=sessionLogout;this.frontendUrl=canonicalFrontendUrl(frontendUrl);this.secure=secure;}
     @GetMapping("/status") public AuthStatusResponse status(){return auth.status();}
     @GetMapping({"/login", "/connect"}) public ResponseEntity<Void> login(){
         var request = auth.authorizationRequest();
@@ -53,7 +54,7 @@ public class AuthController {
     @PatchMapping("/sync-prompt") public Map<String,String> acknowledgeSyncPrompt(@Valid @RequestBody SyncPromptAcknowledgementRequest request) {
         return Map.of("lastSyncPromptCommit", auth.acknowledgeSyncPrompt(request.commit()));
     }
-    @PostMapping("/logout") public ResponseEntity<Void> logout(HttpServletRequest request){String token=cookie(request);auth.logout(token);return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE,expired().toString()).build();}
+    @PostMapping("/logout") public ResponseEntity<Void> logout(@Valid @RequestBody(required=false) LogoutRequest body,HttpServletRequest request){String token=cookie(request);sessionLogout.logout(token,body==null?null:body.pushEndpoint());return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE,expired().toString()).build();}
     private ResponseEntity<Void> redirectAfterOAuth(String result,String token){
         String fragment=token==null?"":"&ticket="+token;
         return ResponseEntity.status(302).location(URI.create(frontendUrl+"/#auth="+result+fragment))

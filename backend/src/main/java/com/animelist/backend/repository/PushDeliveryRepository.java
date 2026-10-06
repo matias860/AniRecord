@@ -5,13 +5,37 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PushDeliveryRepository extends JpaRepository<PushDelivery, Long> {
     boolean existsBySubscriptionIdAndNotificationId(Long subscriptionId, Long notificationId);
 
+    @Query("""
+        select delivery.id from PushDelivery delivery
+        where delivery.attempts < 3 and (
+            delivery.status in ('PENDING', 'FAILED') or
+            (delivery.status = 'PROCESSING' and (delivery.lastAttemptAt is null or delivery.lastAttemptAt < :staleBefore))
+        )
+        order by delivery.createdAt
+        """)
+    List<Long> findClaimableIds(@Param("staleBefore") java.time.Instant staleBefore, Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+        update PushDelivery delivery
+        set delivery.status = 'PROCESSING', delivery.lastAttemptAt = :claimedAt,
+            delivery.attempts = delivery.attempts + 1
+        where delivery.id = :id and delivery.attempts < 3 and (
+            delivery.status in ('PENDING', 'FAILED') or
+            (delivery.status = 'PROCESSING' and (delivery.lastAttemptAt is null or delivery.lastAttemptAt < :staleBefore))
+        )
+        """)
+    int claim(@Param("id") Long id, @Param("claimedAt") java.time.Instant claimedAt,
+            @Param("staleBefore") java.time.Instant staleBefore);
+
     @EntityGraph(attributePaths = {"subscription", "notification"})
-    @Query("select delivery from PushDelivery delivery where delivery.status in :statuses and delivery.attempts < 3 order by delivery.createdAt")
-    List<PushDelivery> findReady(@Param("statuses") List<String> statuses, Pageable pageable);
+    @Query("select delivery from PushDelivery delivery where delivery.id in :ids")
+    List<PushDelivery> findClaimedWithDetails(@Param("ids") List<Long> ids);
 }

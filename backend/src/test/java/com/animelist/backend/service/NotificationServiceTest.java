@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import com.animelist.backend.entity.AppNotification;
 import com.animelist.backend.entity.AppUser;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -303,6 +305,40 @@ class NotificationServiceTest {
         assertEquals(null, user.getNotificationBackfillAsRead());
         assertEquals(Set.of(1, 2, 3, 4, 5, 6), storedIds);
         assertTrue(readState.values().stream().allMatch(Boolean.TRUE::equals));
+        server.verify();
+    }
+
+    @Test void mergesAnAniListAiringNoticeIntoTheExistingLocalEpisodeNotice() {
+        AppNotificationRepository notifications = mock(AppNotificationRepository.class);
+        AppUserRepository users = mock(AppUserRepository.class);
+        AniListAuthService auth = mock(AniListAuthService.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        AppUser user = new AppUser();
+        user.setId(13L);
+        user.setAccountType(AccountType.ANILIST);
+        user.setNotificationsInitializedAt(LocalDateTime.now());
+        AppNotification local = new AppNotification();
+        local.setId(31L);
+        local.setUser(user);
+        local.setSourceKey("AIRING:99:4");
+        local.setRead(false);
+        when(currentUser.require()).thenReturn(user);
+        when(auth.validToken()).thenReturn("token");
+        when(notifications.existsByUserIdAndAnilistNotificationId(13L, 700)).thenReturn(false);
+        when(notifications.findByUserIdAndSourceKey(13L, "AIRING:99:4")).thenReturn(Optional.of(local));
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("https://graphql.anilist.co")).andRespond(withSuccess("""
+            {"data":{"Page":{"pageInfo":{"hasNextPage":false},"notifications":[{
+              "__typename":"AiringNotification","id":700,"animeId":99,"episode":4,"createdAt":1,
+              "media":{"id":99,"title":{"userPreferred":"Serie"},"coverImage":{"large":"cover"}}
+            }]}}}
+            """, MediaType.APPLICATION_JSON));
+        NotificationService service = new NotificationService(notifications, users, auth, currentUser, builder.build());
+
+        assertEquals(0, service.sync());
+        assertEquals(700, local.getAnilistNotificationId());
+        verify(notifications).save(local);
         server.verify();
     }
 
