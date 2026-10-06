@@ -98,7 +98,7 @@ public class LibraryService {
             throw new BusinessException("La obra ya está en tu biblioteca");
         }
 
-        AniListMediaResponse externalMedia = aniListClient.getMedia(request.anilistId());
+        AniListMediaResponse externalMedia = aniListClient.getMediaForLibrary(request.anilistId());
         Media media = mediaRepository.findByAnilistId(request.anilistId())
                 .orElseGet(Media::new);
         copyExternalMedia(externalMedia, media);
@@ -205,7 +205,7 @@ public class LibraryService {
     @Transactional
     public LibraryEntryResponse synchronize(Long id) {
         LibraryEntry entry = findEntry(id);
-        AniListMediaResponse externalMedia = aniListClient.getMedia(entry.getMedia().getAnilistId());
+        AniListMediaResponse externalMedia = aniListClient.getMediaForLibrary(entry.getMedia().getAnilistId());
         copyExternalMedia(externalMedia, entry.getMedia());
         validateProgress(entry.getProgress(), entry.getMedia().getTotalUnits());
         mediaRepository.save(entry.getMedia());

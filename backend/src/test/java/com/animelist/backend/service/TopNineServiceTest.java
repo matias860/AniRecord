@@ -1,6 +1,7 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.dto.topnine.PublishTopNineRequest;
+import com.animelist.backend.dto.library.LibraryEntryIdentityResponse;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.Media;
@@ -102,6 +103,17 @@ class TopNineServiceTest {
                 page.getPageNumber() == 0 && page.getPageSize() == 24));
         verify(assets).findUpdatedAtByUserIds(List.of(20L), com.animelist.backend.enums.ProfileAssetType.AVATAR);
         verify(assets, never()).findUpdatedAt(anyLong(), any());
+    }
+
+    @Test void loadsOnlyEntryIdentifiersForAnAuthenticatedViewer() {
+        when(currentUser.optional()).thenReturn(Optional.of(user));
+        when(library.findIdentitiesByUserId(7L)).thenReturn(List.of(new LibraryEntryIdentityResponse(4L, 1004)));
+        when(submissions.findIdsByPeriodStartOrderByPublishedAtDesc(any(), any())).thenReturn(List.of());
+
+        service.current();
+
+        verify(library).findIdentitiesByUserId(7L);
+        verify(library, never()).findSummaries(anyLong(), any(), any());
     }
 
     private LibraryEntry entry(long id, String title, String genres) {

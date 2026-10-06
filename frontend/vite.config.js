@@ -58,7 +58,7 @@ export default defineConfig(({ mode }) => {
       filename: 'sw.js',
       registerType: 'prompt',
       injectManifest: {
-        globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,png,svg}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {

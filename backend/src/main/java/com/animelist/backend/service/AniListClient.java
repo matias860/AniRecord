@@ -205,7 +205,7 @@ public class AniListClient {
                   format
                   countryOfOrigin
                   title { romaji english native }
-                  coverImage { extraLarge large }
+                  coverImage { large }
                   episodes
                   chapters
                   status
@@ -214,6 +214,32 @@ public class AniListClient {
                   tags { name rank description category isMediaSpoiler }
                   volumes
                 }
+              }
+            }
+            """;
+
+    private static final String LIBRARY_MEDIA_QUERY = """
+            query LibraryMedia($id: Int!) {
+              Media(id: $id) {
+                id
+                type
+                format
+                countryOfOrigin
+                title { romaji english native }
+                coverImage { large }
+                bannerImage
+                description
+                genres
+                episodes
+                chapters
+                status
+                season
+                seasonYear
+                startDate { year month day }
+                endDate { year month day }
+                nextAiringEpisode { episode airingAt timeUntilAiring }
+                tags { name rank description category isMediaSpoiler }
+                volumes
               }
             }
             """;
@@ -250,7 +276,7 @@ public class AniListClient {
                 format
                 countryOfOrigin
                 title { romaji english native }
-                coverImage { extraLarge large }
+                coverImage { large }
                 bannerImage
                 description
                 genres
@@ -332,7 +358,7 @@ public class AniListClient {
                   id
                   type
                   title { romaji english native }
-                  coverImage { extraLarge large }
+                  coverImage { large }
                   bannerImage
                   description
                   genres
@@ -406,7 +432,14 @@ public class AniListClient {
         List<Object> characterEdges = new ArrayList<>(asList(asMap(media.get("mainCharacters")).get("edges")));
         characterEdges.addAll(asList(asMap(media.get("supportingCharacters")).get("edges")));
         media.put("characters", Map.of("edges", characterEdges));
-        return mapMedia(media, true);
+        return mapMedia(media, true, true);
+    }
+
+    @Cacheable(value = "mediaDetails", key = "'library:' + #anilistId")
+    public AniListMediaResponse getMediaForLibrary(Integer anilistId) {
+        Object media = execute(LIBRARY_MEDIA_QUERY, Map.of("id", anilistId)).get("Media");
+        if (media == null) throw new AniListClientException("AniList no encontró la obra solicitada");
+        return mapMedia(asMap(media), true, false);
     }
 
     public CharacterDetailResponse getCharacter(Integer anilistId) {
@@ -813,17 +846,20 @@ public class AniListClient {
     }
 
     private AniListMediaResponse mapMedia(Map<String, Object> media) {
-        return mapMedia(media, false);
+        return mapMedia(media, false, false);
     }
 
     private AniListMediaResponse mapMedia(Map<String, Object> media, boolean includeAllTags) {
+        return mapMedia(media, includeAllTags, false);
+    }
+
+    private AniListMediaResponse mapMedia(Map<String, Object> media, boolean includeAllTags, boolean preferExtraLarge) {
         MediaType mediaType = enumValue(MediaType.class, asString(media.get("type")));
         Map<String, Object> coverImage = asMap(media.get("coverImage"));
         Map<String, Object> titles = asMap(media.get("title"));
-        String cover = firstNonBlank(
-                asString(coverImage.get("extraLarge")),
-                asString(coverImage.get("large"))
-        );
+        String cover = preferExtraLarge
+                ? firstNonBlank(asString(coverImage.get("extraLarge")), asString(coverImage.get("large")))
+                : firstNonBlank(asString(coverImage.get("large")), asString(coverImage.get("extraLarge")));
         String mediaFormat = asString(media.get("format"));
         Integer totalUnits = mediaType == MediaType.ANIME
                 ? asInteger(media.get("episodes"))

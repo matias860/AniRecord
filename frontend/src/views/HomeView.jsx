@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -41,6 +41,41 @@ function seasonAtOffset(offset) {
   return { season: seasonNames[target % 4], year: Math.floor(target / 4) }
 }
 
+function useIdleReady() {
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const activate = () => setReady(true)
+    if ('requestIdleCallback' in window) {
+      const handle = window.requestIdleCallback(activate, { timeout: 1800 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const handle = window.setTimeout(activate, 500)
+    return () => window.clearTimeout(handle)
+  }, [])
+  return ready
+}
+
+function useNearViewport(rootMargin = '700px 0px') {
+  const ref = useRef(null)
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    if (ready) return undefined
+    if (!('IntersectionObserver' in window)) {
+      const handle = window.setTimeout(() => setReady(true), 0)
+      return () => window.clearTimeout(handle)
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setReady(true)
+        observer.disconnect()
+      }
+    }, { rootMargin })
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
+  }, [ready, rootMargin])
+  return [ref, ready]
+}
+
 export default function HomeView() {
   const dispatch = useDispatch()
   const navigate = useNavigate()
@@ -52,6 +87,8 @@ export default function HomeView() {
   const topNine = useSelector((state) => state.topNine)
   const [recommendationModal, setRecommendationModal] = useState(false)
   const [topNineOpen, setTopNineOpen] = useState(false)
+  const communityReady = useIdleReady()
+  const [seasonSectionRef, seasonSectionReady] = useNearViewport()
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
   const localDismissedCommit = window.localStorage.getItem(syncPromptKey)
   const dismissedCommit = auth.lastSyncPromptCommit || localDismissedCommit
@@ -94,18 +131,26 @@ export default function HomeView() {
         .catch(() => {})
     }
 
-    if (window.sessionStorage.getItem(automaticSyncKey)) return
-    window.sessionStorage.setItem(automaticSyncKey, 'started')
-    if (!synchronizationRecommended) {
-      acknowledgeCurrentVersion()
-      return
+    const synchronize = () => {
+      if (window.sessionStorage.getItem(automaticSyncKey)) return
+      window.sessionStorage.setItem(automaticSyncKey, 'started')
+      if (!synchronizationRecommended) {
+        acknowledgeCurrentVersion()
+        return
+      }
+      dispatch(synchronizeAniListLibrary()).unwrap()
+        .then(acknowledgeCurrentVersion)
+        .catch(() => {
+          // The global toast reports the failure. Keeping the stored commit unchanged
+          // allows a new attempt in the next browser session or a manual retry in Perfil.
+        })
     }
-    dispatch(synchronizeAniListLibrary()).unwrap()
-      .then(acknowledgeCurrentVersion)
-      .catch(() => {
-        // The global toast reports the failure. Keeping the stored commit unchanged
-        // allows a new attempt in the next browser session or a manual retry in Perfil.
-      })
+    if ('requestIdleCallback' in window) {
+      const handle = window.requestIdleCallback(synchronize, { timeout: 2500 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const handle = window.setTimeout(synchronize, 900)
+    return () => window.clearTimeout(handle)
   }, [auth.accountType, auth.authenticated, auth.userId, automaticSyncKey, dismissedCommit,
     dispatch, library.status, synchronizationRecommended, syncPromptKey])
 
@@ -116,18 +161,18 @@ export default function HomeView() {
   useEffect(() => {
     // Weekly recommendations live in our own database. They must not wait for
     // AniList's airing endpoint, otherwise an external outage hides a local feature.
-    if (recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
-  }, [dispatch, recommendations.status])
+    if (communityReady && recommendations.status === 'idle') dispatch(fetchWeeklyRecommendations())
+  }, [communityReady, dispatch, recommendations.status])
 
   useEffect(() => {
-    if (topNine.status === 'idle') dispatch(fetchCurrentTopNine())
-  }, [dispatch, topNine.status])
+    if (communityReady && topNine.status === 'idle') dispatch(fetchCurrentTopNine())
+  }, [communityReady, dispatch, topNine.status])
 
   useEffect(() => {
-    if (!home.seasonCache[selectedSeasonKey] && !home.seasonErrors[selectedSeasonKey] && home.seasonStatus !== 'loading') {
+    if (seasonSectionReady && !home.seasonCache[selectedSeasonKey] && !home.seasonErrors[selectedSeasonKey] && home.seasonStatus !== 'loading') {
       dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear }))
     }
-  }, [dispatch, home.seasonCache, home.seasonErrors, home.seasonStatus, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
+  }, [dispatch, home.seasonCache, home.seasonErrors, home.seasonStatus, seasonSectionReady, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
   const { airingWithCurrentProgress, allReading, allWatching, completed, inProgress, pendingEpisodeIds } = useMemo(() => {
     const libraryByAniListId = new Map(library.items.map((item) => [item.anilistId, item]))
@@ -219,7 +264,7 @@ export default function HomeView() {
       {home.status === 'failed' && !home.unavailable && <PageState error={home.error} />}
       {auth.authenticated && libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
       <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
-      <SeasonMarquee
+      <div ref={seasonSectionRef} className="home-deferred-section"><SeasonMarquee
         entries={selectedSeasonEntries}
         error={home.seasonErrors[selectedSeasonKey]}
         onRetry={() => dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear, retry: true }))}
@@ -229,7 +274,7 @@ export default function HomeView() {
         canGoNext={home.seasonOffset < 3}
         onPrevious={() => dispatch(setSeasonOffset(home.seasonOffset - 1))}
         onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
-      />
+      /></div>
 
       <TopNineShowcase key={topNine.prompt?.key ?? 'top-nine-loading'} prompt={topNine.prompt} submissions={topNine.submissions} />
 

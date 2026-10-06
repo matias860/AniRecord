@@ -1,5 +1,5 @@
 import { formatsFor } from '../lib/mediaFormats.js'
-import { useEffect, useMemo } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Library, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -32,6 +32,8 @@ const sectionLabels = {
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const releaseStatuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
+const initialSectionSize = 48
+const emptyGenres = []
 
 const byPersonalScore = (a, b) => {
   const aScored = a.personalScore != null
@@ -51,6 +53,15 @@ export default function LibraryView() {
   const catalog = useSelector((state) => state.catalog)
   const mediaType = filters.mediaType === 'MANGA' ? 'MANGA' : 'ANIME'
   const trackingStatus = filters.trackingStatus ?? 'ALL'
+  const deferredSearch = useDeferredValue(filters.search ?? '')
+  const selectedYear = filters.year ?? ''
+  const selectedSeason = filters.season ?? ''
+  const selectedGenres = Array.isArray(filters.genre) ? filters.genre : emptyGenres
+  const selectedCountry = filters.country ?? ''
+  const selectedFormat = filters.format ?? ''
+  const selectedReleaseStatus = filters.releaseStatus ?? ''
+  const selectedScore = Number(filters.score) || 0
+  const [pagination, setPagination] = useState({ key: '', counts: {} })
   const updateFilter = (key) => (value) => dispatch(setLibraryFilter({ key, value }))
   const availableYears = useMemo(() => [...new Set(items
     .filter((item) => item.mediaType === mediaType && item.releaseYear)
@@ -69,36 +80,48 @@ export default function LibraryView() {
     if (requestedType === 'ANIME' || requestedType === 'MANGA') dispatch(setLibraryMediaType(requestedType))
   }, [dispatch, searchParams])
 
+  const preparedItems = useMemo(() => items.map((item) => ({
+    item,
+    genres: item.genres ? item.genres.split('|') : [],
+    tags: item.tags ? item.tags.split('|') : [],
+    searchText: `${item.title ?? ''}\n${item.romajiTitle ?? ''}`.toLocaleLowerCase('es'),
+  })), [items])
+
   const filtered = useMemo(() => {
-    const search = (filters.search ?? '').trim().toLocaleLowerCase('es')
-    return items.filter((item) => {
+    const search = deferredSearch.trim().toLocaleLowerCase('es')
+    return preparedItems.filter(({ item, genres, tags, searchText }) => {
       const score = item.personalScore == null ? null : Number(item.personalScore)
-      const selectedScore = Number(filters.score) || 0
       const scoreMatches = !selectedScore || score === selectedScore
-      const selectedGenres = Array.isArray(filters.genre) ? filters.genre : []
-      const itemGenres = item.genres ? item.genres.split('|') : []
-      const itemTags = item.tags ? item.tags.split('|') : []
       return item.mediaType === mediaType
         && (trackingStatus === 'ALL' || item.trackingStatus === trackingStatus)
-        && (!search || [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(search)))
-        && (!filters.year || String(item.releaseYear) === filters.year)
-        && (!filters.season || item.releaseSeason === filters.season)
-        && (!selectedGenres.length || selectedGenres.every((category) => category === 'Yuri' ? itemTags.includes(category) : itemGenres.includes(category)))
-        && (!filters.country || item.countryOfOrigin === filters.country)
-        && (!filters.format || item.mediaFormat === filters.format)
-        && (!filters.releaseStatus || item.releaseStatus === filters.releaseStatus)
+        && (!search || searchText.includes(search))
+        && (!selectedYear || String(item.releaseYear) === selectedYear)
+        && (!selectedSeason || item.releaseSeason === selectedSeason)
+        && (!selectedGenres.length || selectedGenres.every((category) => category === 'Yuri' ? tags.includes(category) : genres.includes(category)))
+        && (!selectedCountry || item.countryOfOrigin === selectedCountry)
+        && (!selectedFormat || item.mediaFormat === selectedFormat)
+        && (!selectedReleaseStatus || item.releaseStatus === selectedReleaseStatus)
         && scoreMatches
-    })
-  }, [filters, items, mediaType, trackingStatus])
+    }).map(({ item }) => item)
+  }, [deferredSearch, mediaType, preparedItems, selectedCountry, selectedFormat, selectedGenres,
+    selectedReleaseStatus, selectedScore, selectedSeason, selectedYear, trackingStatus])
 
-  const sections = useMemo(() => sectionOrder
-    .filter((sectionStatus) => trackingStatus === 'ALL' || trackingStatus === sectionStatus)
-    .map((sectionStatus) => ({
-      status: sectionStatus,
-      title: sectionLabels[sectionStatus][mediaType],
-      items: filtered.filter((item) => item.trackingStatus === sectionStatus).sort(byPersonalScore),
-    }))
-    .filter((section) => section.items.length), [filtered, mediaType, trackingStatus])
+  const sections = useMemo(() => {
+    const buckets = Object.fromEntries(sectionOrder.map((sectionStatus) => [sectionStatus, []]))
+    for (const item of filtered) buckets[item.trackingStatus]?.push(item)
+    return sectionOrder
+      .filter((sectionStatus) => trackingStatus === 'ALL' || trackingStatus === sectionStatus)
+      .map((sectionStatus) => ({
+        status: sectionStatus,
+        title: sectionLabels[sectionStatus][mediaType],
+        items: buckets[sectionStatus].sort(byPersonalScore),
+      }))
+      .filter((section) => section.items.length)
+  }, [filtered, mediaType, trackingStatus])
+
+  const paginationKey = [deferredSearch, mediaType, selectedCountry, selectedFormat, selectedGenres.join('|'),
+    selectedReleaseStatus, selectedScore, selectedSeason, selectedYear, trackingStatus].join('::')
+  const visibleCounts = pagination.key === paginationKey ? pagination.counts : {}
 
   if ((status === 'idle' || status === 'loading') && !items.length) return <PageState fullPage loading />
 
@@ -125,7 +148,11 @@ export default function LibraryView() {
         <motion.div className="library-sections" key={mediaType} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .28, ease: 'easeOut' }}>
           {sections.map((section, sectionIndex) => <motion.section className="library-status-section" key={section.status} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25, delay: sectionIndex * .045 }}>
             <div className="library-section-heading"><h2>{section.title}</h2><span>{section.items.length}</span></div>
-            <HoverMediaGrid className="library-grid">{section.items.map((media) => <MediaCard key={media.id} media={media} onIncrement={(id) => dispatch(incrementProgress(id))} />)}</HoverMediaGrid>
+            <HoverMediaGrid className="library-grid">{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={(id) => dispatch(incrementProgress(id))} />)}</HoverMediaGrid>
+            {(visibleCounts[section.status] ?? initialSectionSize) < section.items.length && <button className="secondary-button library-show-more" type="button" onClick={() => setPagination((current) => {
+              const counts = current.key === paginationKey ? current.counts : {}
+              return { key: paginationKey, counts: { ...counts, [section.status]: (counts[section.status] ?? initialSectionSize) + initialSectionSize } }
+            })}>Mostrar más</button>}
           </motion.section>)}
         </motion.div>
       </AnimatePresence>

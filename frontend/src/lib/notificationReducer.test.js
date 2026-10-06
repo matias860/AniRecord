@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import notificationReducer, { syncNotifications } from '../features/notifications/notificationSlice.js'
+import notificationReducer, {
+  fetchNotifications,
+  fetchUnreadCount,
+  markNotificationsRead,
+  syncNotifications,
+} from '../features/notifications/notificationSlice.js'
 
 const existingNotification = { id: 1, title: 'Existente', read: false }
 
@@ -63,4 +68,27 @@ test('rejected sync stores its attempt time for retry backoff', () => {
 
   assert.equal(next.syncStatus, 'failed')
   assert.equal(next.lastSyncAttemptAt, 456)
+})
+
+test('limited notification history does not replace the server unread total', () => {
+  let state = notificationReducer(undefined, {
+    type: fetchUnreadCount.fulfilled.type,
+    payload: 27,
+  })
+
+  state = notificationReducer(state, {
+    type: fetchNotifications.fulfilled.type,
+    payload: [{ id: 1, title: 'Visible', read: false }],
+  })
+
+  assert.equal(state.unreadCount, 27)
+  assert.equal(state.items.length, 1)
+
+  state = notificationReducer(state, {
+    type: markNotificationsRead.pending.type,
+    meta: { arg: [1] },
+  })
+
+  assert.equal(state.unreadCount, 26)
+  assert.equal(state.items[0].read, true)
 })

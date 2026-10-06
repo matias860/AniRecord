@@ -4,6 +4,7 @@ import com.animelist.backend.entity.LibraryEntry;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.entity.Media;
 import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
+import com.animelist.backend.dto.library.LibraryEntryIdentityResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.enums.ReleaseSeason;
@@ -37,6 +38,13 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
             @Param("mediaType") MediaType mediaType,
             @Param("status") TrackingStatus status
     );
+
+    @Query("""
+            select new com.animelist.backend.dto.library.LibraryEntryIdentityResponse(entry.id, media.anilistId)
+            from LibraryEntry entry join entry.media media
+            where entry.user.id = :userId
+            """)
+    List<LibraryEntryIdentityResponse> findIdentitiesByUserId(@Param("userId") Long userId);
 
     @Query("""
             select new com.animelist.backend.dto.library.LibraryEntrySummaryResponse(

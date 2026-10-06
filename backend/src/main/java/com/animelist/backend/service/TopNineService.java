@@ -59,7 +59,7 @@ public class TopNineService {
     public CurrentTopNineResponse current() {
         var period = period();
         AppUser viewer = currentUser.optional().orElse(null);
-        Map<Integer, Long> ownEntries = viewer == null ? Map.of() : library.findSummaries(viewer.getId(), null, null).stream()
+        Map<Integer, Long> ownEntries = viewer == null ? Map.of() : library.findIdentitiesByUserId(viewer.getId()).stream()
                 .collect(Collectors.toMap(entry -> entry.anilistId(), entry -> entry.id(), (first, ignored) -> first));
         List<Long> publishedIds = submissions.findIdsByPeriodStartOrderByPublishedAtDesc(
                 period.startsAt(), PageRequest.of(0, MAX_COMMUNITY_SUBMISSIONS));

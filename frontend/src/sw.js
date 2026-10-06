@@ -13,7 +13,8 @@ self.addEventListener('message', (event) => {
 })
 
 registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html'), { denylist: [/^\/api\//] }))
-registerRoute(({ request, url }) => url.origin === self.location.origin && ['style', 'script', 'font'].includes(request.destination), new StaleWhileRevalidate({ cacheName: 'anirecord-static-v1' }))
+registerRoute(({ request, url }) => url.origin === self.location.origin && ['style', 'script'].includes(request.destination), new StaleWhileRevalidate({ cacheName: 'anirecord-static-v1' }))
+registerRoute(({ request, url }) => url.origin === self.location.origin && request.destination === 'font', new CacheFirst({ cacheName: 'anirecord-fonts-v1' }))
 registerRoute(({ request, url }) => url.origin === self.location.origin && !url.pathname.startsWith('/api/') && request.destination === 'image', new CacheFirst({ cacheName: 'anirecord-images-v1' }))
 
 self.addEventListener('push', (event) => {

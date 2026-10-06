@@ -1,6 +1,20 @@
-export const CURRENT_VERSION = '1.11.3'
+export const CURRENT_VERSION = '1.12.0'
 
 export const RELEASES = [
+  {
+    version: '1.12.0',
+    date: '6 de octubre de 2026',
+    title: 'Mejoras de rendimiento',
+    summary: 'Reducimos el trabajo inicial y las descargas para que AniRecord responda mejor, especialmente en bibliotecas grandes y celulares.',
+    changes: [
+      { type: 'Biblioteca', text: 'Las colecciones grandes aparecen por bloques y el buscador se mantiene fluido mientras escribís.' },
+      { type: 'Imágenes', text: 'Las tarjetas descargan portadas acordes a su tamaño y reservan la mayor calidad para los detalles.' },
+      { type: 'Inicio', text: 'Priorizamos la biblioteca y el calendario antes de cargar las secciones que están más abajo.' },
+      { type: 'Notificaciones', text: 'La campana consulta primero un contador liviano y trae el historial completo cuando la abrís.' },
+      { type: 'App', text: 'La instalación y las actualizaciones descargan menos archivos de fuentes.' },
+      { type: '3×3', text: 'El 3×3 consulta solamente los datos necesarios de tu biblioteca.' },
+    ],
+  },
   {
     version: '1.11.3',
     date: '6 de octubre de 2026',

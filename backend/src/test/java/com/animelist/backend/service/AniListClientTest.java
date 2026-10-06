@@ -61,6 +61,21 @@ class AniListClientTest {
         withResponse(response, client -> assertEquals(7, client.getMedia(20).tags().size()));
     }
 
+    @Test
+    void libraryMetadataUsesTheSmallerCardCover() throws Exception {
+        String response = """
+                {"data":{"Media":{
+                  "id":20,"type":"ANIME","format":"TV","countryOfOrigin":"JP",
+                  "title":{"romaji":"Example","english":"Example","native":"Example"},
+                  "coverImage":{"extraLarge":"extra.jpg","large":"large.jpg"},
+                  "startDate":{"year":2020,"month":1,"day":1},"endDate":{},
+                  "status":"FINISHED","genres":[],"tags":[]
+                }}}
+                """;
+
+        withResponse(response, client -> assertEquals("large.jpg", client.getMediaForLibrary(20).coverImage()));
+    }
+
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
