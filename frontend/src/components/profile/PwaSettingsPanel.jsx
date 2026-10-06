@@ -1,7 +1,7 @@
 import { Bell, BellRing, Check, Download, ExternalLink, Send, Share2, Smartphone, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import apiClient from '../../api/apiClient.js'
-import { canPromptInstall, isIos, isStandalone, promptInstall, subscriptionUsesKey, urlBase64ToUint8Array } from '../../lib/pwaInstall.js'
+import { canPromptInstall, isAppInstalled, isIos, isStandalone, promptInstall, subscriptionUsesKey, urlBase64ToUint8Array } from '../../lib/pwaInstall.js'
 
 const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
@@ -38,10 +38,24 @@ export default function PwaSettingsPanel() {
 
   useEffect(() => {
     const timer = window.setTimeout(load, 0)
-    const update = () => { setInstallable(canPromptInstall()); setInstalled(isStandalone()) }
-    window.addEventListener('anirecord:installable', update)
-    window.addEventListener('anirecord:installed', update)
-    return () => { window.clearTimeout(timer); window.removeEventListener('anirecord:installable', update); window.removeEventListener('anirecord:installed', update) }
+    const refreshInstallState = async () => {
+      setInstallable(canPromptInstall())
+      setInstalled(await isAppInstalled())
+    }
+    const installedNow = () => { setInstalled(true); setInstallable(false) }
+    const refreshWhenVisible = () => { if (document.visibilityState === 'visible') refreshInstallState() }
+    refreshInstallState()
+    window.addEventListener('anirecord:installable', refreshInstallState)
+    window.addEventListener('anirecord:installed', installedNow)
+    window.addEventListener('focus', refreshInstallState)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('anirecord:installable', refreshInstallState)
+      window.removeEventListener('anirecord:installed', installedNow)
+      window.removeEventListener('focus', refreshInstallState)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
   }, [load])
 
   const install = async () => {

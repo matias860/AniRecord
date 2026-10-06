@@ -15,6 +15,16 @@ export function initInstallPrompt() {
 export const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
 export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 export const canPromptInstall = () => Boolean(deferredPrompt)
+export async function isAppInstalled() {
+  if (isStandalone()) return true
+  if (typeof navigator.getInstalledRelatedApps !== 'function') return false
+  try {
+    const relatedApps = await navigator.getInstalledRelatedApps()
+    return relatedApps.some((app) => app.platform === 'webapp')
+  } catch {
+    return false
+  }
+}
 export async function promptInstall() {
   if (!deferredPrompt) return false
   const prompt = deferredPrompt

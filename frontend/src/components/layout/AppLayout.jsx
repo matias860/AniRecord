@@ -49,8 +49,6 @@ export default function AppLayout() {
       '--accent': accentColor,
     }
     Object.entries(variables).forEach(([name, value]) => value && root.style.setProperty(name, value))
-    const themeMeta = document.querySelector('meta[name="theme-color"]')
-    if (themeMeta && backgroundColor) themeMeta.setAttribute('content', backgroundColor)
     updatePwaBranding(accentColor, backgroundColor)
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
   }, [accentColor, backgroundColor, surfaceColor])
