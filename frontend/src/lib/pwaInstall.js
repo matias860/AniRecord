@@ -30,3 +30,11 @@ export function urlBase64ToUint8Array(value) {
   const raw = atob((value + padding).replace(/-/g, '+').replace(/_/g, '/'))
   return Uint8Array.from([...raw].map((character) => character.charCodeAt(0)))
 }
+
+export function subscriptionUsesKey(subscription, publicKey) {
+  const current = subscription?.options?.applicationServerKey
+  if (!current || !publicKey) return false
+  const expected = urlBase64ToUint8Array(publicKey)
+  const actual = new Uint8Array(current)
+  return actual.length === expected.length && actual.every((value, index) => value === expected[index])
+}

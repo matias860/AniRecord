@@ -9,6 +9,7 @@ import ChangelogModal, { VersionButton } from './ChangelogModal.jsx'
 import ToastViewport from '../common/ToastViewport.jsx'
 import BrandMark from '../common/BrandMark.jsx'
 import PwaUpdateToast from '../common/PwaUpdateToast.jsx'
+import { updatePwaBranding } from '../../lib/pwaBranding.js'
 import { logout } from '../../features/auth/authSlice.js'
 
 const links = [
@@ -50,6 +51,7 @@ export default function AppLayout() {
     Object.entries(variables).forEach(([name, value]) => value && root.style.setProperty(name, value))
     const themeMeta = document.querySelector('meta[name="theme-color"]')
     if (themeMeta && backgroundColor) themeMeta.setAttribute('content', backgroundColor)
+    updatePwaBranding(accentColor, backgroundColor)
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
   }, [accentColor, backgroundColor, surfaceColor])
   return (

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
+import { BookOpen, Camera, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { prepareImageForCrop } from '../lib/profileImage.js'
@@ -118,6 +118,7 @@ function FavoritePeopleList({ title, entries, path }) {
 
 function ProfileFileField({ type, label, hint, value, custom, aniListFallback, busy, dispatch }) {
   const inputId = `profile-${type}-file`
+  const cameraInputId = `profile-${type}-camera`
   const [selectedFile, setSelectedFile] = useState(null)
   const [preparing, setPreparing] = useState(false)
   const choose = async (event) => {
@@ -130,8 +131,9 @@ function ProfileFileField({ type, label, hint, value, custom, aniListFallback, b
   }
   return <article className="profile-file-field">
     <div className="profile-file-icon">{value ? <img src={value} alt="" decoding="async" /> : <FileImage />}</div>
-    <div><strong>{label}</strong><small>{preparing ? 'Preparando vista previa...' : hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy || preparing ? 'disabled' : ''}><Upload /> {preparing ? 'Preparando...' : custom ? 'Cambiar' : 'Subir'}</label>{custom && <button type="button" disabled={busy || preparing} onClick={() => dispatch(deleteProfileAsset(type))}><RotateCcw /> {aniListFallback ? 'Usar AniList' : 'Quitar'}</button>}</div></div>
+    <div><strong>{label}</strong><small>{preparing ? 'Preparando vista previa...' : hint}</small><div className="profile-file-actions"><label htmlFor={inputId} className={busy || preparing ? 'disabled' : ''}><Upload /> {preparing ? 'Preparando...' : custom ? 'Cambiar' : 'Subir'}</label><label htmlFor={cameraInputId} className={busy || preparing ? 'disabled' : ''}><Camera /> Cámara</label>{custom && <button type="button" disabled={busy || preparing} onClick={() => dispatch(deleteProfileAsset(type))}><RotateCcw /> {aniListFallback ? 'Usar AniList' : 'Quitar'}</button>}</div></div>
     <input id={inputId} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} disabled={busy || preparing} />
+    <input id={cameraInputId} type="file" accept="image/*" capture={type === 'avatar' ? 'user' : 'environment'} onChange={choose} disabled={busy || preparing} />
     <AnimatePresence>{selectedFile && <Suspense fallback={null}><ImageCropModal file={selectedFile} type={type} onCancel={() => setSelectedFile(null)} onConfirm={(file) => { dispatch(uploadProfileAsset({ type, file })); setSelectedFile(null) }} /></Suspense>}</AnimatePresence>
   </article>
 }

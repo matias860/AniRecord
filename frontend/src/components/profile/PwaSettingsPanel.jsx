@@ -1,7 +1,7 @@
 import { Bell, BellRing, Check, Download, ExternalLink, Send, Share2, Smartphone, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import apiClient from '../../api/apiClient.js'
-import { canPromptInstall, isIos, isStandalone, promptInstall, urlBase64ToUint8Array } from '../../lib/pwaInstall.js'
+import { canPromptInstall, isIos, isStandalone, promptInstall, subscriptionUsesKey, urlBase64ToUint8Array } from '../../lib/pwaInstall.js'
 
 const supported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window
 
@@ -22,6 +22,11 @@ export default function PwaSettingsPanel() {
       const registration = await navigator.serviceWorker.ready
       const current = await registration.pushManager.getSubscription()
       if (current) {
+        if (!subscriptionUsesKey(current, data.publicKey)) {
+          setSubscription(null)
+          setMessage('La configuración de avisos cambió. Volvé a activarlos para renovar este dispositivo.')
+          return
+        }
         const status = await apiClient.post('/push/subscriptions/status', { endpoint: current.endpoint })
         setPreferences({ premieresEnabled: status.data.premieresEnabled, episodesEnabled: status.data.episodesEnabled })
         setSubscription(status.data.enabled ? current : null)
@@ -57,7 +62,13 @@ export default function PwaSettingsPanel() {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') throw new Error('El permiso de notificaciones no fue concedido.')
       const registration = await navigator.serviceWorker.ready
-      const current = await registration.pushManager.getSubscription() || await registration.pushManager.subscribe({
+      let current = await registration.pushManager.getSubscription()
+      if (current && !subscriptionUsesKey(current, config.publicKey)) {
+        try { await apiClient.delete('/push/subscriptions', { data: { endpoint: current.endpoint } }) } catch { /* An old endpoint may no longer exist server-side. */ }
+        await current.unsubscribe()
+        current = null
+      }
+      current ||= await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(config.publicKey),
       })
@@ -91,7 +102,29 @@ export default function PwaSettingsPanel() {
   const test = async () => {
     setBusy(true); setMessage('')
     try { await apiClient.post('/push/test', { endpoint: subscription.endpoint }); setMessage('Prueba enviada. Puede tardar unos segundos.') }
-    catch (error) { setMessage(error.message) }
+    catch (error) {
+      const rejectedSubscription = error.status === 403 || error.message?.includes('HTTP 403')
+      if (!rejectedSubscription || !config?.publicKey) {
+        setMessage(error.message)
+      } else {
+        try {
+          try { await apiClient.delete('/push/subscriptions', { data: { endpoint: subscription.endpoint } }) } catch { /* The rejected endpoint may already be absent. */ }
+          await subscription.unsubscribe()
+          const registration = await navigator.serviceWorker.ready
+          const renewed = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+          })
+          await apiClient.post('/push/subscriptions', payload(renewed))
+          setSubscription(renewed)
+          await apiClient.post('/push/test', { endpoint: renewed.endpoint })
+          setMessage('Renovamos la configuración del dispositivo y enviamos la prueba.')
+        } catch (renewalError) {
+          setSubscription(null)
+          setMessage(`No pudimos renovar los avisos automáticamente: ${renewalError.message}`)
+        }
+      }
+    }
     finally { setBusy(false) }
   }
 

@@ -1,6 +1,18 @@
-export const CURRENT_VERSION = '1.11.0'
+export const CURRENT_VERSION = '1.11.1'
 
 export const RELEASES = [
+  {
+    version: '1.11.1',
+    date: '5 de octubre de 2026',
+    title: 'Correcciones de la app',
+    summary: 'Pulimos la instalación y el uso de AniRecord desde el celular.',
+    changes: [
+      { type: 'Notificaciones', text: 'Renovamos automáticamente las suscripciones antiguas que impedían enviar pruebas.' },
+      { type: 'Celular', text: 'El calendario ahora baja por la pantalla y muestra los animes a la derecha de cada día.' },
+      { type: 'App', text: 'El icono es más grande y toma los colores elegidos en el perfil al instalarse.' },
+      { type: 'Perfil', text: 'Ahora podés abrir la cámara al cambiar tu avatar o banner.' },
+    ],
+  },
   {
     version: '1.11.0',
     date: '5 de octubre de 2026',

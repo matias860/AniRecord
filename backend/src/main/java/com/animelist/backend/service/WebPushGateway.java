@@ -3,6 +3,7 @@ package com.animelist.backend.service;
 import com.animelist.backend.entity.PushSubscription;
 import java.nio.charset.StandardCharsets;
 import nl.martijndwars.webpush.Notification;
+import nl.martijndwars.webpush.Encoding;
 import nl.martijndwars.webpush.PushService;
 import org.apache.http.HttpResponse;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,7 +35,9 @@ public class WebPushGateway {
         Notification notification = new Notification(
                 subscription.getEndpoint(), subscription.getP256dhKey(), subscription.getAuthKey(),
                 payload.getBytes(StandardCharsets.UTF_8), 300);
-        HttpResponse response = pushService.send(notification);
+        // aes128gcm is the current Web Push content encoding. The library's
+        // one-argument overload still falls back to the legacy aesgcm format.
+        HttpResponse response = pushService.send(notification, Encoding.AES128GCM);
         return response.getStatusLine().getStatusCode();
     }
 }
