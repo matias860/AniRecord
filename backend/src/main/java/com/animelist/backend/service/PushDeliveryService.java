@@ -7,6 +7,7 @@ import com.animelist.backend.repository.PushDeliveryRepository;
 import com.animelist.backend.repository.PushSubscriptionRepository;
 import tools.jackson.databind.ObjectMapper;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -48,6 +49,7 @@ public class PushDeliveryService {
             int status = gateway.send(subscription, json.writeValueAsString(Map.of(
                     "title", "AniRecord está listo",
                     "body", "Las notificaciones de estrenos y episodios nuevos están activadas.",
+                    "icon", "/pwa-notification-192x192.png",
                     "url", "/perfil",
                     "tag", "anirecord-test")));
             if (status < 200 || status >= 300) throw new BusinessException("El servicio push rechazó la prueba (HTTP " + status + ").");
@@ -63,11 +65,13 @@ public class PushDeliveryService {
         PushSubscription subscription = delivery.getSubscription();
         try {
             var notification = delivery.getNotification();
-            String payload = json.writeValueAsString(Map.of(
-                    "title", notification.getEpisode() != null && notification.getEpisode() == 1 ? "Estreno disponible" : "Nuevo episodio disponible",
-                    "body", notification.getMessage(),
-                    "url", notification.getAnilistMediaId() == null ? "/notificaciones" : "/media/" + notification.getAnilistMediaId(),
-                    "tag", notification.getSourceKey() == null ? "notification-" + notification.getId() : notification.getSourceKey()));
+            Map<String, Object> message = new LinkedHashMap<>();
+            message.put("title", notification.getEpisode() != null && notification.getEpisode() == 1 ? "Estreno disponible" : "Nuevo episodio disponible");
+            message.put("body", notification.getMessage());
+            message.put("url", notification.getAnilistMediaId() == null ? "/notificaciones" : "/media/" + notification.getAnilistMediaId());
+            message.put("tag", notification.getSourceKey() == null ? "notification-" + notification.getId() : notification.getSourceKey());
+            if (notification.getCoverImage() != null && !notification.getCoverImage().isBlank()) message.put("icon", notification.getCoverImage());
+            String payload = json.writeValueAsString(message);
             int status = gateway.send(subscription, payload);
             if (status == 404 || status == 410) {
                 disable(subscription);

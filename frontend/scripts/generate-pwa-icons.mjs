@@ -14,10 +14,16 @@ const appIcon = Buffer.from(`<svg width="512" height="512" viewBox="0 0 512 512"
 </svg>`)
 
 const badge = Buffer.from(`<svg width="96" height="96" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">${letterPaths}</svg>`)
+const notificationIcon = Buffer.from(`<svg width="192" height="192" viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9b72ff"/><stop offset="1" stop-color="#080a12"/></linearGradient></defs>
+  <rect width="192" height="192" rx="96" fill="url(#g)"/>
+  <path d="M96 42c-22 0-36 16-36 40v20l-10 19c-3 6 1 13 8 13h76c7 0 11-7 8-13l-10-19V82c0-24-14-40-36-40Zm0 112c10 0 18-6 21-14H75c3 8 11 14 21 14Z" fill="#fff"/>
+</svg>`)
 
 await Promise.all([
   sharp(source, { density: 384 }).resize(128, 128).png().toFile('public/anirecord-logo.png'),
   ...[[192, 'pwa-192x192.png'], [512, 'pwa-512x512.png'], [180, 'apple-touch-icon.png'], [512, 'pwa-maskable-512x512.png']]
     .map(([size, name]) => sharp(appIcon).resize(size, size).png().toFile(`public/${name}`)),
   sharp(badge).png().toFile('public/pwa-badge-96x96.png'),
+  sharp(notificationIcon).png().toFile('public/pwa-notification-192x192.png'),
 ])

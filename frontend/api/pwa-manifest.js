@@ -1,10 +1,7 @@
 export const config = { runtime: 'edge' }
 
-const ICON_VERSION = '2'
+const ICON_VERSION = '3'
 const color = (value, fallback) => /^[0-9a-f]{6}$/i.test(value || '') ? value.toLowerCase() : fallback
-const blend = (foreground, background, weight = 0.12) => [0, 2, 4]
-  .map((offset) => Math.round(Number.parseInt(foreground.slice(offset, offset + 2), 16) * weight + Number.parseInt(background.slice(offset, offset + 2), 16) * (1 - weight)).toString(16).padStart(2, '0'))
-  .join('')
 
 export default function handler(request) {
   const params = new URL(request.url).searchParams
@@ -27,7 +24,7 @@ export default function handler(request) {
     scope: '/',
     display: 'standalone',
     background_color: `#${background}`,
-    theme_color: `#${blend(accent, background)}`,
+    theme_color: `#${background}`,
     categories: ['entertainment', 'lifestyle'],
     icons: [icon(192), icon(512)],
     related_applications: [{ platform: 'webapp', url: manifestUrl, id: '/' }],

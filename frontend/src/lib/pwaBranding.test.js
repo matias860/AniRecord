@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { blendHexColors } from './pwaBranding.js'
+import { pwaManifestUrl } from './pwaBranding.js'
 
-test('blends the profile accent into the Android system bar color', () => {
-  assert.equal(blendHexColors('#ffffff', '#000000'), '#1f1f1f')
-  assert.equal(blendHexColors('#ffffff', '#000000', 0), '#000000')
-  assert.equal(blendHexColors('#ffffff', '#000000', 1), '#ffffff')
+test('builds a versioned manifest URL from valid profile colors', () => {
+  assert.equal(pwaManifestUrl('#12ab34', '#050607'), '/api/pwa-manifest?accent=12ab34&background=050607&v=3')
+  assert.equal(pwaManifestUrl('invalid', null), '/api/pwa-manifest?accent=9b72ff&background=080a12&v=3')
 })

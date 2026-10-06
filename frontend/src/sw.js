@@ -21,6 +21,7 @@ self.addEventListener('push', (event) => {
   try { data = event.data?.json() || {} } catch { data = { body: event.data?.text() || 'Hay una novedad en AniRecord.' } }
   event.waitUntil(self.registration.showNotification(data.title || 'AniRecord', {
     body: data.body || 'Hay una novedad en tu biblioteca.',
+    icon: data.icon || '/pwa-notification-192x192.png',
     badge: '/pwa-badge-96x96.png',
     tag: data.tag || 'anirecord-update',
     renotify: false,
