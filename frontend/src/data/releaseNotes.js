@@ -10,7 +10,7 @@ export const RELEASES = [
       { type: 'App', text: 'La opción de instalar se oculta cuando AniRecord ya está instalada y vuelve a aparecer después de desinstalarla.' },
       { type: 'App', text: 'El aviso de actualización se puede cerrar deslizándolo hacia abajo y ya no muestra una cruz fuera de lugar.' },
       { type: 'Visual', text: 'El icono carga los colores del perfil antes de instalarse y aprovecha correctamente el espacio disponible.' },
-      { type: 'Celular', text: 'El fondo se extiende hasta la zona de la cámara sin desplazar el encabezado.' },
+      { type: 'Visual', text: 'La línea del calendario termina correctamente en Domingo.' },
       { type: 'Notificaciones', text: 'Los avisos usan la portada del anime o una campana, sin duplicar el logo ni mostrar una letra suelta.' },
     ],
   },
