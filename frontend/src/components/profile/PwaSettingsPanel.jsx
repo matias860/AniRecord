@@ -144,13 +144,13 @@ export default function PwaSettingsPanel() {
 
   const iosHelp = !installed && isIos() && !installable
   return <section className="pwa-settings-panel">
-    <div className="section-heading"><div><span className="eyebrow">AniRecord en tu celular</span><h2><Smartphone /> App y notificaciones</h2><p>Instalá AniRecord y enterate cuando se estrene una serie o salga un episodio nuevo.</p></div></div>
-    <div className="pwa-settings-grid">
-      <article className="pwa-setting-card">
+    <div className="section-heading"><div><span className="eyebrow">AniRecord en tu celular</span><h2><Smartphone /> {installed ? 'Notificaciones' : 'App y notificaciones'}</h2><p>{installed ? 'Elegí qué avisos querés recibir en este dispositivo.' : 'Instalá AniRecord y enterate cuando se estrene una serie o salga un episodio nuevo.'}</p></div></div>
+    <div className={`pwa-settings-grid${installed ? ' is-single' : ''}`}>
+      {!installed && <article className="pwa-setting-card">
         <span className="pwa-setting-icon"><Download /></span>
-        <div><small>Aplicación</small><h3>{installed ? 'AniRecord está instalada' : 'Instalar AniRecord'}</h3><p>{installed ? 'Se abre como una app y conserva la interfaz básica sin conexión.' : 'Acceso directo, pantalla completa y actualizaciones automáticas.'}</p></div>
-        {installed ? <span className="pwa-state"><Check /> Instalada</span> : installable ? <button className="primary-button" onClick={install}><Download /> Instalar</button> : iosHelp ? <button className="secondary-button" onClick={install}><Share2 /> Cómo instalar</button> : <span className="pwa-state muted"><ExternalLink /> Usá el menú del navegador</span>}
-      </article>
+        <div><small>Aplicación</small><h3>Instalar AniRecord</h3><p>Acceso directo, pantalla completa y actualizaciones automáticas.</p></div>
+        {installable ? <button className="primary-button" onClick={install}><Download /> Instalar</button> : iosHelp ? <button className="secondary-button" onClick={install}><Share2 /> Cómo instalar</button> : <span className="pwa-state muted"><ExternalLink /> Usá el menú del navegador</span>}
+      </article>}
       <article className="pwa-setting-card">
         <span className="pwa-setting-icon"><BellRing /></span>
         <div><small>Notificaciones push</small><h3>{subscription ? 'Avisos activados' : 'Estrenos y episodios'}</h3><p>Solo se enviarán avisos sobre anime pendiente o en curso de tu biblioteca.</p></div>

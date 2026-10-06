@@ -1,6 +1,19 @@
-export const CURRENT_VERSION = '1.11.1'
+export const CURRENT_VERSION = '1.11.2'
 
 export const RELEASES = [
+  {
+    version: '1.11.2',
+    date: '6 de octubre de 2026',
+    title: 'Ajustes de la app móvil',
+    summary: 'Corregimos varios detalles de instalación, actualizaciones y notificaciones.',
+    changes: [
+      { type: 'App', text: 'La opción de instalar se oculta cuando AniRecord ya está instalada y vuelve a aparecer después de desinstalarla.' },
+      { type: 'App', text: 'El aviso de actualización se puede cerrar deslizándolo hacia abajo y ya no muestra una cruz fuera de lugar.' },
+      { type: 'Visual', text: 'El icono ocupa correctamente el espacio disponible y usa los colores del perfil al instalarse.' },
+      { type: 'Celular', text: 'La franja superior acompaña mejor los colores del perfil sin mover el encabezado.' },
+      { type: 'Notificaciones', text: 'Los avisos muestran un solo logo y usan un icono compacto preparado para Android.' },
+    ],
+  },
   {
     version: '1.11.1',
     date: '5 de octubre de 2026',

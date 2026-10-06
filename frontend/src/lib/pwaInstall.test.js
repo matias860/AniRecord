@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { isAppInstalled, subscriptionUsesKey, urlBase64ToUint8Array } from './pwaInstall.js'
+import { isAppInstalled, shouldDismissPwaUpdate, subscriptionUsesKey, urlBase64ToUint8Array } from './pwaInstall.js'
 
 const publicKey = 'AQIDBA'
 
@@ -13,6 +13,13 @@ test('recognizes a subscription created with the active VAPID key', () => {
 test('rejects missing or stale VAPID keys', () => {
   assert.equal(subscriptionUsesKey({ options: {} }, publicKey), false)
   assert.equal(subscriptionUsesKey({ options: { applicationServerKey: new Uint8Array([1, 2, 3]).buffer } }, publicKey), false)
+})
+
+test('dismisses the update tray only after an intentional downward swipe', () => {
+  assert.equal(shouldDismissPwaUpdate(73, 0), true)
+  assert.equal(shouldDismissPwaUpdate(20, 651), true)
+  assert.equal(shouldDismissPwaUpdate(-90, -900), false)
+  assert.equal(shouldDismissPwaUpdate(40, 300), false)
 })
 
 test('detects an installed related web app outside standalone mode', async () => {

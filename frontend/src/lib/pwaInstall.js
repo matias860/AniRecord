@@ -15,6 +15,7 @@ export function initInstallPrompt() {
 export const isStandalone = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true
 export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent)
 export const canPromptInstall = () => Boolean(deferredPrompt)
+export const shouldDismissPwaUpdate = (offsetY, velocityY) => offsetY > 72 || velocityY > 650
 export async function isAppInstalled() {
   if (isStandalone()) return true
   if (typeof navigator.getInstalledRelatedApps !== 'function') return false
