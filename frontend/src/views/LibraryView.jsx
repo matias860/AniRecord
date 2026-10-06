@@ -146,14 +146,16 @@ export default function LibraryView() {
       <PageState loading={status === 'loading'} error={error} empty={status === 'succeeded' && !filtered.length}>No hay títulos para mostrar con estos filtros.</PageState>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="library-sections" key={mediaType} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .28, ease: 'easeOut' }}>
-          {sections.map((section, sectionIndex) => <motion.section className="library-status-section" key={section.status} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .25, delay: sectionIndex * .045 }}>
-            <div className="library-section-heading"><h2>{section.title}</h2><span>{section.items.length}</span></div>
-            <HoverMediaGrid className="library-grid">{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={(id) => dispatch(incrementProgress(id))} />)}</HoverMediaGrid>
-            {(visibleCounts[section.status] ?? initialSectionSize) < section.items.length && <button className="secondary-button library-show-more" type="button" onClick={() => setPagination((current) => {
-              const counts = current.key === paginationKey ? current.counts : {}
-              return { key: paginationKey, counts: { ...counts, [section.status]: (counts[section.status] ?? initialSectionSize) + initialSectionSize } }
-            })}>Mostrar más</button>}
-          </motion.section>)}
+          <AnimatePresence initial={false} mode="popLayout">
+            {sections.map((section, sectionIndex) => <motion.section className="library-status-section" key={section.status} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .2, ease: 'easeOut', delay: sectionIndex * .035, layout: { type: 'spring', stiffness: 430, damping: 38 } }}>
+              <div className="library-section-heading"><h2>{section.title}</h2><span>{section.items.length}</span></div>
+              <HoverMediaGrid className="library-grid" animateItems>{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={(id) => dispatch(incrementProgress(id))} />)}</HoverMediaGrid>
+              {(visibleCounts[section.status] ?? initialSectionSize) < section.items.length && <button className="secondary-button library-show-more" type="button" onClick={() => setPagination((current) => {
+                const counts = current.key === paginationKey ? current.counts : {}
+                return { key: paginationKey, counts: { ...counts, [section.status]: (counts[section.status] ?? initialSectionSize) + initialSectionSize } }
+              })}>Mostrar más</button>}
+            </motion.section>)}
+          </AnimatePresence>
         </motion.div>
       </AnimatePresence>
     </>
