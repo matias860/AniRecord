@@ -917,3 +917,14 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
   .future-schedule>.compact-schedule-day.unknown,.future-schedule.only-unknown>.compact-schedule-day.unknown{width:100%;min-width:0;margin:10px 0 0;padding:14px 0 0;border-left:0;border-top:1px dashed color-mix(in srgb,var(--accent) 34%,var(--line))}.future-schedule>.compact-schedule-day.unknown::before{display:none}
   .compact-schedule-day.unknown .future-covers,.future-schedule.only-unknown .future-covers{width:100%;display:flex;grid-template:unset;justify-content:flex-start;margin:0}
 }
+
+/* Connect mobile calendar rows only between the day-circle centers. */
+@media(max-width:620px){
+  .schedule-grid>.schedule-line,.known-days-track>.compact-schedule-line{display:none}
+  .schedule-grid>.schedule-day::before,.schedule-grid>.schedule-day::after,
+  .known-days-track>.compact-schedule-day::before,.known-days-track>.compact-schedule-day::after{content:"";position:absolute;left:17px;width:2px;background:var(--accent);pointer-events:none}
+  .schedule-grid>.schedule-day::before,.known-days-track>.compact-schedule-day::before{top:-4px;bottom:50%}
+  .schedule-grid>.schedule-day::after,.known-days-track>.compact-schedule-day::after{top:50%;bottom:-4px}
+  .schedule-grid>.schedule-day:nth-child(2)::before,.known-days-track>.compact-schedule-day:nth-child(2)::before,
+  .schedule-grid>.schedule-day:last-child::after,.known-days-track>.compact-schedule-day:last-child::after{display:none}
+}
