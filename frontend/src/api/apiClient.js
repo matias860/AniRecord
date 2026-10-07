@@ -12,9 +12,10 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 && !error.config?.url?.includes('/auth/status')) {
-      window.localStorage.removeItem('persist:anime-list-v2')
-      window.location.replace('/')
+    const path = new URL(error.config?.url || '/', window.location.origin).pathname.replace(/^\/api/, '')
+    const accessEndpoints = ['/auth/status', '/auth/local-login', '/auth/register', '/auth/claim', '/auth/logout']
+    if (error.response?.status === 401 && !accessEndpoints.includes(path)) {
+      window.dispatchEvent(new Event('anirecord:session-expired'))
     }
     const status = error.response?.status
     let fallbackMessage = 'No se pudo conectar con el backend.'

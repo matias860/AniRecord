@@ -13,7 +13,7 @@ export default function LoginView({ checkingSession = false }) {
   const { mutationStatus, error } = useSelector((state) => state.auth)
   const [mode, setMode] = useState('options')
   const [form, setForm] = useState({ username: '', displayName: '', password: '' })
-  const busy = mutationStatus === 'loading'
+  const busy = checkingSession || mutationStatus === 'loading'
   const returnTo = location.state?.returnTo
   useEffect(() => { dispatch(clearAuthError()) }, [dispatch, mode])
   useEffect(() => {
@@ -22,6 +22,7 @@ export default function LoginView({ checkingSession = false }) {
   const update = (event) => setForm((current) => ({ ...current, [event.target.name]: event.target.value }))
   const submit = (event) => {
     event.preventDefault()
+    if (busy) return
     if (mode === 'register') dispatch(registerLocal(form))
     else dispatch(localLogin({ username: form.username, password: form.password }))
   }
@@ -32,6 +33,7 @@ export default function LoginView({ checkingSession = false }) {
   return <main className="login-page dot-background">
     <section className={`login-card ${mode !== 'options' ? 'with-local-form' : ''}`}>
       <div className="login-brand"><span><BrandMark /></span>Ani<strong>Record</strong></div>
+      {location.state?.authMessage && <p className="auth-form-error" role="alert">{location.state.authMessage}</p>}
       {checkingSession && <p className="login-session-check" role="status">Comprobando si ya iniciaste sesión…</p>}
       {mode === 'options' ? <>
         <div className="login-art"><Sparkles /><img src={anilistLogo} alt="AniList" /></div>
@@ -39,9 +41,9 @@ export default function LoginView({ checkingSession = false }) {
         <h1>Todo lo que ves y leés, en un solo lugar.</h1>
         <p>Inicia sesión con AniList para importar tu colección o crea un perfil independiente desde cero.</p>
         <div className="login-options">
-          <a className="anilist-login-button" href={oauthLoginUrl()} onClick={rememberDestination}><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
-          <button className="local-account-button" onClick={() => setMode('register')}><UserPlus /><span>Crear un perfil nuevo</span></button>
-          <button className="login-text-button" onClick={() => setMode('login')}>Ya tengo un perfil local</button>
+          <a className="anilist-login-button" href={busy ? undefined : oauthLoginUrl()} aria-disabled={busy} tabIndex={busy ? -1 : 0} onClick={(event) => { if (busy) event.preventDefault(); else rememberDestination() }}><img src={anilistLogo} alt="" /><span>Continuar con AniList</span><LogIn /></a>
+          <button className="local-account-button" disabled={busy} onClick={() => setMode('register')}><UserPlus /><span>Crear un perfil nuevo</span></button>
+          <button className="login-text-button" disabled={busy} onClick={() => setMode('login')}>Ya tengo un perfil local</button>
         </div>
         <small><ShieldCheck /> Las contraseñas locales se guardan cifradas y nunca se muestran.</small>
       </> : <>
@@ -55,7 +57,7 @@ export default function LoginView({ checkingSession = false }) {
           {error && <p className="auth-form-error" role="alert">{error}</p>}
           <button className="local-account-button" disabled={busy} type="submit">{mode === 'register' ? <UserPlus /> : <LogIn />}<span>{busy ? 'Procesando…' : mode === 'register' ? 'Crear perfil' : 'Iniciar sesión'}</span></button>
         </form>
-        <button className="login-text-button" onClick={() => setMode('options')}>Volver a las opciones</button>
+        <button className="login-text-button" disabled={busy} onClick={() => setMode('options')}>Volver a las opciones</button>
       </>}
     </section>
   </main>

@@ -47,20 +47,26 @@ export const acknowledgeSyncPrompt = createAsyncThunk('auth/acknowledgeSyncPromp
 
 const slice = createSlice({
   name: 'auth',
-  initialState: { authenticated: false, userId: null, username: null, avatarUrl: null, accountType: null, needsImport: false, lastSyncPromptCommit: null, status: 'idle', mutationStatus: 'idle', error: null },
-  reducers: { clearAuthError: (state) => { state.error = null } },
+  initialState: { authenticated: false, userId: null, username: null, avatarUrl: null, accountType: null, needsImport: false, lastSyncPromptCommit: null, status: 'idle', statusRequestId: null, mutationStatus: 'idle', error: null },
+  reducers: {
+    clearAuthError: (state) => { state.error = null },
+    sessionExpired: (state) => {
+      Object.assign(state, { authenticated: false, userId: null, username: null, avatarUrl: null, accountType: null, needsImport: false, status: 'succeeded', statusRequestId: null, mutationStatus: 'idle', error: null })
+    },
+    oauthFailed: (state, action) => { state.status = 'succeeded'; state.statusRequestId = null; state.error = action.payload },
+  },
   extraReducers: (builder) => builder
-    .addCase(fetchAuth.pending, (state) => { state.status = 'loading' })
-    .addCase(fetchAuth.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.error = null })
-    .addCase(fetchAuth.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
+    .addCase(fetchAuth.pending, (state, action) => { state.status = 'loading'; state.statusRequestId = action.meta.requestId })
+    .addCase(fetchAuth.fulfilled, (state, action) => { if (state.statusRequestId !== action.meta.requestId) return; state.statusRequestId = null; Object.assign(state, action.payload); state.status = 'succeeded'; state.error = null })
+    .addCase(fetchAuth.rejected, (state, action) => { if (state.statusRequestId !== action.meta.requestId) return; state.statusRequestId = null; state.status = 'failed'; state.error = action.error.message })
     .addCase(logout.fulfilled, (state) => { state.authenticated = false; state.status = 'succeeded' })
-    .addCase(localLogin.pending, (state) => { state.mutationStatus = 'loading'; state.error = null })
+    .addCase(localLogin.pending, (state) => { state.statusRequestId = null; state.status = 'succeeded'; state.mutationStatus = 'loading'; state.error = null })
     .addCase(localLogin.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.mutationStatus = 'idle' })
     .addCase(localLogin.rejected, (state, action) => { state.mutationStatus = 'idle'; state.error = action.payload })
-    .addCase(registerLocal.pending, (state) => { state.mutationStatus = 'loading'; state.error = null })
+    .addCase(registerLocal.pending, (state) => { state.statusRequestId = null; state.status = 'succeeded'; state.mutationStatus = 'loading'; state.error = null })
     .addCase(registerLocal.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.mutationStatus = 'idle' })
     .addCase(registerLocal.rejected, (state, action) => { state.mutationStatus = 'idle'; state.error = action.payload })
     .addCase(acknowledgeSyncPrompt.fulfilled, (state, action) => { state.lastSyncPromptCommit = action.payload }),
 })
-export const { clearAuthError } = slice.actions
+export const { clearAuthError, sessionExpired, oauthFailed } = slice.actions
 export default slice.reducer

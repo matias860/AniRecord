@@ -1,7 +1,7 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useRef } from 'react'
 import { RefreshCw } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout.jsx'
 import ProfileLoader from './components/common/ProfileLoader.jsx'
 const HomeView = lazy(() => import('./views/HomeView.jsx'))
@@ -13,23 +13,47 @@ const LoginView = lazy(() => import('./views/LoginView.jsx'))
 const ImportView = lazy(() => import('./views/ImportView.jsx'))
 const CharacterDetailView = lazy(() => import('./views/CharacterDetailView.jsx'))
 const StaffDetailView = lazy(() => import('./views/StaffDetailView.jsx'))
-import { fetchAuth } from './features/auth/authSlice.js'
+import { fetchAuth, sessionExpired, oauthFailed } from './features/auth/authSlice.js'
 import apiClient from './api/apiClient.js'
-import { clearReturnPath, consumeReturnPath, currentReturnPath, getReturnPath } from './lib/authNavigation.js'
+import { clearReturnPath, currentReturnPath, getReturnPath, rememberReturnPath } from './lib/authNavigation.js'
 
 const viewFallback = <div className="page-state full-page route-loading"><ProfileLoader message="Cargando…" /></div>
 
 export default function App() {
   const dispatch = useDispatch()
   const auth = useSelector((state) => state.auth)
+  const navigate = useNavigate()
+  const initialized = useRef(false)
   useEffect(() => {
-    if (auth.status !== 'idle') return
+    if (initialized.current) return
+    initialized.current = true
     const hash = new URLSearchParams(window.location.hash.slice(1))
     const ticket = hash.get('ticket')
-    if (ticket) {
-      apiClient.post('/auth/claim', { ticket }).finally(() => { window.history.replaceState({}, '', consumeReturnPath()); dispatch(fetchAuth()) })
+    const destination = getReturnPath()
+    const fail = (message) => {
+      dispatch(oauthFailed(message))
+      navigate('/login', { replace: true, state: { authMessage: message, returnTo: destination } })
+    }
+    if (hash.get('auth') === 'error') {
+      fail('No se pudo completar el acceso con AniList. La autorización pudo cancelarse o vencer. Volvé a intentarlo.')
+    } else if (ticket) {
+      apiClient.post('/auth/claim', { ticket }).then(async () => {
+        const status = await dispatch(fetchAuth()).unwrap()
+        if (!status.authenticated) throw new Error('La sesión no pudo confirmarse.')
+        clearReturnPath()
+        navigate(destination, { replace: true })
+      }).catch(() => fail('No se pudo confirmar el acceso con AniList. Volvé a iniciar sesión.'))
     } else dispatch(fetchAuth())
-  }, [auth.status, dispatch])
+  }, [dispatch, navigate])
+  useEffect(() => {
+    const expire = () => {
+      const returnTo = rememberReturnPath(currentReturnPath())
+      dispatch(sessionExpired())
+      navigate('/login', { replace: true, state: { returnTo, authMessage: 'Tu sesión venció. Iniciá sesión para continuar.' } })
+    }
+    window.addEventListener('anirecord:session-expired', expire)
+    return () => window.removeEventListener('anirecord:session-expired', expire)
+  }, [dispatch, navigate])
   const authPending = auth.status === 'idle' || auth.status === 'loading'
   if (auth.authenticated && auth.needsImport) return <Suspense fallback={viewFallback}><ImportView /></Suspense>
   return (

@@ -31,7 +31,7 @@ const appReducer = combineReducers({
   topNine: topNineReducer,
 })
 
-const rootReducer = (state, action) => appReducer(action.type === 'auth/logout/fulfilled' ? undefined : state, action)
+const rootReducer = (state, action) => appReducer(['auth/logout/fulfilled', 'auth/sessionExpired'].includes(action.type) ? undefined : state, action)
 
 const storage = {
   getItem: (key) => Promise.resolve(window.localStorage.getItem(key)),
