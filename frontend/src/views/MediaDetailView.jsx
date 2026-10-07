@@ -1,3 +1,4 @@
+import { highResolutionCover } from '../lib/coverImages.js'
 import useModalFocus from '../lib/useModalFocus.js'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Play, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
@@ -63,7 +64,13 @@ export default function MediaDetailView() {
   return <article className="detail-page">
     <div className="detail-banner" style={{ backgroundImage: `url(${detail.bannerImage || detail.coverImage})` }}><span className="detail-banner-shade" /><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
     <div className="detail-content">
-      <img className="detail-cover" src={detail.coverImage} alt={`Portada de ${detail.title}`} />
+      <img className="detail-cover" src={highResolutionCover(detail.coverImage)} decoding="async" onError={(event) => {
+        const image = event.currentTarget
+        if (!image.dataset.originalFallback && image.src !== detail.coverImage) {
+          image.dataset.originalFallback = 'true'
+          image.src = detail.coverImage
+        }
+      }} alt={`Portada de ${detail.title}`} />
       <div className={`detail-copy${titleSizeClass ? ' detail-copy-long-title' : ''}`}>
         <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1 className={titleSizeClass}>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
         <div className="detail-information-strip">

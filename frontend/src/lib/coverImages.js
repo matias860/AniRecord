@@ -15,3 +15,7 @@ export function coverSources(source) {
     return undefined
   }
 }
+
+export function highResolutionCover(source) {
+  return coverSources(source) ? source.replace('/cover/medium/', '/cover/large/') : source
+}
