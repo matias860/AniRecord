@@ -7,6 +7,7 @@ export const RELEASES = [
     title: 'Correcciones de accesibilidad',
     summary: 'Corregimos el contraste, el uso con teclado y la lectura de novedades.',
     changes: [
+      { type: 'App', text: 'En el navegador las actualizaciones se aplican automáticamente al abrir la página; la app instalada conserva su botón.' },
       { type: 'Imágenes', text: 'Las portadas de las tarjetas eligen una resolución más nítida según su tamaño y la pantalla.' },
       { type: 'Perfil', text: 'Los colores del perfil se ajustan para mantener legibles los textos y botones.' },
       { type: 'Notificaciones', text: 'Abrir la campana ya no marca automáticamente las novedades como leídas.' },
