@@ -7,6 +7,7 @@ export const RELEASES = [
     title: 'Correcciones de accesibilidad',
     summary: 'Corregimos el contraste, el uso con teclado y la lectura de novedades.',
     changes: [
+      { type: 'Imágenes', text: 'Las portadas de las tarjetas eligen una resolución más nítida según su tamaño y la pantalla.' },
       { type: 'Perfil', text: 'Los colores del perfil se ajustan para mantener legibles los textos y botones.' },
       { type: 'Notificaciones', text: 'Abrir la campana ya no marca automáticamente las novedades como leídas.' },
       { type: 'Navegación', text: 'Los cuadros y buscadores funcionan mejor con teclado; cada vista identifica su contenido.' },

@@ -1,3 +1,4 @@
+import { coverSources } from '../../lib/coverImages.js'
 import { Plus, Star } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
@@ -12,7 +13,14 @@ export default function MediaCard({ media, onIncrement }) {
   return (
     <article className="media-card">
       <Link to={`/media/${media.anilistId}`} className={`cover-wrap ${media.episodePending ? 'episode-pending' : ''}`}>
-        <img src={media.coverImage} alt={`Portada de ${media.title}`} width="230" height="345" loading="lazy" decoding="async" />
+        <img src={media.coverImage} srcSet={coverSources(media.coverImage)} sizes="auto, (max-width: 620px) 45vw, 300px" onError={(event) => {
+          const image = event.currentTarget
+          if (!image.dataset.originalFallback && image.srcset) {
+            image.dataset.originalFallback = 'true'
+            image.removeAttribute('srcset')
+            image.src = media.coverImage
+          }
+        }} alt={`Portada de ${media.title}`} width="230" height="345" loading="lazy" decoding="async" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
         {media.personalScore != null && <span className="score-badge"><Star /> {media.personalScore}</span>}
         {isLiveAnime && <span className="airing-badge"><i /> Emisión</span>}
