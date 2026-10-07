@@ -1,3 +1,4 @@
+import { safeDarkColor, safeAccentColor, accentTextColor } from '../lib/themeContrast.js'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { BookOpen, Camera, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
@@ -45,11 +46,11 @@ export default function ProfileView() {
   useEffect(() => {
     const shell = document.querySelector('.app-shell')
     if (!shell) return undefined
-    const variables = { '--user-bg': draft.backgroundColor, '--user-surface': draft.surfaceColor, '--surface': draft.surfaceColor, '--accent': draft.accentColor }
+    const variables = { '--user-bg': safeDarkColor(draft.backgroundColor), '--user-surface': safeDarkColor(draft.surfaceColor), '--surface': safeDarkColor(draft.surfaceColor), '--accent': safeAccentColor(draft.accentColor), '--accent-text': accentTextColor(safeAccentColor(draft.accentColor)) }
     Object.entries(variables).forEach(([name, value]) => shell.style.setProperty(name, value))
     shell.classList.toggle('dot-background', draft.dotsEnabled)
     return () => {
-      const savedVariables = { '--user-bg': profile.backgroundColor, '--user-surface': profile.surfaceColor, '--surface': profile.surfaceColor, '--accent': profile.accentColor }
+      const savedVariables = { '--user-bg': safeDarkColor(profile.backgroundColor), '--user-surface': safeDarkColor(profile.surfaceColor), '--surface': safeDarkColor(profile.surfaceColor), '--accent': safeAccentColor(profile.accentColor), '--accent-text': accentTextColor(safeAccentColor(profile.accentColor)) }
       Object.entries(savedVariables).forEach(([name, value]) => shell.style.setProperty(name, value))
       shell.classList.toggle('dot-background', profile.dotsEnabled)
     }
@@ -73,8 +74,8 @@ export default function ProfileView() {
           <label className="profile-field"><span>Nombre mostrado</span><input value={draft.displayName} maxLength={40} onChange={(e) => update({ displayName: e.target.value })} /></label>
           <label className="profile-field"><span>Biografía</span><textarea value={draft.bio} maxLength={160} onChange={(e) => update({ bio: e.target.value })} /></label>
           <div className="profile-file-grid"><ProfileFileField type="avatar" label="Avatar" hint="Recorte cuadrado · WebP 512 × 512" value={profile.avatarUrl} custom={profile.customAvatar} aniListFallback={profile.anilistAvatarUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /><ProfileFileField type="banner" label="Banner" hint="Recorte panorámico · WebP 1600 × 500" value={profile.bannerUrl} custom={profile.customBanner} aniListFallback={profile.anilistBannerUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /></div>
-          <ViewportSection className="color-options profile-color-options"><Suspense fallback={<div className="profile-color-loading" aria-label="Cargando colores" />}><ThemeColorPicker label="Color de fondo" value={draft.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={draft.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={draft.accentColor} onChange={(accentColor) => update({ accentColor })} /></Suspense></ViewportSection>
-          <label className="dot-toggle"><input type="checkbox" checked={draft.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
+          <ViewportSection className="color-options profile-color-options"><Suspense fallback={<div className="profile-color-loading" aria-label="Cargando colores" />}><ThemeColorPicker dark label="Color de fondo" value={draft.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={draft.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={draft.accentColor} onChange={(accentColor) => update({ accentColor })} /></Suspense></ViewportSection>
+          <p className="theme-contrast-hint">Los fondos se ajustan automáticamente para mantener legibles los textos.</p><label className="dot-toggle"><input type="checkbox" checked={draft.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
           <div className="profile-actions"><span>{dirty ? 'Hay cambios sin guardar' : 'Cambios guardados'}</span><button className="primary-button" disabled={profile.status === 'saving' || !dirty} onClick={() => dispatch(saveProfile(draft))}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>
         </section>
       </div>

@@ -1,3 +1,4 @@
+import useModalFocus from '../../lib/useModalFocus.js'
 import { useEffect, useRef, useState } from 'react'
 import { Check, ChevronDown, ChevronRight, History, ScrollText, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -40,6 +41,7 @@ export function VersionButton({ onClick }) {
 }
 
 export default function ChangelogModal({ open, onClose }) {
+  const dialogRef = useModalFocus(open)
   const [selectedFamily, setSelectedFamily] = useState(currentFamily)
   const [expandedPatch, setExpandedPatch] = useState(CURRENT_VERSION)
   const closeButtonRef = useRef(null)
@@ -53,13 +55,10 @@ export default function ChangelogModal({ open, onClose }) {
 
   useEffect(() => {
     if (!open) return undefined
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     const handleKeyDown = (event) => { if (event.key === 'Escape') onClose() }
     window.addEventListener('keydown', handleKeyDown)
     window.requestAnimationFrame(() => closeButtonRef.current?.focus())
     return () => {
-      document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [onClose, open])
@@ -68,7 +67,7 @@ export default function ChangelogModal({ open, onClose }) {
     <AnimatePresence>
       {open && (
         <motion.div className="changelog-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-          <motion.section className="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title" initial={{ opacity: 0, y: 18, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
+          <motion.section ref={dialogRef} className="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title" initial={{ opacity: 0, y: 18, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
             <header className="changelog-header">
               <span className="changelog-icon"><ScrollText aria-hidden="true" /></span>
               <div>

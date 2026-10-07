@@ -1,3 +1,4 @@
+import useModalFocus from '../../lib/useModalFocus.js'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, Image as ImageIcon, Plus, RotateCcw, Search, Send, X } from 'lucide-react'
@@ -74,6 +75,7 @@ function Picker({ anchor, entries, pending, onPending, onConfirm, pickerRef }) {
 }
 
 export default function TopNineComposer({ prompt, mine, onClose }) {
+  const dialogRef = useModalFocus(true)
   const dispatch = useDispatch()
   const library = useSelector((state) => state.library.items)
   const userId = useSelector((state) => state.auth.userId)
@@ -84,12 +86,6 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
   const [activeAnchor, setActiveAnchor] = useState(null)
   const [pending, setPending] = useState(null)
   const pickerRef = useRef(null)
-
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = previousOverflow }
-  }, [])
 
   useEffect(() => {
     const ids = slots.map((entry) => entry?.id ?? null)
@@ -159,7 +155,7 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
   return createPortal(<motion.div className="top-nine-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onPointerDown={(event) => {
     if (event.target === event.currentTarget && !publishing && activeSlot === null) onClose()
   }}>
-  <motion.section className="top-nine-composer" role="dialog" aria-modal="true" aria-labelledby="top-nine-composer-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .25, ease: 'easeOut' }}>
+  <motion.section ref={dialogRef} className="top-nine-composer" role="dialog" aria-modal="true" aria-labelledby="top-nine-composer-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .25, ease: 'easeOut' }}>
     <button className="top-nine-close" type="button" onClick={onClose} disabled={publishing} aria-label="Cerrar el 3×3"><X /></button>
     <header>
       <span className="eyebrow">Consigna quincenal</span>

@@ -32,9 +32,9 @@ public class ProfileService {
         AppUser user = currentUser.require();
         user.setDisplayName(request.displayName().trim());
         user.setBio(request.bio().trim());
-        user.setBackgroundColor(request.backgroundColor());
-        user.setSurfaceColor(request.surfaceColor());
-        user.setAccentColor(request.accentColor());
+        user.setBackgroundColor(ThemeContrast.safeDarkColor(request.backgroundColor()));
+        user.setSurfaceColor(ThemeContrast.safeDarkColor(request.surfaceColor()));
+        user.setAccentColor(ThemeContrast.safeAccentColor(request.accentColor()));
         user.setDotsEnabled(request.dotsEnabled());
         return toResponse(repository.save(user));
     }

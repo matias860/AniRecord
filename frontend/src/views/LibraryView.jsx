@@ -132,7 +132,7 @@ export default function LibraryView() {
         <MediaTypeSwitch value={mediaType} onChange={(nextType) => dispatch(setLibraryMediaType(nextType))} ariaLabel="Cambiar tipo de biblioteca" />
       </div>
       <motion.div className="library-advanced-filters" key={mediaType} initial={{ opacity: 0, x: mediaType === 'ANIME' ? -14 : 14 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .25, ease: 'easeOut' }}>
-        <label className="library-search" data-field-label="Buscar"><Search /><input value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Título..." /></label>
+        <label className="library-search" data-field-label="Buscar"><Search /><input aria-label="Buscar títulos en mi biblioteca" value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Título..." /></label>
         <StyledSelect ariaLabel="Año de la biblioteca" fieldLabel="Año" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Todos' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" fieldLabel="Temporada" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
         <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
@@ -143,7 +143,7 @@ export default function LibraryView() {
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>
       </motion.div>
       <div className="filter-row">{statuses.map(([value, label]) => <button key={value} className={trackingStatus === value ? 'active' : ''} onClick={() => dispatch(setLibraryTrackingStatus(value))}>{label}</button>)}</div>
-      <PageState loading={status === 'loading'} error={error} empty={status === 'succeeded' && !filtered.length}>No hay títulos para mostrar con estos filtros.</PageState>
+      <PageState loading={status === 'loading'} error={error} onRetry={() => dispatch(fetchLibrary())} empty={status === 'succeeded' && !filtered.length}>No hay títulos para mostrar con estos filtros.</PageState>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="library-sections" key={mediaType} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .28, ease: 'easeOut' }}>
           <AnimatePresence initial={false} mode="popLayout">

@@ -1,3 +1,4 @@
+import useModalFocus from '../lib/useModalFocus.js'
 import { useEffect, useState } from 'react'
 import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Play, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -49,7 +50,7 @@ export default function MediaDetailView() {
     if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [authenticated, dispatch, library.status])
 
-  if (detailStatus !== 'succeeded') return <PageState fullPage loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} />
+  if (detailStatus !== 'succeeded') return <PageState fullPage loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} onRetry={() => dispatch(fetchMediaDetail(anilistId))} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
   const titleLength = [...detail.title].length
   const titleSizeClass = titleLength > 64 ? 'detail-title-extra-long' : titleLength > 38 ? 'detail-title-long' : ''
@@ -223,6 +224,7 @@ function TrackingEditor({ unreleased, form, setForm, mediaType, unit, total, sta
 }
 
 function LibraryModal({ mode, detail, saved, statusOptions, loading, onClose }) {
+  const dialogRef = useModalFocus(true)
   const dispatch = useDispatch()
   const [status, setStatus] = useState('PLANNED')
   useEffect(() => {
@@ -238,7 +240,7 @@ function LibraryModal({ mode, detail, saved, statusOptions, loading, onClose }) 
     } catch { /* El toast global presenta el error y permite volver a intentar. */ }
   }
   return <motion.div className="modal-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <motion.section className="library-action-modal" role="dialog" aria-modal="true" aria-labelledby="library-modal-title" initial={{ y: 18, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 12, scale: .98 }}>
+    <motion.section ref={dialogRef} className="library-action-modal" role="dialog" aria-modal="true" aria-labelledby="library-modal-title" initial={{ y: 18, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 12, scale: .98 }}>
       <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar"><X /></button>
       <span className="eyebrow">Mi biblioteca</span><h2 id="library-modal-title">{mode === 'add' ? 'Agregar a la biblioteca' : 'Quitar de la biblioteca'}</h2>
       {mode === 'add' ? <><p>Elige cómo deseas comenzar a seguir <strong>{detail.title}</strong>.</p><label><span>Estado inicial</span><StyledSelect ariaLabel="Estado inicial" value={status} onChange={setStatus} options={statusOptions} /></label></> : <p><strong>{detail.title}</strong> y todo su progreso personal se quitarán de tu biblioteca.</p>}

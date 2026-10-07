@@ -100,11 +100,11 @@ export default function CatalogView() {
 
   return (
     <>
-      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><MediaTypeSwitch value={type} onChange={(nextType) => navigateToMediaType(navigate, nextType, { ...filters, search: searchDraft })} ariaLabel="Cambiar tipo de catálogo" />{!catalog.unavailable && <button className="filter-toggle" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
+      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><MediaTypeSwitch value={type} onChange={(nextType) => navigateToMediaType(navigate, nextType, { ...filters, search: searchDraft })} ariaLabel="Cambiar tipo de catálogo" />{!catalog.unavailable && <button className="filter-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
 
       <AnimatePresence mode="wait" initial={false}><motion.div className="catalog-type-content" key={type} initial={{ opacity: 0, x: type === 'ANIME' ? -18 : 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: type === 'ANIME' ? 18 : -18 }} transition={{ duration: .26, ease: 'easeOut' }}>
       {catalog.unavailable ? <AniListUnavailable /> : <>
-      <form className={`catalog-filters ${filtersOpen ? 'open' : ''}`} data-media-type={type.toLowerCase()} onSubmit={(event) => event.preventDefault()}>
+      <form id="catalog-filters" className={`catalog-filters ${filtersOpen ? 'open' : ''}`} data-media-type={type.toLowerCase()} onSubmit={(event) => event.preventDefault()}>
         <CatalogSearch value={searchDraft} onChange={updateSearchDraft} />
         <StyledSelect className="catalog-filter-year" ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
         {type === 'ANIME' && <StyledSelect className="catalog-filter-season" ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
@@ -116,7 +116,7 @@ export default function CatalogView() {
         <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 
-      <PageState loading={catalog.status === 'loading'} error={catalog.error} />
+      <PageState loading={catalog.status === 'loading'} error={catalog.error} onRetry={() => dispatch(fetchCatalog({ type, page: catalog.currentPage, filters: catalog.filters }))} />
       {catalog.status === 'succeeded' && <>{!displayedItems.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={catalog.currentPage === 1} onClick={() => changePage(catalog.currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{catalog.currentPage}</b></span><button disabled={!catalog.hasNextPage} onClick={() => changePage(catalog.currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
       </>}
       </motion.div></AnimatePresence>
@@ -131,7 +131,7 @@ function navigateToMediaType(navigate, nextType, filters) {
 }
 
 function CatalogSearch({ value, onChange }) {
-  return <label className="catalog-search" data-field-label="Buscar"><Search /><input value={value} maxLength={100} onChange={(event) => onChange(event.target.value)} placeholder="Título..." /></label>
+  return <label className="catalog-search" data-field-label="Buscar"><Search /><input aria-label="Buscar títulos en el catálogo" value={value} maxLength={100} onChange={(event) => onChange(event.target.value)} placeholder="Título..." /></label>
 }
 
 function AniListUnavailable() {

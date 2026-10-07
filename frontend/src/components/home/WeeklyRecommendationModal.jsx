@@ -1,3 +1,4 @@
+import useModalFocus from '../../lib/useModalFocus.js'
 import { useEffect, useMemo, useState } from 'react'
 import { Check, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -9,6 +10,7 @@ const COVER_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/
 const onCoverError = (event) => { if (event.currentTarget.src !== COVER_FALLBACK) event.currentTarget.src = COVER_FALLBACK }
 
 export default function WeeklyRecommendationModal({ onClose }) {
+  const dialogRef = useModalFocus(true)
   const dispatch = useDispatch()
   const library = useSelector((state) => state.library.items)
   const loading = useSelector((state) => state.recommendations.createStatus === 'loading')
@@ -45,7 +47,7 @@ export default function WeeklyRecommendationModal({ onClose }) {
   }
 
   return <motion.div className="recommendation-modal-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget && !loading) onClose() }}>
-    <motion.section className="recommendation-modal" role="dialog" aria-modal="true" aria-labelledby="recommendation-modal-title" initial={{ y: 22, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 14, scale: .98 }}>
+    <motion.section ref={dialogRef} className="recommendation-modal" role="dialog" aria-modal="true" aria-labelledby="recommendation-modal-title" initial={{ y: 22, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 14, scale: .98 }}>
       <button className="modal-close" type="button" onClick={onClose} disabled={loading} aria-label="Cerrar"><X /></button>
       <AnimatePresence mode="wait" initial={false}>
         {success ? <motion.div className="recommendation-success" key="success" initial={{ opacity: 0, scale: .94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}><span><Check /></span><h2>Serie recomendada</h2><p><strong>{selected.title}</strong> ya aparece entre las recomendaciones de esta semana.</p></motion.div>

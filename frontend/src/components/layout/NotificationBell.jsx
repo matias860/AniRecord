@@ -3,7 +3,7 @@ import { Bell, CheckCheck, GitBranch, Info, Play, RefreshCw, Trash2 } from 'luci
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
-import { fetchNotifications, fetchUnreadCount, markAllNotificationsRead, markNotificationRead, markNotificationsRead, syncNotifications } from '../../features/notifications/notificationSlice.js'
+import { fetchNotifications, fetchUnreadCount, markAllNotificationsRead, markNotificationRead, syncNotifications } from '../../features/notifications/notificationSlice.js'
 import { notificationSyncInterval } from '../../lib/notificationSync.js'
 
 const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2 }
@@ -32,9 +32,6 @@ export default function NotificationBell({ hovered, onMouseEnter }) {
     if (!next) return
     const result = status !== 'loading' ? await dispatch(fetchNotifications()) : null
     const loaded = fetchNotifications.fulfilled.match(result)
-    const visibleItems = loaded ? result.payload : items
-    const visibleUnreadIds = visibleItems.filter((item) => !item.read).map((item) => item.id)
-    if (visibleUnreadIds.length) await dispatch(markNotificationsRead(visibleUnreadIds))
     if (loaded) synchronize()
   }
   const retry = async () => {

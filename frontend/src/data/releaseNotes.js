@@ -1,6 +1,18 @@
-export const CURRENT_VERSION = '1.12.0'
+export const CURRENT_VERSION = '1.12.1'
 
 export const RELEASES = [
+  {
+    version: '1.12.1',
+    date: '7 de octubre de 2026',
+    title: 'Correcciones de accesibilidad',
+    summary: 'Corregimos el contraste, el uso con teclado y la lectura de novedades.',
+    changes: [
+      { type: 'Perfil', text: 'Los colores del perfil se ajustan para mantener legibles los textos y botones.' },
+      { type: 'Notificaciones', text: 'Abrir la campana ya no marca automáticamente las novedades como leídas.' },
+      { type: 'Navegación', text: 'Los cuadros y buscadores funcionan mejor con teclado; cada vista identifica su contenido.' },
+      { type: 'Accesibilidad', text: 'Respetamos la preferencia de reducir animaciones y agregamos opciones para reintentar cargas fallidas.' },
+    ],
+  },
   {
     version: '1.12.0',
     date: '6 de octubre de 2026',

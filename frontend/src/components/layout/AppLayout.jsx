@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { safeDarkColor, safeAccentColor, accentTextColor } from '../../lib/themeContrast.js'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -23,6 +24,7 @@ export default function AppLayout() {
   const [hovered, setHovered] = useState(null)
   const [changelogOpen, setChangelogOpen] = useState(false)
   const { pathname } = useLocation()
+  const mainRef = useRef(null)
   const outlet = useOutlet()
   const dispatch = useDispatch()
   const profileStatus = useSelector((state) => state.profile.status)
@@ -32,7 +34,12 @@ export default function AppLayout() {
   const accentColor = useSelector((state) => state.profile.accentColor)
   const dotsEnabled = useSelector((state) => state.profile.dotsEnabled)
   const authenticated = useSelector((state) => state.auth.authenticated)
-  useLayoutEffect(() => { window.scrollTo({ top: 0, left: 0, behavior: 'auto' }) }, [pathname])
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    const names = { '/': 'Inicio', '/biblioteca': 'Biblioteca', '/catalogo': 'Catálogo', '/perfil': 'Perfil', '/login': 'Iniciar sesión' }
+    document.title = `${names[pathname] || 'Anime y manga'} · AniRecord`
+    mainRef.current?.focus({ preventScroll: true })
+  }, [pathname])
   const signOut = async () => {
     const subscription = await activePushSubscription()
     if (subscription) await subscription.unsubscribe().catch(() => false)
@@ -43,25 +50,26 @@ export default function AppLayout() {
   }
   useEffect(() => { if (authenticated && profileStatus === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profileStatus])
   const themeStyle = {
-    '--user-bg': backgroundColor,
-    '--user-surface': surfaceColor,
-    '--accent': accentColor,
-    '--surface': surfaceColor,
+    '--user-bg': safeDarkColor(backgroundColor),
+    '--user-surface': safeDarkColor(surfaceColor),
+    '--accent': safeAccentColor(accentColor), '--accent-text': accentTextColor(safeAccentColor(accentColor)),
+    '--surface': safeDarkColor(surfaceColor),
   }
   useEffect(() => {
     const root = document.documentElement
     const variables = {
-      '--user-bg': backgroundColor,
-      '--user-surface': surfaceColor,
-      '--surface': surfaceColor,
-      '--accent': accentColor,
+      '--user-bg': safeDarkColor(backgroundColor),
+      '--user-surface': safeDarkColor(surfaceColor),
+      '--surface': safeDarkColor(surfaceColor),
+      '--accent': safeAccentColor(accentColor), '--accent-text': accentTextColor(safeAccentColor(accentColor)),
     }
     Object.entries(variables).forEach(([name, value]) => value && root.style.setProperty(name, value))
-    updatePwaBranding(accentColor, backgroundColor)
+    updatePwaBranding(safeAccentColor(accentColor), safeDarkColor(backgroundColor))
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
   }, [accentColor, backgroundColor, surfaceColor])
   return (
     <div className={`app-shell ${dotsEnabled ? 'dot-background' : ''}`} style={themeStyle}>
+      <a className="skip-content" href="#main-content">Saltar al contenido</a>
       <header className="topbar-wrap">
         <div className="topbar">
           <NavLink className="brand" to="/"><span className="brand-mark"><BrandMark /></span><span>Ani<span>Record</span></span></NavLink>
@@ -82,7 +90,7 @@ export default function AppLayout() {
           {authenticated && <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>}
         </div>
       </header>
-      <main className="page"><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></main>
+      <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></main>
       <ToastViewport />
       <PwaUpdateToast />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
