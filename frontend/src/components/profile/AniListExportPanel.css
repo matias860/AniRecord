@@ -29,6 +29,10 @@
 .anilist-import-spacer { flex:1; min-height:.35rem; }
 .anilist-import-result { display:flex; align-items:flex-start; gap:.4rem; padding:.65rem; border-radius:.7rem; color:#9ae6ff; background:rgba(61,180,242,.09); }
 .anilist-import-result svg { flex:0 0 auto; width:1rem; }
+.anilist-import-review { display:grid; gap:.55rem; }
+.anilist-import-warning { display:flex; align-items:flex-start; gap:.4rem; padding:.55rem; border-radius:.65rem; color:#bcecff; background:rgba(61,180,242,.08); }
+.anilist-import-warning svg { flex:0 0 auto; width:1rem; }
+.anilist-export-entry em { display:block; margin-top:.15rem; color:#83dcff; font-size:.62rem; font-style:normal; font-weight:750; }
 .anilist-export-selection,.anilist-export-entry { display:flex; gap:.65rem; align-items:center; cursor:pointer; }
 .anilist-export-selection { margin:.15rem 0; font-size:.75rem; }
 .anilist-export-checkbox-input { position:absolute; width:1px; height:1px; overflow:hidden; opacity:0; clip-path:inset(50%); }
@@ -55,6 +59,7 @@
 .anilist-sync-button.is-import { --direction:#3db4f2; margin-top:auto; }
 .anilist-sync-button.is-confirm { --direction:#22c55e; }
 .anilist-sync-button.is-stop { --direction:#ef4444; }
+.anilist-sync-button.is-preserve { --direction:var(--accent); background:transparent; box-shadow:none; }
 .anilist-export-transfer { display:flex; align-items:center; gap:.65rem; padding:.7rem; border:1px solid color-mix(in srgb,var(--direction) 30%,var(--line)); border-radius:.75rem; background:linear-gradient(110deg,color-mix(in srgb,var(--direction) 9%,transparent),transparent); }
 .anilist-export-transfer .anilist-export-cover { width:50px; height:70px; border-radius:7px; box-shadow:0 4px 14px #0003; }
 .anilist-export-cover-scan { position:absolute; inset:0; background:linear-gradient(transparent 35%,color-mix(in srgb,var(--direction) 60%,transparent) 90%,#fff9); transform:translateY(-100%); animation:anilist-scan 2.3s ease-in-out infinite; }

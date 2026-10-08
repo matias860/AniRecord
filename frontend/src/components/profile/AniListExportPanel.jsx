@@ -9,6 +9,7 @@ import './AniListExportPanel.css'
 
 const statusLabel = (status, mediaType) => ({
   CURRENT: mediaType === 'MANGA' ? 'Leyendo' : 'Viendo',
+  IN_PROGRESS: mediaType === 'MANGA' ? 'Leyendo' : 'Viendo',
   COMPLETED: 'Completado',
   PLANNING: 'Pendiente',
   PAUSED: 'Pausado',
@@ -22,6 +23,9 @@ const unitLabel = (unit, progress) => {
 const describe = (value, entry, mediaType) => value
   ? `${statusLabel(value.status, mediaType)} · ${value.progress} ${unitLabel(entry.progressUnit, value.progress)} · ${value.score ? `${value.score / 10}/10` : 'Sin puntuar'}`
   : 'No está en tu lista'
+const describeImport = (value, entry) => value
+  ? `${statusLabel(value.status, entry.mediaType)} · ${value.progress} ${unitLabel(entry.mediaFormat === 'NOVEL' ? 'VOLUMES' : entry.mediaType === 'MANGA' ? 'CHAPTERS' : 'EPISODES', value.progress)} · ${value.score ? `${value.score}/10` : 'Sin puntuar'}`
+  : 'No está en AniRecord'
 
 function Cover({ entry, uploading = false }) {
   const [failed, setFailed] = useState(false)
@@ -52,6 +56,8 @@ export default function AniListExportPanel() {
   const [total, setTotal] = useState(0)
   const [activeEntry, setActiveEntry] = useState(null)
   const [importResult, setImportResult] = useState(null)
+  const [importPreview, setImportPreview] = useState(null)
+  const [importSelected, setImportSelected] = useState(new Set())
   const [importError, setImportError] = useState('')
   const [importPhase, setImportPhase] = useState('idle')
   const [importCompleted, setImportCompleted] = useState(0)
@@ -102,24 +108,39 @@ export default function AniListExportPanel() {
     } finally { busy.current = false }
   }
 
-  const importFromAniList = async () => {
+  const reviewImport = async () => {
     if (working || importWorking) return
     importStop.current = false
-    setImportError(''); setImportResult(null); setImportPhase('loading'); setImportCompleted(0); setImportTotal(0); setImportActiveEntry(null)
+    setImportError(''); setImportResult(null); setImportPreview(null); setImportSelected(new Set()); setImportPhase('loading'); setImportCompleted(0); setImportTotal(0); setImportActiveEntry(null)
     try {
       const { data: plan } = await apiClient.post('/library/import/anilist/preview')
       if (!mounted.current) return
       const changes = plan.changes ?? []
-      const batchSize = plan.batchSize || 20
-      setImportTotal(changes.length)
-      setImportPhase('sending')
+      setImportPreview(plan)
+      setImportSelected(new Set(changes.filter((entry) => entry.addition).map((entry) => entry.anilistId)))
+      setImportPhase('review')
+    } catch (reason) {
+      if (mounted.current) { setImportError(reason.message); setImportPhase('idle') }
+    }
+  }
+
+  const applyImport = async () => {
+    if (working || importWorking || !importPreview) return
+    importStop.current = false
+    const changes = importPreview.changes.filter((entry) => importSelected.has(entry.anilistId))
+    const batchSize = importPreview.batchSize || 20
+    setImportError(''); setImportResult(null); setImportCompleted(0); setImportTotal(changes.length); setImportPhase('sending')
+    try {
       let processed = 0
       let created = 0
       let updated = 0
-      for (let index = 0; index * batchSize < changes.length; index += 1) {
+      for (let from = 0; from < changes.length; from += batchSize) {
         if (importStop.current) break
-        setImportActiveEntry(changes[index * batchSize])
-        const { data: batch } = await apiClient.post(`/library/import/anilist/${plan.id}/batches/${index}`)
+        const batchEntries = changes.slice(from, from + batchSize)
+        setImportActiveEntry(batchEntries[0])
+        const { data: batch } = await apiClient.post(`/library/import/anilist/${importPreview.id}/selection`, {
+          anilistIds: batchEntries.map((entry) => entry.anilistId),
+        })
         processed += batch.processed
         created += batch.created
         updated += batch.updated
@@ -129,13 +150,13 @@ export default function AniListExportPanel() {
         if (mounted.current) setImportPhase('stopped')
         return
       }
-      const { data: favorites } = await apiClient.post(`/library/import/anilist/${plan.id}/complete`)
+      const { data: favorites } = await apiClient.post(`/library/import/anilist/${importPreview.id}/complete`)
       await Promise.all([
         dispatch(fetchLibrary()).unwrap(),
         dispatch(fetchPersonFavorites(true)).unwrap(),
       ])
       if (mounted.current) {
-        setImportResult({ created, updated, personFavoritesCreated: favorites.personFavoritesCreated || 0 })
+        setImportResult({ created, updated, preserved: importPreview.changes.length - changes.length, personFavoritesCreated: favorites.personFavoritesCreated || 0 })
         setImportPhase('done')
       }
     } catch (reason) {
@@ -222,10 +243,28 @@ export default function AniListExportPanel() {
         <div className="anilist-card-title"><span className="anilist-card-icon"><ArrowDownToLine /></span><div><small>Traer cambios</small><h3 id="anilist-import-heading">Actualizar AniRecord</h3></div></div>
         <p className="anilist-card-description">Trae a AniRecord los cambios que hiciste en tu biblioteca de AniList.</p>
         <div className="anilist-safe-note"><ShieldCheck /><span><strong>Importación controlada</strong><small>Solo esta dirección toma progreso, estado y puntuación desde AniList.</small></span></div>
-        <details className="anilist-export-details"><summary>Qué se trae</summary><p>Se agregan obras, personajes y seiyūs nuevos. En entradas existentes se actualizan progreso, estado, puntuación, repeticiones, fechas y datos de la ficha con los valores actuales de AniList.</p></details>
+        <details className="anilist-export-details"><summary>Qué se trae</summary><p>Las obras nuevas se seleccionan automáticamente. Los datos personales que ya existen en AniRecord se conservan, salvo que elijas explícitamente reemplazarlos por los valores de AniList.</p></details>
         <div className="anilist-import-spacer" />
         {importError && <p role="alert" className="anilist-export-error">{importError}</p>}
         {importPhase === 'loading' && <p className="anilist-export-loading" role="status"><RefreshCw aria-hidden="true" /> Comparando tu biblioteca de AniList…</p>}
+        {importPhase === 'review' && importPreview && <div className="anilist-import-review">
+          <p><strong>{importPreview.changes.length} diferencias reales</strong> · {importPreview.unchanged} entradas ya coinciden.</p>
+          {importPreview.changes.length ? <>
+            <p className="anilist-import-warning"><ShieldCheck /> AniRecord tiene prioridad. Las entradas existentes empiezan sin seleccionar.</p>
+            <label className="anilist-export-selection"><SelectionCheckbox checked={importSelected.size === importPreview.changes.length} partial={importSelected.size > 0 && importSelected.size < importPreview.changes.length} onChange={(event) => setImportSelected(new Set(event.target.checked ? importPreview.changes.map((entry) => entry.anilistId) : []))} /> Seleccionar todas las diferencias</label>
+            <div className="anilist-export-changes" role="region" aria-label="Diferencias entre AniList y AniRecord" tabIndex={0}>
+              {importPreview.changes.map((entry) => <label key={entry.anilistId} className="anilist-export-entry">
+                <SelectionCheckbox checked={importSelected.has(entry.anilistId)} onChange={(event) => setImportSelected((previous) => {
+                  const next = new Set(previous)
+                  if (event.target.checked) next.add(entry.anilistId); else next.delete(entry.anilistId)
+                  return next
+                })} />
+                <Cover key={`${entry.anilistId}-${entry.coverImage}`} entry={entry} />
+                <span><strong>{entry.title}</strong><small>AniRecord: {describeImport(entry.before, entry)}</small><small>AniList: {describeImport(entry.after, entry)}</small>{entry.addition && <em>Nueva: seleccionada automáticamente</em>}</span>
+              </label>)}
+            </div>
+          </> : <p>No hay progreso, estados ni puntuaciones diferentes para importar.</p>}
+        </div>}
         {importActiveEntry && ['sending', 'stopping', 'done', 'stopped'].includes(importPhase) && <div className={`anilist-export-transfer is-${importPhase}`} role="status" aria-live="polite">
           <Cover key={`${importActiveEntry.anilistId}-${importActiveEntry.coverImage}`} entry={importActiveEntry} uploading={importPhase === 'sending' || importPhase === 'stopping'} />
           <div className="anilist-export-transfer-copy">
@@ -242,11 +281,15 @@ export default function AniListExportPanel() {
             <span>{importCompleted}<span> / {importTotal}</span></span>
           </div>
         </div>}
-        {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} entradas actualizadas · {importResult.personFavoritesCreated} favoritos nuevos</p>}
-        {!importWorking && <button type="button" className="anilist-sync-button is-import" disabled={working} onClick={importFromAniList}>
+        {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} elegidas y actualizadas · {importResult.preserved} conservadas en AniRecord · {importResult.personFavoritesCreated} favoritos nuevos</p>}
+        {!importWorking && importPhase !== 'review' && <button type="button" className="anilist-sync-button is-import" disabled={working} onClick={reviewImport}>
           <ArrowDownToLine />
-          <span>{importPhase === 'done' || importPhase === 'stopped' ? 'Sincronizar de nuevo' : 'Traer cambios a AniRecord'}</span>
+          <span>{importPhase === 'done' || importPhase === 'stopped' ? 'Comparar de nuevo' : 'Comparar con AniRecord'}</span>
         </button>}
+        {importPhase === 'review' && <div className="anilist-export-actions">
+          <button type="button" className="anilist-sync-button is-import" disabled={working} onClick={applyImport}><ArrowDownToLine /><span>Traer {importSelected.size} {importSelected.size === 1 ? 'cambio elegido' : 'cambios elegidos'}</span></button>
+          <button type="button" className="anilist-sync-button is-preserve" onClick={() => { setImportPreview(null); setImportSelected(new Set()); setImportPhase('idle') }}><ShieldCheck /><span>Conservar AniRecord</span></button>
+        </div>}
         {(importPhase === 'sending' || importPhase === 'stopping') && <button type="button" className="anilist-sync-button is-stop" disabled={importPhase === 'stopping'} onClick={() => { importStop.current = true; setImportPhase('stopping') }}><Pause /> <span>Detener importación</span></button>}
       </article>
     </div>

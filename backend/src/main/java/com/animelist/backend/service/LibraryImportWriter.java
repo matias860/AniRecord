@@ -41,8 +41,8 @@ public class LibraryImportWriter {
             if (existing != null) {
                 copyExternalMedia(item.media(), existing.getMedia());
                 media.save(existing.getMedia());
-                copyTracking(item, existing);
-                library.save(existing);
+                // Automatic imports only refresh public media data. Personal tracking already
+                // present in AniRecord is preserved unless the user explicitly selects a change.
                 updated++;
             } else {
                 Media localMedia = media.findByAnilistId(item.media().anilistId()).orElseGet(Media::new);

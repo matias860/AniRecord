@@ -32,7 +32,7 @@ class LibraryImportWriterTest {
     private final LibraryImportWriter writer = new LibraryImportWriter(library, media, users, favorites);
 
     @Test
-    void existingEntriesTakeTrackingChangesFromAniList() {
+    void automaticImportPreservesExistingAniRecordTracking() {
         AppUser user = new AppUser();
         user.setId(1L);
         Media localMedia = new Media();
@@ -56,14 +56,38 @@ class LibraryImportWriterTest {
         writer.apply(1L, new AniListLibraryExport("usuario", null, null, List.of(remote)), List.of());
 
         assertEquals("Actualizado", local.getMedia().getTitle());
-        assertEquals(7, local.getProgress());
-        assertEquals(new BigDecimal("8.5"), local.getPersonalScore());
-        assertEquals(2, local.getRewatchCount());
-        assertEquals(TrackingStatus.IN_PROGRESS, local.getTrackingStatus());
-        assertEquals(started, local.getStartedAt());
-        verify(library).save(local);
+        assertEquals(2, local.getProgress());
+        assertEquals(new BigDecimal("5.0"), local.getPersonalScore());
+        assertEquals(TrackingStatus.PLANNED, local.getTrackingStatus());
         verify(media).save(localMedia);
         verify(users).save(user);
+    }
+
+    @Test
+    void explicitlySelectedEntryTakesCompletedStateFromAniList() {
+        AppUser user = new AppUser();
+        user.setId(1L);
+        Media localMedia = new Media();
+        localMedia.setAnilistId(10);
+        localMedia.setMediaType(MediaType.ANIME);
+        localMedia.setTitle("Clevatess");
+        LibraryEntry local = new LibraryEntry();
+        local.setUser(user);
+        local.setMedia(localMedia);
+        local.setProgress(7);
+        local.setTrackingStatus(TrackingStatus.IN_PROGRESS);
+        AniListLibraryItem remote = new AniListLibraryItem(media(10, "Clevatess"), 13,
+                new BigDecimal("8.0"), 0, TrackingStatus.COMPLETED, null, LocalDate.of(2026, 10, 8));
+        when(users.findById(1L)).thenReturn(Optional.of(user));
+        when(library.findForUpdateByUserIdAndMediaAnilistId(1L, 10)).thenReturn(Optional.of(local));
+
+        writer.applyBatch(1L, List.of(remote), java.util.Map.of(10,
+                new AniListImportService.LocalState(7, null, 0, TrackingStatus.IN_PROGRESS, null, null)));
+
+        assertEquals(13, local.getProgress());
+        assertEquals(TrackingStatus.COMPLETED, local.getTrackingStatus());
+        assertEquals(new BigDecimal("8.0"), local.getPersonalScore());
+        verify(library).save(local);
     }
 
     private static AniListMediaResponse media(int id, String title) {

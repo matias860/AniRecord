@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.13.0'
+export const CURRENT_VERSION = '1.13.1'
 
 export const RELEASES = [
+  {
+    version: '1.13.1',
+    date: '8 de octubre de 2026',
+    title: 'Corrección de la sincronización con AniList',
+    summary: 'AniRecord conserva tus datos y te deja decidir qué diferencias querés traer desde AniList.',
+    changes: [
+      { type: 'Control', text: 'Las obras nuevas se agregan automáticamente, pero el progreso, estado y puntuación existentes solo cambian si los elegís.' },
+      { type: 'Claridad', text: 'La comparación muestra únicamente diferencias reales y enseña lado a lado los valores de AniRecord y AniList.' },
+      { type: 'Seguridad', text: 'Las versiones anteriores de la app tampoco pueden reemplazar automáticamente datos personales que ya existan en AniRecord.' },
+    ],
+  },
   {
     version: '1.13.0',
     date: '8 de octubre de 2026',
