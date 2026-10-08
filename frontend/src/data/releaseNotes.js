@@ -7,6 +7,7 @@ export const RELEASES = [
     title: 'Correcciones del inicio de sesión',
     summary: 'Corregimos los errores al entrar y conservamos la página a la que querías volver.',
     changes: [
+      { type: 'Acceso', text: 'Al abrir AniRecord consultamos la red para que la verificación de seguridad pueda completarse; la copia guardada queda para usar sin conexión.' },
       { type: 'Acceso', text: 'Una contraseña incorrecta muestra el error sin sacarte del formulario.' },
       { type: 'AniList', text: 'Si la autorización falla o vence, explicamos qué pasó y podés volver a intentarlo.' },
       { type: 'Sesión', text: 'Evitamos que una comprobación demorada cierre un acceso exitoso; si la sesión vence, podés entrar de nuevo y volver a la página anterior.' },

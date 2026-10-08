@@ -6,13 +6,23 @@ import { CacheFirst, StaleWhileRevalidate } from 'workbox-strategies'
 
 clientsClaim()
 cleanupOutdatedCaches()
-precacheAndRoute(self.__WB_MANIFEST)
 
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
 })
 
-registerRoute(new NavigationRoute(createHandlerBoundToURL('/index.html'), { denylist: [/^\/api\//] }))
+const offlineNavigation = (options) => createHandlerBoundToURL('/index.html')(options)
+registerRoute(new NavigationRoute(async (options) => {
+  try {
+    // Return every HTTP response, including Vercel's security checkpoint.
+    // Only a network failure may fall back to the precached app shell.
+    return await fetch(options.request, { cache: 'no-store' })
+  } catch {
+    return offlineNavigation(options)
+  }
+}, { denylist: [/^\/api\//] }))
+// Navigation must take priority over the precache route, including / and /index.html.
+precacheAndRoute(self.__WB_MANIFEST)
 registerRoute(({ request, url }) => url.origin === self.location.origin && ['style', 'script'].includes(request.destination), new StaleWhileRevalidate({ cacheName: 'anirecord-static-v1' }))
 registerRoute(({ request, url }) => url.origin === self.location.origin && request.destination === 'font', new CacheFirst({ cacheName: 'anirecord-fonts-v1' }))
 registerRoute(({ request, url }) => url.origin === self.location.origin && !url.pathname.startsWith('/api/') && request.destination === 'image', new CacheFirst({ cacheName: 'anirecord-images-v1' }))
