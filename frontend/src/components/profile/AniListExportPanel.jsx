@@ -117,7 +117,7 @@ export default function AniListExportPanel() {
       if (!mounted.current) return
       const changes = plan.changes ?? []
       setImportPreview(plan)
-      setImportSelected(new Set(changes.filter((entry) => entry.addition).map((entry) => entry.anilistId)))
+      setImportSelected(new Set(changes.map((entry) => entry.anilistId)))
       setImportPhase('review')
     } catch (reason) {
       if (mounted.current) { setImportError(reason.message); setImportPhase('idle') }
@@ -241,16 +241,16 @@ export default function AniListExportPanel() {
       <article className="anilist-sync-card is-import" aria-labelledby="anilist-import-heading">
         <div className="anilist-direction-route" aria-label="De AniList hacia AniRecord"><span>AniList</span><ArrowRight /><span>AniRecord</span></div>
         <div className="anilist-card-title"><span className="anilist-card-icon"><ArrowDownToLine /></span><div><small>Traer cambios</small><h3 id="anilist-import-heading">Actualizar AniRecord</h3></div></div>
-        <p className="anilist-card-description">Trae a AniRecord los cambios que hiciste en tu biblioteca de AniList.</p>
-        <div className="anilist-safe-note"><ShieldCheck /><span><strong>Importación controlada</strong><small>Solo esta dirección toma progreso, estado y puntuación desde AniList.</small></span></div>
-        <details className="anilist-export-details"><summary>Qué se trae</summary><p>Las obras nuevas se seleccionan automáticamente. Los datos personales que ya existen en AniRecord se conservan, salvo que elijas explícitamente reemplazarlos por los valores de AniList.</p></details>
+        <p className="anilist-card-description">Combina tu biblioteca sin retroceder el progreso ni reemplazar puntuaciones que ya existan en AniRecord.</p>
+        <div className="anilist-safe-note"><ShieldCheck /><span><strong>Importación protegida</strong><small>Primero revisás el resultado seguro y elegís cuáles cambios confirmar.</small></span></div>
+        <details className="anilist-export-details"><summary>Qué se trae</summary><p>Las obras nuevas se agregan. En entradas existentes, el progreso solo avanza y la puntuación de AniRecord se conserva; AniList completa una puntuación únicamente cuando aquí no hay ninguna. Los estados de pausa o abandono de AniRecord también se respetan. Fechas, repeticiones y otros datos existentes no se modifican.</p></details>
         <div className="anilist-import-spacer" />
         {importError && <p role="alert" className="anilist-export-error">{importError}</p>}
         {importPhase === 'loading' && <p className="anilist-export-loading" role="status"><RefreshCw aria-hidden="true" /> Comparando tu biblioteca de AniList…</p>}
         {importPhase === 'review' && importPreview && <div className="anilist-import-review">
-          <p><strong>{importPreview.changes.length} diferencias reales</strong> · {importPreview.unchanged} entradas ya coinciden.</p>
+          <p><strong>{importPreview.changes.length} cambios seguros</strong> · {importPreview.unchanged} entradas no necesitan cambios.</p>
           {importPreview.changes.length ? <>
-            <p className="anilist-import-warning"><ShieldCheck /> AniRecord tiene prioridad. Las entradas existentes empiezan sin seleccionar.</p>
+            <p className="anilist-import-warning"><ShieldCheck /> Este es el resultado combinado: AniRecord conserva sus puntuaciones y nunca recibe un progreso menor.</p>
             <label className="anilist-export-selection"><SelectionCheckbox checked={importSelected.size === importPreview.changes.length} partial={importSelected.size > 0 && importSelected.size < importPreview.changes.length} onChange={(event) => setImportSelected(new Set(event.target.checked ? importPreview.changes.map((entry) => entry.anilistId) : []))} /> Seleccionar todas las diferencias</label>
             <div className="anilist-export-changes" role="region" aria-label="Diferencias entre AniList y AniRecord" tabIndex={0}>
               {importPreview.changes.map((entry) => <label key={entry.anilistId} className="anilist-export-entry">
@@ -260,7 +260,7 @@ export default function AniListExportPanel() {
                   return next
                 })} />
                 <Cover key={`${entry.anilistId}-${entry.coverImage}`} entry={entry} />
-                <span><strong>{entry.title}</strong><small>AniRecord: {describeImport(entry.before, entry)}</small><small>AniList: {describeImport(entry.after, entry)}</small>{entry.addition && <em>Nueva: seleccionada automáticamente</em>}</span>
+                <span><strong>{entry.title}</strong><small>AniRecord: {describeImport(entry.before, entry)}</small><small>Resultado seguro: {describeImport(entry.after, entry)}</small>{entry.addition && <em>Nueva: seleccionada automáticamente</em>}</span>
               </label>)}
             </div>
           </> : <p>No hay progreso, estados ni puntuaciones diferentes para importar.</p>}
@@ -287,7 +287,7 @@ export default function AniListExportPanel() {
           <span>{importPhase === 'done' || importPhase === 'stopped' ? 'Comparar de nuevo' : 'Comparar con AniRecord'}</span>
         </button>}
         {importPhase === 'review' && <div className="anilist-export-actions">
-          <button type="button" className="anilist-sync-button is-import" disabled={working} onClick={applyImport}><ArrowDownToLine /><span>Traer {importSelected.size} {importSelected.size === 1 ? 'cambio elegido' : 'cambios elegidos'}</span></button>
+          <button type="button" className="anilist-sync-button is-import" disabled={working} onClick={applyImport}><ArrowDownToLine /><span>Aplicar {importSelected.size} {importSelected.size === 1 ? 'cambio seguro' : 'cambios seguros'}</span></button>
           <button type="button" className="anilist-sync-button is-preserve" onClick={() => { setImportPreview(null); setImportSelected(new Set()); setImportPhase('idle') }}><ShieldCheck /><span>Conservar AniRecord</span></button>
         </div>}
         {(importPhase === 'sending' || importPhase === 'stopping') && <button type="button" className="anilist-sync-button is-stop" disabled={importPhase === 'stopping'} onClick={() => { importStop.current = true; setImportPhase('stopping') }}><Pause /> <span>Detener importación</span></button>}

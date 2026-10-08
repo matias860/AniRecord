@@ -7,6 +7,7 @@ import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -97,13 +98,15 @@ public class AniListImportService {
             var media = item.media();
             LocalState local = before.get(media.anilistId());
             LocalState remote = state(item);
-            if (local != null && sameState(local, remote)) {
+            LocalState after = merge(local, remote, media.totalUnits());
+            if (local != null && sameState(local, after)) {
                 unchanged++;
                 continue;
             }
-            changedItems.add(item);
+            AniListLibraryItem safeItem = withState(item, after);
+            changedItems.add(safeItem);
             changes.add(new Change(media.anilistId(), media.title(), media.coverImage(), media.mediaType(),
-                    media.mediaFormat(), local == null, local, remote));
+                    media.mediaFormat(), local == null, local, after));
         }
 
         UUID id = UUID.randomUUID();
@@ -197,6 +200,44 @@ public class AniListImportService {
     private static LocalState state(AniListLibraryItem entry) {
         return new LocalState(entry.progress(), entry.personalScore(), entry.rewatchCount(),
                 entry.trackingStatus(), entry.startedAt(), entry.completedAt());
+    }
+
+    /**
+     * AniRecord remains authoritative when replacing it would lose information.
+     * AniList may advance progress, fill an empty score, and complete an active
+     * entry, but it never lowers progress, replaces a score, or changes an
+     * explicit pause/drop. Dates and repeat counts already in AniRecord remain.
+     */
+    static LocalState merge(LocalState local, LocalState remote, Integer totalUnits) {
+        if (local == null) return remote;
+        int progress = Math.max(value(local.progress()), value(remote.progress()));
+        BigDecimal score = hasScore(local.score()) ? local.score() : remote.score();
+        TrackingStatus status = mergedStatus(local.status(), remote.status(), progress, totalUnits);
+        return new LocalState(progress, score, local.repeats(), status, local.startedAt(), local.completedAt());
+    }
+
+    private static TrackingStatus mergedStatus(TrackingStatus local, TrackingStatus remote,
+            int progress, Integer totalUnits) {
+        if (local == TrackingStatus.COMPLETED || local == TrackingStatus.PAUSED
+                || local == TrackingStatus.DROPPED) return local;
+        boolean confirmedCompletion = remote == TrackingStatus.COMPLETED
+                && totalUnits != null && progress >= totalUnits;
+        if (confirmedCompletion) return TrackingStatus.COMPLETED;
+        if (local == TrackingStatus.PLANNED && progress > 0) return TrackingStatus.IN_PROGRESS;
+        return local;
+    }
+
+    private static AniListLibraryItem withState(AniListLibraryItem item, LocalState state) {
+        return new AniListLibraryItem(item.media(), value(state.progress()), state.score(),
+                value(state.repeats()), state.status(), state.startedAt(), state.completedAt());
+    }
+
+    private static boolean hasScore(BigDecimal score) {
+        return score != null && score.signum() > 0;
+    }
+
+    private static int value(Integer number) {
+        return number == null ? 0 : number;
     }
 
     private static boolean sameState(LocalState left, LocalState right) {

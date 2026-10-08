@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import org.mockito.ArgumentCaptor;
 import com.animelist.backend.dto.anilist.AniListLibraryExport;
 import com.animelist.backend.dto.anilist.AniListLibraryItem;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
@@ -18,6 +19,8 @@ import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.repository.LibraryEntryRepository;
 import java.util.ArrayList;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -85,6 +88,59 @@ class AniListImportServiceTest {
         assertEquals(TrackingStatus.COMPLETED, preview.changes().get(0).after().status());
         assertEquals(0, service.applyBatch(preview.id(), 0).updated());
         assertEquals(1, service.applySelection(preview.id(), List.of(2)).updated());
+    }
+
+    @Test
+    void mergesAniListWithoutLosingBetterAniRecordData() {
+        LocalDate localStarted = LocalDate.of(2026, 7, 1);
+        AniListLibraryItem remote = new AniListLibraryItem(item(10).media(), 12,
+                new BigDecimal("7.0"), 0, TrackingStatus.COMPLETED,
+                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 10, 8));
+        var local = summary(new AniListLibraryItem(item(10).media(), 7,
+                new BigDecimal("9.0"), 2, TrackingStatus.IN_PROGRESS, localStarted, null));
+        when(client.getUserLibrary("test", "token"))
+                .thenReturn(new AniListLibraryExport("test", null, null, List.of(remote)));
+        when(entries.findSummaries(1L, null, null)).thenReturn(List.of(local));
+        when(writer.applyBatch(eq(1L), any(), any()))
+                .thenReturn(new LibraryImportWriter.BatchResult(1, 0, 1));
+
+        var preview = service.preview();
+        var change = preview.changes().get(0);
+
+        assertEquals(12, change.after().progress());
+        assertEquals(new BigDecimal("9.0"), change.after().score());
+        assertEquals(2, change.after().repeats());
+        assertEquals(TrackingStatus.COMPLETED, change.after().status());
+        assertEquals(localStarted, change.after().startedAt());
+        assertEquals(null, change.after().completedAt());
+
+        service.applySelection(preview.id(), List.of(10));
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<AniListLibraryItem>> selected = ArgumentCaptor.forClass(List.class);
+        verify(writer).applyBatch(eq(1L), selected.capture(), any());
+        AniListLibraryItem applied = selected.getValue().get(0);
+        assertEquals(12, applied.progress());
+        assertEquals(new BigDecimal("9.0"), applied.personalScore());
+        assertEquals(2, applied.rewatchCount());
+        assertEquals(TrackingStatus.COMPLETED, applied.trackingStatus());
+        assertEquals(localStarted, applied.startedAt());
+        assertEquals(null, applied.completedAt());
+    }
+
+    @Test
+    void ignoresRemoteValuesThatWouldMoveAniRecordBackwards() {
+        AniListLibraryItem remote = new AniListLibraryItem(item(10).media(), 3,
+                new BigDecimal("4.0"), 0, TrackingStatus.IN_PROGRESS, null, null);
+        var local = summary(new AniListLibraryItem(item(10).media(), 8,
+                new BigDecimal("8.5"), 1, TrackingStatus.PAUSED, null, null));
+        when(client.getUserLibrary("test", "token"))
+                .thenReturn(new AniListLibraryExport("test", null, null, List.of(remote)));
+        when(entries.findSummaries(1L, null, null)).thenReturn(List.of(local));
+
+        var preview = service.preview();
+
+        assertEquals(0, preview.changes().size());
+        assertEquals(1, preview.unchanged());
     }
 
     private static AniListLibraryItem item(int id) {
