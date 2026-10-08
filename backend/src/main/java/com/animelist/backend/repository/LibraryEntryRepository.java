@@ -72,6 +72,11 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
     @EntityGraph(attributePaths = "media")
     Optional<LibraryEntry> findByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select entry from LibraryEntry entry join fetch entry.media where entry.user.id = :userId and entry.media.anilistId = :anilistId")
+    Optional<LibraryEntry> findForUpdateByUserIdAndMediaAnilistId(
+            @Param("userId") Long userId, @Param("anilistId") Integer anilistId);
+
     @EntityGraph(attributePaths = "media")
     List<LibraryEntry> findByUserIdAndMediaMediaTypeAndTrackingStatus(
             Long userId, MediaType mediaType,

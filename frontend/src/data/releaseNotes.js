@@ -1,6 +1,18 @@
-export const CURRENT_VERSION = '1.12.2'
+export const CURRENT_VERSION = '1.13.0'
 
 export const RELEASES = [
+  {
+    version: '1.13.0',
+    date: '8 de octubre de 2026',
+    title: 'Sincronización en ambas direcciones',
+    summary: 'Ahora podés ver cómo avanza la importación y elegir con claridad qué biblioteca querés actualizar.',
+    changes: [
+      { type: 'AniList', text: 'La sincronización desde AniList muestra la portada actual y el progreso de cada grupo de entradas.' },
+      { type: 'Biblioteca', text: 'Los cambios de progreso, estado, puntuación, repeticiones y fechas hechos en AniList llegan a AniRecord.' },
+      { type: 'Estabilidad', text: 'La importación guarda los cambios por partes para evitar esperas largas y conservar lo ya completado si se interrumpe.' },
+      { type: 'Control', text: 'Podés detener la importación y AniRecord evita pisar una entrada que cambió mientras se estaba sincronizando.' },
+    ],
+  },
   {
     version: '1.12.2',
     date: '7 de octubre de 2026',
