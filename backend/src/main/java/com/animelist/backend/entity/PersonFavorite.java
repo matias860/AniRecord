@@ -19,5 +19,6 @@ public class PersonFavorite {
     @Column(name = "native_name", length = 255) private String nativeName;
     @Column(name = "image_url", length = 1000) private String imageUrl;
     @Column(name = "created_at", nullable = false, updatable = false) private LocalDateTime createdAt;
+    @Column(name = "anilist_favorite_order") private Integer anilistFavoriteOrder;
     @PrePersist void onCreate() { createdAt = LocalDateTime.now(); }
 }

@@ -8,6 +8,7 @@ export const RELEASES = [
     summary: 'Las dos direcciones combinan tus bibliotecas sin reemplazar datos mejores.',
     changes: [
       { type: 'Control', text: 'Al traer cambios, el progreso solo avanza y AniRecord conserva sus puntuaciones, pausas, abandonos, fechas y repeticiones.' },
+      { type: 'Favoritos', text: 'Los personajes y el staff importados mantienen el orden de AniList; tus favoritos propios quedan al final.' },
       { type: 'Claridad', text: 'La comparación muestra únicamente diferencias reales y enseña lado a lado los valores de AniRecord y AniList.' },
       { type: 'Seguridad', text: 'Las versiones anteriores de la app tampoco pueden reemplazar automáticamente datos personales que ya existan en AniRecord.' },
     ],

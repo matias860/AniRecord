@@ -299,11 +299,11 @@ public class AniListClient {
                 favourites {
                   characters(page: $characterPage, perPage: $perPage) {
                     pageInfo { hasNextPage }
-                    nodes { id name { full native } image { large } }
+                    edges { favouriteOrder node { id name { full native } image { large } } }
                   }
                   staff(page: $staffPage, perPage: $perPage) {
                     pageInfo { hasNextPage }
-                    nodes { id name { full native } image { large } }
+                    edges { favouriteOrder node { id name { full native } image { large } } }
                   }
                 }
               }
@@ -659,12 +659,12 @@ public class AniListClient {
             Map<String, Object> staff = asMap(favourites.get("staff"));
 
             if (moreCharacters) {
-                collectPersonFavorites(characters.get("nodes"), PersonType.CHARACTER, unique);
+                collectPersonFavorites(characters.get("edges"), PersonType.CHARACTER, unique);
                 moreCharacters = Boolean.TRUE.equals(asMap(characters.get("pageInfo")).get("hasNextPage"));
                 if (moreCharacters) characterPage++;
             }
             if (moreStaff) {
-                collectPersonFavorites(staff.get("nodes"), PersonType.STAFF, unique);
+                collectPersonFavorites(staff.get("edges"), PersonType.STAFF, unique);
                 moreStaff = Boolean.TRUE.equals(asMap(staff.get("pageInfo")).get("hasNextPage"));
                 if (moreStaff) staffPage++;
             }
@@ -675,7 +675,8 @@ public class AniListClient {
     private void collectPersonFavorites(Object nodesValue, PersonType type,
             Map<String, AniListPersonFavorite> target) {
         for (Object value : asList(nodesValue)) {
-            Map<String, Object> person = asMap(value);
+            Map<String, Object> edge = asMap(value);
+            Map<String, Object> person = asMap(edge.get("node"));
             Integer id = asInteger(person.get("id"));
             if (id == null) continue;
             Map<String, Object> name = asMap(person.get("name"));
@@ -684,7 +685,8 @@ public class AniListClient {
                     type,
                     asString(name.get("full")),
                     asString(name.get("native")),
-                    asString(asMap(person.get("image")).get("large"))
+                    asString(asMap(person.get("image")).get("large")),
+                    asInteger(edge.get("favouriteOrder"))
             ));
         }
     }

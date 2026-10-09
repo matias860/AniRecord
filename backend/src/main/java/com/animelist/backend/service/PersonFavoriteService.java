@@ -16,7 +16,12 @@ public class PersonFavoriteService {
 
     @Transactional(readOnly = true)
     public List<FavoritePersonResponse> list() {
-        return repository.findAllByUserIdOrderByCreatedAtDesc(currentUser.require().getId()).stream().map(this::response).toList();
+        return repository.findAllByUserIdOrderByCreatedAtDesc(currentUser.require().getId()).stream()
+                .sorted(java.util.Comparator.comparing(PersonFavorite::getAnilistFavoriteOrder,
+                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder()))
+                        .thenComparing(PersonFavorite::getCreatedAt, java.util.Comparator.reverseOrder())
+                        .thenComparing(PersonFavorite::getId, java.util.Comparator.reverseOrder()))
+                .map(this::response).toList();
     }
 
     @Transactional

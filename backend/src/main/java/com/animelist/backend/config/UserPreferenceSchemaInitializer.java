@@ -46,6 +46,7 @@ public class UserPreferenceSchemaInitializer implements ApplicationRunner {
         if (!Boolean.TRUE.equals(notificationStateExists)) {
             jdbc.execute("UPDATE app_user SET notifications_initialized_at = CURRENT_TIMESTAMP WHERE account_type = 'ANILIST' AND notifications_initialized_at IS NULL");
         }
+        jdbc.execute("ALTER TABLE person_favorite ADD COLUMN IF NOT EXISTS anilist_favorite_order INTEGER");
         LOGGER.info("Preferencia compartida del aviso de sincronización verificada correctamente");
     }
 }

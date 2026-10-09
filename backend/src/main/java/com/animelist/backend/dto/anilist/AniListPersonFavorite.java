@@ -7,6 +7,10 @@ public record AniListPersonFavorite(
         PersonType personType,
         String name,
         String nativeName,
-        String imageUrl
+        String imageUrl,
+        Integer favoriteOrder
 ) {
+    public AniListPersonFavorite(Integer id, PersonType type, String name, String nativeName, String imageUrl) {
+        this(id, type, name, nativeName, imageUrl, null);
+    }
 }

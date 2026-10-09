@@ -90,6 +90,26 @@ class LibraryImportWriterTest {
         verify(library).save(local);
     }
 
+    @Test
+    void refreshesImportedOrderAndRetainsLocalOnlyFavorites() {
+        AppUser user = new AppUser(); user.setId(1L);
+        var imported = new com.animelist.backend.entity.PersonFavorite();
+        imported.setAnilistId(20); imported.setPersonType(com.animelist.backend.enums.PersonType.CHARACTER);
+        imported.setAnilistFavoriteOrder(8);
+        var localOnly = new com.animelist.backend.entity.PersonFavorite();
+        localOnly.setAnilistId(30); localOnly.setPersonType(com.animelist.backend.enums.PersonType.CHARACTER);
+        localOnly.setAnilistFavoriteOrder(2);
+        when(users.findById(1L)).thenReturn(Optional.of(user));
+        when(favorites.findAllByUserIdOrderByCreatedAtDesc(1L)).thenReturn(List.of(localOnly, imported));
+        var remote = new com.animelist.backend.dto.anilist.AniListPersonFavorite(20,
+                com.animelist.backend.enums.PersonType.CHARACTER, "Character", null, null, 0);
+        var result = writer.complete(1L, new AniListLibraryExport("test", null, null, List.of()), List.of(remote));
+        assertEquals(0, result.created());
+        assertEquals(0, imported.getAnilistFavoriteOrder());
+        assertEquals(null, localOnly.getAnilistFavoriteOrder());
+        verify(favorites).save(imported);
+    }
+
     private static AniListMediaResponse media(int id, String title) {
         return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title,
                 "cover", null, null, List.of(), null, 12, null, null, null, null,

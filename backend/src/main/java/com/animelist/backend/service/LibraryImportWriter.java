@@ -9,7 +9,6 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,17 +57,8 @@ public class LibraryImportWriter {
             }
             if (item.media().mediaType() == MediaType.ANIME) anime++; else manga++;
         }
-        Set<String> existingKeys = favorites.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(item -> item.getPersonType().name() + ":" + item.getAnilistId()).collect(Collectors.toSet());
-        for (AniListPersonFavorite item : externalFavorites) {
-            String key = item.personType().name() + ":" + item.anilistId();
-            if (!existingKeys.add(key)) continue;
-            PersonFavorite favorite = new PersonFavorite();
-            favorite.setUser(profile); favorite.setAnilistId(item.anilistId()); favorite.setPersonType(item.personType());
-            favorite.setName(item.name()); favorite.setNativeName(item.nativeName()); favorite.setImageUrl(item.imageUrl());
-            favorites.save(favorite);
-            if (item.personType() == com.animelist.backend.enums.PersonType.CHARACTER) characters++; else staff++;
-        }
+        FavoriteResult favoriteResult = mergeFavorites(profile, externalFavorites);
+        characters = favoriteResult.characters(); staff = favoriteResult.staff();
         if (profile.getLastAniListSyncAt() == null) {
             profile.setDisplayName(externalLibrary.username()); profile.setAvatarUrl(externalLibrary.avatarUrl());
             profile.setBannerUrl(externalLibrary.bannerUrl());
@@ -117,19 +107,8 @@ public class LibraryImportWriter {
     public FavoriteResult complete(Long userId, AniListLibraryExport externalLibrary,
             List<AniListPersonFavorite> externalFavorites) {
         AppUser profile = users.findById(userId).orElseThrow();
-        Set<String> existingKeys = favorites.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
-                .map(item -> item.getPersonType().name() + ":" + item.getAnilistId()).collect(Collectors.toSet());
-        int created = 0, characters = 0, staff = 0;
-        for (AniListPersonFavorite item : externalFavorites) {
-            String key = item.personType().name() + ":" + item.anilistId();
-            if (!existingKeys.add(key)) continue;
-            PersonFavorite favorite = new PersonFavorite();
-            favorite.setUser(profile); favorite.setAnilistId(item.anilistId()); favorite.setPersonType(item.personType());
-            favorite.setName(item.name()); favorite.setNativeName(item.nativeName()); favorite.setImageUrl(item.imageUrl());
-            favorites.save(favorite);
-            created++;
-            if (item.personType() == com.animelist.backend.enums.PersonType.CHARACTER) characters++; else staff++;
-        }
+        FavoriteResult favoriteResult = mergeFavorites(profile, externalFavorites);
+        int created = favoriteResult.created(), characters = favoriteResult.characters(), staff = favoriteResult.staff();
         if (profile.getLastAniListSyncAt() == null) {
             profile.setDisplayName(externalLibrary.username()); profile.setAvatarUrl(externalLibrary.avatarUrl());
             profile.setBannerUrl(externalLibrary.bannerUrl());
@@ -137,6 +116,29 @@ public class LibraryImportWriter {
         profile.setLastAniListSyncAt(LocalDateTime.now());
         users.save(profile);
         return new FavoriteResult(created, characters, staff);
+    }
+
+    private FavoriteResult mergeFavorites(AppUser profile, List<AniListPersonFavorite> externalFavorites) {
+        Map<String, PersonFavorite> existing = favorites.findAllByUserIdOrderByCreatedAtDesc(profile.getId()).stream()
+                .collect(Collectors.toMap(item -> item.getPersonType().name() + ":" + item.getAnilistId(), item -> item));
+        // Missing remote favorites are retained locally, after the imported ordered set.
+        existing.values().forEach(item -> item.setAnilistFavoriteOrder(null));
+        int characters = 0, staff = 0;
+        for (AniListPersonFavorite item : externalFavorites) {
+            String key = item.personType().name() + ":" + item.anilistId();
+            PersonFavorite favorite = existing.get(key);
+            boolean addition = favorite == null;
+            if (favorite == null) {
+                favorite = new PersonFavorite();
+                favorite.setUser(profile); favorite.setAnilistId(item.anilistId()); favorite.setPersonType(item.personType());
+                favorite.setName(item.name()); favorite.setNativeName(item.nativeName()); favorite.setImageUrl(item.imageUrl());
+                existing.put(key, favorite);
+                if (item.personType() == com.animelist.backend.enums.PersonType.CHARACTER) characters++; else staff++;
+            }
+            favorite.setAnilistFavoriteOrder(item.favoriteOrder());
+            if (addition || item.favoriteOrder() != null) favorites.save(favorite);
+        }
+        return new FavoriteResult(characters + staff, characters, staff);
     }
 
     private static void copyTracking(AniListLibraryItem item, LibraryEntry entry) {
