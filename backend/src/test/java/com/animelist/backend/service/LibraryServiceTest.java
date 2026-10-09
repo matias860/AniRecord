@@ -278,7 +278,16 @@ class LibraryServiceTest {
         assertEquals(1, response.personFavoritesCreated());
         assertEquals(0, response.characterFavoritesCreated());
         assertEquals(1, response.staffFavoritesCreated());
-        verify(personFavoriteRepository, times(1)).save(any(PersonFavorite.class));
+        verify(personFavoriteRepository).saveAll(org.mockito.ArgumentMatchers.argThat(items -> {
+            int count = 0;
+            boolean containsNewStaff = false;
+            for (PersonFavorite item : items) {
+                count++;
+                containsNewStaff |= item.getAnilistId() == 95075 && item.getPersonType() == PersonType.STAFF;
+            }
+            return count == 2 && containsNewStaff;
+        }));
+        verify(personFavoriteRepository).flush();
     }
 
     private void mockEntry(Long id, LibraryEntry entry) {

@@ -107,7 +107,8 @@ class LibraryImportWriterTest {
         assertEquals(0, result.created());
         assertEquals(0, imported.getAnilistFavoriteOrder());
         assertEquals(null, localOnly.getAnilistFavoriteOrder());
-        verify(favorites).save(imported);
+        verify(favorites).saveAll(org.mockito.ArgumentMatchers.anyCollection());
+        verify(favorites).flush();
     }
 
     private static AniListMediaResponse media(int id, String title) {

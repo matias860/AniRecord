@@ -299,11 +299,11 @@ public class AniListClient {
                 favourites {
                   characters(page: $characterPage, perPage: $perPage) {
                     pageInfo { hasNextPage }
-                    edges { favouriteOrder node { id name { full native } image { large } } }
+                    edges { node { id name { full native } image { large } } }
                   }
                   staff(page: $staffPage, perPage: $perPage) {
                     pageInfo { hasNextPage }
-                    edges { favouriteOrder node { id name { full native } image { large } } }
+                    edges { node { id name { full native } image { large } } }
                   }
                 }
               }
@@ -641,6 +641,8 @@ public class AniListClient {
         int staffPage = 1;
         boolean moreCharacters = true;
         boolean moreStaff = true;
+        int characterOrder = 0;
+        int staffOrder = 0;
         Map<String, AniListPersonFavorite> unique = new LinkedHashMap<>();
 
         while (moreCharacters || moreStaff) {
@@ -659,12 +661,14 @@ public class AniListClient {
             Map<String, Object> staff = asMap(favourites.get("staff"));
 
             if (moreCharacters) {
-                collectPersonFavorites(characters.get("edges"), PersonType.CHARACTER, unique);
+                characterOrder = collectPersonFavorites(
+                        characters.get("edges"), PersonType.CHARACTER, characterOrder, unique);
                 moreCharacters = Boolean.TRUE.equals(asMap(characters.get("pageInfo")).get("hasNextPage"));
                 if (moreCharacters) characterPage++;
             }
             if (moreStaff) {
-                collectPersonFavorites(staff.get("edges"), PersonType.STAFF, unique);
+                staffOrder = collectPersonFavorites(
+                        staff.get("edges"), PersonType.STAFF, staffOrder, unique);
                 moreStaff = Boolean.TRUE.equals(asMap(staff.get("pageInfo")).get("hasNextPage"));
                 if (moreStaff) staffPage++;
             }
@@ -672,23 +676,26 @@ public class AniListClient {
         return List.copyOf(unique.values());
     }
 
-    private void collectPersonFavorites(Object nodesValue, PersonType type,
+    private int collectPersonFavorites(Object nodesValue, PersonType type, int nextOrder,
             Map<String, AniListPersonFavorite> target) {
         for (Object value : asList(nodesValue)) {
             Map<String, Object> edge = asMap(value);
             Map<String, Object> person = asMap(edge.get("node"));
             Integer id = asInteger(person.get("id"));
             if (id == null) continue;
+            String key = type.name() + ":" + id;
+            if (target.containsKey(key)) continue;
             Map<String, Object> name = asMap(person.get("name"));
-            target.putIfAbsent(type.name() + ":" + id, new AniListPersonFavorite(
+            target.put(key, new AniListPersonFavorite(
                     id,
                     type,
                     asString(name.get("full")),
                     asString(name.get("native")),
                     asString(asMap(person.get("image")).get("large")),
-                    asInteger(edge.get("favouriteOrder"))
+                    nextOrder++
             ));
         }
+        return nextOrder;
     }
 
     private void collectLibraryChunks(String username, MediaType type, String accessToken,

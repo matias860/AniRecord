@@ -127,7 +127,6 @@ public class LibraryImportWriter {
         for (AniListPersonFavorite item : externalFavorites) {
             String key = item.personType().name() + ":" + item.anilistId();
             PersonFavorite favorite = existing.get(key);
-            boolean addition = favorite == null;
             if (favorite == null) {
                 favorite = new PersonFavorite();
                 favorite.setUser(profile); favorite.setAnilistId(item.anilistId()); favorite.setPersonType(item.personType());
@@ -136,8 +135,11 @@ public class LibraryImportWriter {
                 if (item.personType() == com.animelist.backend.enums.PersonType.CHARACTER) characters++; else staff++;
             }
             favorite.setAnilistFavoriteOrder(item.favoriteOrder());
-            if (addition || item.favoriteOrder() != null) favorites.save(favorite);
         }
+        // Persist the complete snapshot explicitly. Besides updating AniList positions,
+        // this also clears the imported position from favorites that now only exist locally.
+        favorites.saveAll(existing.values());
+        favorites.flush();
         return new FavoriteResult(characters + staff, characters, staff);
     }
 

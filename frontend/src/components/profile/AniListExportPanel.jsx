@@ -156,7 +156,13 @@ export default function AniListExportPanel() {
         dispatch(fetchPersonFavorites(true)).unwrap(),
       ])
       if (mounted.current) {
-        setImportResult({ created, updated, preserved: importPreview.changes.length - changes.length, personFavoritesCreated: favorites.personFavoritesCreated || 0 })
+        setImportResult({
+          created,
+          updated,
+          preserved: importPreview.changes.length - changes.length,
+          personFavoritesCreated: favorites.personFavoritesCreated || 0,
+          personFavoritesOrdered: favorites.personFavoritesOrdered || 0,
+        })
         setImportPhase('done')
       }
     } catch (reason) {
@@ -281,7 +287,7 @@ export default function AniListExportPanel() {
             <span>{importCompleted}<span> / {importTotal}</span></span>
           </div>
         </div>}
-        {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} elegidas y actualizadas · {importResult.preserved} conservadas en AniRecord · {importResult.personFavoritesCreated} favoritos nuevos</p>}
+        {importResult && <p className="anilist-import-result" role="status"><Check aria-hidden="true" /> {importResult.created} nuevas · {importResult.updated} elegidas y actualizadas · {importResult.preserved} conservadas en AniRecord · {importResult.personFavoritesCreated} favoritos nuevos · {importResult.personFavoritesOrdered} favoritos ordenados como en AniList</p>}
         {!importWorking && importPhase !== 'review' && <button type="button" className="anilist-sync-button is-import" disabled={working} onClick={reviewImport}>
           <ArrowDownToLine />
           <span>{importPhase === 'done' || importPhase === 'stopped' ? 'Comparar de nuevo' : 'Comparar con AniRecord'}</span>

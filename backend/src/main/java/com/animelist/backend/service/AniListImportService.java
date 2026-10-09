@@ -37,7 +37,7 @@ public class AniListImportService {
             int unchanged, List<Change> changes) {}
     public record BatchResult(int processed, int created, int updated) {}
     public record CompleteResult(int personFavoritesCreated, int characterFavoritesCreated,
-            int staffFavoritesCreated) {}
+            int staffFavoritesCreated, int personFavoritesOrdered) {}
 
     private static final class Plan {
         private final Long userId;
@@ -167,7 +167,7 @@ public class AniListImportService {
             LibraryImportWriter.FavoriteResult result = writer.complete(
                     user.getId(), plan.library, plan.favorites);
             plans.invalidate(planId);
-            return new CompleteResult(result.created(), result.characters(), result.staff());
+            return new CompleteResult(result.created(), result.characters(), result.staff(), plan.favorites.size());
         }
     }
 
