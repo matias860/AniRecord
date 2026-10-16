@@ -1,12 +1,12 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { Bell, CheckCheck, GitBranch, Info, Play, RefreshCw, Trash2 } from 'lucide-react'
+import { Bell, CheckCheck, GitBranch, Grid3X3, Info, Play, RefreshCw, Sparkles, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { fetchNotifications, fetchUnreadCount, markAllNotificationsRead, markNotificationRead, syncNotifications } from '../../features/notifications/notificationSlice.js'
 import { notificationSyncInterval } from '../../lib/notificationSync.js'
 
-const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2 }
+const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2, TOP_NINE_AVAILABLE: Grid3X3, WEEKLY_RECOMMENDATION_AVAILABLE: Sparkles }
 export default function NotificationBell({ hovered, onMouseEnter }) {
   const [open, setOpen] = useState(false); const root = useRef(null); const dispatch = useDispatch()
   const { items, unreadCount: unread, status, error } = useSelector((state) => state.notifications)
@@ -47,5 +47,6 @@ export default function NotificationBell({ hovered, onMouseEnter }) {
 
 function NotificationItem({ item, onSelect }) {
   const Icon = icons[item.type] || Bell; const content = <><div className="notification-cover">{item.coverImage ? <img src={item.coverImage} alt="" /> : <Icon />}</div><div><strong>{item.title}</strong><p>{item.message}</p><time>{new Date(item.occurredAt).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', year: 'numeric' })}</time></div>{!item.read && <i />}</>
-  return item.anilistMediaId ? <Link to={`/media/${item.anilistMediaId}`} onClick={onSelect} className={item.read ? '' : 'unread'}>{content}</Link> : <button onClick={onSelect} className={item.read ? '' : 'unread'}>{content}</button>
+  const homeNotification = item.type === 'TOP_NINE_AVAILABLE' || item.type === 'WEEKLY_RECOMMENDATION_AVAILABLE'
+  return item.anilistMediaId ? <Link to={`/media/${item.anilistMediaId}`} onClick={onSelect} className={item.read ? '' : 'unread'}>{content}</Link> : homeNotification ? <Link to="/" onClick={onSelect} className={item.read ? '' : 'unread'}>{content}</Link> : <button onClick={onSelect} className={item.read ? '' : 'unread'}>{content}</button>
 }

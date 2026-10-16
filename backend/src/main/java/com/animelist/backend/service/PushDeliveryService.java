@@ -2,6 +2,7 @@ package com.animelist.backend.service;
 
 import com.animelist.backend.entity.PushDelivery;
 import com.animelist.backend.entity.PushSubscription;
+import com.animelist.backend.enums.NotificationType;
 import com.animelist.backend.exception.BusinessException;
 import com.animelist.backend.repository.PushDeliveryRepository;
 import com.animelist.backend.repository.PushSubscriptionRepository;
@@ -68,9 +69,9 @@ public class PushDeliveryService {
         try {
             var notification = delivery.getNotification();
             Map<String, Object> message = new LinkedHashMap<>();
-            message.put("title", notification.getEpisode() != null && notification.getEpisode() == 1 ? "Estreno disponible" : "Nuevo episodio disponible");
+            message.put("title", pushTitle(notification.getNotificationType(), notification.getEpisode()));
             message.put("body", notification.getMessage());
-            message.put("url", notification.getAnilistMediaId() == null ? "/notificaciones" : "/media/" + notification.getAnilistMediaId());
+            message.put("url", pushUrl(notification.getNotificationType(), notification.getAnilistMediaId()));
             message.put("tag", notification.getSourceKey() == null ? "notification-" + notification.getId() : notification.getSourceKey());
             if (notification.getCoverImage() != null && !notification.getCoverImage().isBlank()) message.put("icon", notification.getCoverImage());
             String payload = json.writeValueAsString(message);
@@ -90,6 +91,21 @@ public class PushDeliveryService {
             LOGGER.warn("Falló una entrega push {}: {}", delivery.getId(), exception.getClass().getSimpleName());
             fail(delivery, exception.getClass().getSimpleName());
         }
+    }
+
+    private String pushTitle(NotificationType type, Integer episode) {
+        return switch (type) {
+            case TOP_NINE_AVAILABLE -> "Nuevo 3×3 disponible";
+            case WEEKLY_RECOMMENDATION_AVAILABLE -> "Nueva recomendación semanal";
+            case FIRST_EPISODE -> "Estreno disponible";
+            case AIRING_EPISODE -> "Nuevo episodio disponible";
+            default -> episode != null && episode == 1 ? "Estreno disponible" : "Novedad en AniRecord";
+        };
+    }
+
+    private String pushUrl(NotificationType type, Integer anilistMediaId) {
+        if (type == NotificationType.TOP_NINE_AVAILABLE || type == NotificationType.WEEKLY_RECOMMENDATION_AVAILABLE) return "/";
+        return anilistMediaId == null ? "/notificaciones" : "/media/" + anilistMediaId;
     }
 
     @Transactional

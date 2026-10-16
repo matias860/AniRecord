@@ -219,6 +219,7 @@ export default function HomeView() {
   const libraryReady = library.status === 'succeeded'
   const ownRecommendation = recommendations.items.find((item) => item.recommenderId === auth.userId)
   const showRecommendationCta = recommendations.status === 'succeeded' && !ownRecommendation
+  const showNewTopNine = auth.authenticated && topNine.status === 'succeeded' && topNine.prompt && !topNine.mine
   const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
   const scheduleOptions = [0, 1, 2, 3].map((offset) => {
       const item = seasonAtOffset(offset)
@@ -253,7 +254,7 @@ export default function HomeView() {
         <AnimatePresence initial={false}>{showRecommendationCta && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 52 }} exit={{ opacity: 0, height: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
           <span>Recomendar una serie esta semana</span>
         </motion.button>}</AnimatePresence>
-        {topNine.prompt && <button className="home-top-nine-launch" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setTopNineOpen((open) => !open) : requestLogin(navigate, location)}><Grid3X3 /> {topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}</button>}
+        {topNine.prompt && <div className="home-top-nine-action"><button className="home-top-nine-launch" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setTopNineOpen((open) => !open) : requestLogin(navigate, location)}><Grid3X3 /> {topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}</button>{showNewTopNine && <motion.span className="home-top-nine-available" initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}><i aria-hidden="true" /> Nuevo 3×3 disponible</motion.span>}</div>}
       </div>
       <AnimatePresence initial={false}>{topNineOpen && auth.authenticated && topNine.prompt && <Suspense fallback={null}><TopNineComposer key={topNine.prompt.key} prompt={topNine.prompt} mine={topNine.mine} onClose={() => setTopNineOpen(false)} /></Suspense>}</AnimatePresence>
 

@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.13.1'
+export const CURRENT_VERSION = '1.13.2'
 
 export const RELEASES = [
+  {
+    version: '1.13.2',
+    date: '16 de octubre de 2026',
+    title: 'Avisos del 3×3 y las recomendaciones',
+    summary: 'Ahora es más fácil enterarte cuando hay una nueva selección disponible.',
+    changes: [
+      { type: '3×3', text: 'El inicio avisa junto al botón cuando ya podés armar una nueva consigna.' },
+      { type: 'Celular', text: 'La app envía una notificación cuando se renueva el 3×3.' },
+      { type: 'Recomendaciones', text: 'También recibís un aviso al comenzar una nueva recomendación semanal.' },
+    ],
+  },
   {
     version: '1.13.1',
     date: '8 de octubre de 2026',

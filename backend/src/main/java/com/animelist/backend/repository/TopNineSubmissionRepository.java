@@ -10,6 +10,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 
 public interface TopNineSubmissionRepository extends JpaRepository<TopNineSubmission, Long> {
+    boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
+
     @Query("select submission.id from TopNineSubmission submission where submission.periodStart = :periodStart order by submission.publishedAt desc")
     List<Long> findIdsByPeriodStartOrderByPublishedAtDesc(LocalDate periodStart, Pageable pageable);
 

@@ -144,7 +144,7 @@ export default function PwaSettingsPanel() {
 
   const iosHelp = !installed && isIos() && !installable
   return <section className="pwa-settings-panel">
-    <div className="section-heading"><div><span className="eyebrow">AniRecord en tu celular</span><h2><Smartphone /> {installed ? 'Notificaciones' : 'App y notificaciones'}</h2><p>{installed ? 'Elegí qué avisos querés recibir en este dispositivo.' : 'Instalá AniRecord y enterate cuando se estrene una serie o salga un episodio nuevo.'}</p></div></div>
+    <div className="section-heading"><div><span className="eyebrow">AniRecord en tu celular</span><h2><Smartphone /> {installed ? 'Notificaciones' : 'App y notificaciones'}</h2><p>{installed ? 'Elegí qué avisos querés recibir en este dispositivo.' : 'Instalá AniRecord y enterate de episodios, estrenos y nuevas consignas.'}</p></div></div>
     <div className={`pwa-settings-grid${installed ? ' is-single' : ''}`}>
       {!installed && <article className="pwa-setting-card">
         <span className="pwa-setting-icon"><Download /></span>
@@ -153,7 +153,7 @@ export default function PwaSettingsPanel() {
       </article>}
       <article className="pwa-setting-card">
         <span className="pwa-setting-icon"><BellRing /></span>
-        <div><small>Notificaciones push</small><h3>{subscription ? 'Avisos activados' : 'Estrenos y episodios'}</h3><p>Solo se enviarán avisos sobre anime pendiente o en curso de tu biblioteca.</p></div>
+        <div><small>Notificaciones push</small><h3>{subscription ? 'Avisos activados' : 'Episodios y comunidad'}</h3><p>Recibí estrenos, episodios nuevos, una nueva consigna del 3×3 y la recomendación semanal.</p></div>
         {subscription ? <button className="secondary-button danger" disabled={busy} onClick={disable}><X /> Desactivar</button> : <button className="primary-button" disabled={busy || config?.available === false} onClick={enable}><Bell /> {busy ? 'Activando…' : 'Activar'}</button>}
       </article>
     </div>
