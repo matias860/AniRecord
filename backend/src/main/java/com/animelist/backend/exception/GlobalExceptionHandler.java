@@ -42,7 +42,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AniListClientException.class)
     public ResponseEntity<ApiErrorResponse> handleAniList(AniListClientException exception) {
-        return build(HttpStatus.BAD_GATEWAY, exception.getMessage(), Map.of());
+        return build(HttpStatus.BAD_GATEWAY, exception.getMessage(), Map.of("service", "anilist"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

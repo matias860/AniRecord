@@ -14,6 +14,10 @@ export function rememberAniListOutage() {
   window.localStorage.setItem(STORAGE_KEY, String(Date.now() + RETRY_AFTER_MS))
 }
 
+export function isAniListServiceError(error) {
+  return error?.status === 502 && error?.response?.data?.validationErrors?.service === 'anilist'
+}
+
 export function clearAniListOutage() {
   window.localStorage.removeItem(STORAGE_KEY)
 }
