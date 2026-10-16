@@ -11,6 +11,7 @@ export const RELEASES = [
       { type: 'Celular', text: 'La app envía una notificación cuando se renueva el 3×3.' },
       { type: 'Recomendaciones', text: 'También recibís un aviso al comenzar una nueva recomendación semanal.' },
       { type: 'Conexión', text: 'Un reinicio del servidor ya no se confunde con una caída de AniList.' },
+      { type: 'Calendario', text: 'Los estrenos ahora muestran la misma fecha local que determina el día de la semana.' },
     ],
   },
   {

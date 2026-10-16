@@ -17,3 +17,9 @@ export function hasPendingEpisode(entry, now = new Date()) {
     && !isUpcomingPremiere(entry, now)
     && nextEpisode.episode - 1 > (entry.progress ?? entry.airing?.currentProgress ?? 0)
 }
+
+export function scheduleDate(entry, airing = entry.airing) {
+  const timestamp = airing?.nextAiringEpisode?.airingAt
+  if (timestamp) return new Date(timestamp * 1000)
+  return entry.releaseStartDate ? new Date(`${entry.releaseStartDate}T12:00:00`) : null
+}

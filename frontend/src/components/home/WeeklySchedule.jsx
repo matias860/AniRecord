@@ -3,7 +3,7 @@ import { CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import StyledSelect from '../common/StyledSelect.jsx'
-import { hasPendingEpisode, isUpcomingPremiere } from '../../lib/schedule.js'
+import { hasPendingEpisode, isUpcomingPremiere, scheduleDate } from '../../lib/schedule.js'
 
 const days = [
   { day: 1, label: 'L', name: 'Lunes' }, { day: 2, label: 'M', name: 'Martes' },
@@ -21,9 +21,8 @@ export default function WeeklySchedule({ entries, airingEntries, liveDataAvailab
       : entries
     return scheduleSource.map((entry) => {
       const airing = airingById.get(entry.anilistId)
-      const timestamp = airing?.nextAiringEpisode?.airingAt
-      const knownDate = timestamp ? new Date(timestamp * 1000) : entry.releaseStartDate ? new Date(`${entry.releaseStartDate}T12:00:00`) : null
-      return { ...entry, airing, day: knownDate ? knownDate.getDay() : null }
+      const knownDate = scheduleDate(entry, airing)
+      return { ...entry, airing, scheduleDate: knownDate, day: knownDate ? knownDate.getDay() : null }
     })
   }, [airingEntries, entries, seasonOffset])
 
@@ -55,11 +54,7 @@ function CurrentScheduleCover({ entry, liveDataAvailable }) {
   const upcoming = isUpcomingPremiere(entry)
   const pending = hasPendingEpisode(entry)
   const label = upcoming ? 'Estreno' : pending ? `EP ${nextEpisode.episode - 1}` : nextEpisode ? `EP ${nextEpisode.episode}` : 'Al día'
-  const dateLabel = upcoming
-    ? entry.releaseStartDate
-      ? formatShortDate(entry.releaseStartDate)
-      : nextEpisode ? formatTimestamp(nextEpisode.airingAt) : null
-    : null
+  const dateLabel = upcoming && entry.scheduleDate ? formatDate(entry.scheduleDate) : null
   const titleDetail = upcoming
     ? `Estreno ${dateLabel}`
     : nextEpisode ? `Próximo episodio ${nextEpisode.episode}` : liveDataAvailable ? 'Sin próximo episodio anunciado' : 'Horario no disponible'
@@ -93,7 +88,6 @@ function formatShortDate(date) {
   return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(`${date}T12:00:00`))
 }
 
-function formatTimestamp(timestamp) {
-  if (!timestamp) return null
-  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(new Date(timestamp * 1000))
+function formatDate(date) {
+  return new Intl.DateTimeFormat('es-AR', { day: '2-digit', month: '2-digit', year: '2-digit' }).format(date)
 }
