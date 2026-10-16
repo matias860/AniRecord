@@ -3,7 +3,7 @@ import { CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import StyledSelect from '../common/StyledSelect.jsx'
-import { hasPendingEpisode, isUpcomingPremiere, scheduleDate } from '../../lib/schedule.js'
+import { hasPendingEpisode, isUpcomingPremiere, scheduleDate, shouldShowInCurrentSchedule } from '../../lib/schedule.js'
 
 const days = [
   { day: 1, label: 'L', name: 'Lunes' }, { day: 2, label: 'M', name: 'Martes' },
@@ -37,10 +37,11 @@ export default function WeeklySchedule({ entries, airingEntries, liveDataAvailab
 }
 
 function CurrentWeek({ entries, liveDataAvailable }) {
-  if (!entries.length) return <div className="schedule-preview-empty">No tienes anime en esta temporada dentro de Viendo o Pendientes.</div>
+  const visibleEntries = entries.filter((entry) => shouldShowInCurrentSchedule(entry, liveDataAvailable))
+  if (!visibleEntries.length) return <div className="schedule-preview-empty">No tienes próximas emisiones en esta temporada.</div>
   const today = new Date().getDay()
-  const byDay = days.map((item) => ({ ...item, entries: entries.filter((entry) => entry.day === item.day) }))
-  const unknownEntries = entries.filter((entry) => entry.day == null)
+  const byDay = days.map((item) => ({ ...item, entries: visibleEntries.filter((entry) => entry.day === item.day) }))
+  const unknownEntries = visibleEntries.filter((entry) => entry.day == null)
   return <>
     <div className="schedule-scroll"><div className="schedule-grid"><div className="schedule-line" />{byDay.map((item) => <div className={`schedule-day ${today === item.day ? 'today' : ''}`} key={item.name}>
       <span className="day-dot">{item.label}</span><small>{item.name}</small><div className="day-covers">{item.entries.map((entry) => <CurrentScheduleCover entry={entry} liveDataAvailable={liveDataAvailable} key={entry.anilistId} />)}{!item.entries.length && <span className="no-airing">—</span>}</div>

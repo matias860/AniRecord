@@ -23,3 +23,9 @@ export function scheduleDate(entry, airing = entry.airing) {
   if (timestamp) return new Date(timestamp * 1000)
   return entry.releaseStartDate ? new Date(`${entry.releaseStartDate}T12:00:00`) : null
 }
+
+export function shouldShowInCurrentSchedule(entry, liveDataAvailable = true, now = new Date()) {
+  if (!liveDataAvailable) return true
+  if (entry.releaseStatus === 'FINISHED') return false
+  return Boolean(entry.airing?.nextAiringEpisode) || isUpcomingPremiere(entry, now)
+}
