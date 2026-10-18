@@ -1,0 +1,127 @@
+package com.animelist.backend.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import com.animelist.backend.dto.anilist.AniListMediaResponse;
+import com.animelist.backend.dto.anilist.AniListSearchResponse;
+import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
+import com.animelist.backend.dto.anilist.MediaTagResponse;
+import com.animelist.backend.dto.assistant.RecommendationIntent;
+import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
+import com.animelist.backend.entity.AppUser;
+import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.ReleaseStatus;
+import com.animelist.backend.enums.TrackingStatus;
+import com.animelist.backend.repository.LibraryEntryRepository;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+
+class RecommendationAssistantServiceTest {
+    private CurrentUserService currentUser;
+    private LibraryEntryRepository library;
+    private AniListClient aniList;
+    private GeminiRecommendationClient gemini;
+    private AssistantQuotaService quota;
+    private RecommendationAssistantService service;
+
+    @BeforeEach
+    void setup() {
+        currentUser = mock(CurrentUserService.class); library = mock(LibraryEntryRepository.class);
+        aniList = mock(AniListClient.class); gemini = mock(GeminiRecommendationClient.class);
+        quota = mock(AssistantQuotaService.class);
+        AppUser user = new AppUser(); user.setId(42L); when(currentUser.require()).thenReturn(user);
+        when(aniList.getCategories()).thenReturn(new CatalogCategoriesResponse(
+                List.of("Action", "Ecchi", "Romance", "Sci-Fi"), List.of()));
+        when(gemini.available()).thenReturn(false);
+        when(quota.remaining(42L)).thenReturn(8);
+        service = new RecommendationAssistantService(currentUser, library, aniList,
+                new LocalRecommendationInterpreter(), gemini, quota);
+    }
+
+    @Test
+    void concreteRequestUsesNoAiAndExcludesKnownLibraryTitles() {
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of(libraryItem(1, "Guardada")));
+        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(), anyList(), anyList(),
+                eq(ReleaseStatus.FINISHED), any(), any(), eq("POPULARITY")))
+                .thenReturn(new AniListSearchResponse(1, false, List.of(media(1, "Guardada"), media(2, "Nueva"))));
+        var response = service.recommend("Un romance terminado y corto", null);
+        assertEquals("LOCAL", response.source());
+        assertEquals(List.of(2), response.results().stream().map(item -> item.anilistId()).toList());
+        assertTrue(response.results().get(0).reason().contains("12 episodios"));
+        verify(gemini, never()).interpret(anyString(), any(), anyList(), anyList());
+    }
+
+    @Test
+    void libraryOnlyRequestDoesNotNeedCatalogSearch() {
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of(libraryItem(1, "Pendiente")));
+        var response = service.recommend("Algo corto de mis pendientes para hoy", null);
+        assertEquals(1, response.results().size());
+        assertEquals(TrackingStatus.PLANNED, response.results().get(0).libraryStatus());
+        verify(aniList, never()).browseForAssistant(any(), anyInt(), any(), any(), any(), anyList(), anyList(), any(), any(), any(), any());
+    }
+
+    @Test
+    void busyGeminiDoesNotConsumeDailyQuota() {
+        when(gemini.available()).thenReturn(true);
+        when(quota.tryConsume(42L)).thenReturn(true);
+        when(gemini.interpret(anyString(), any(), anyList(), anyList()))
+                .thenThrow(new GeminiRecommendationClient.BusyException());
+
+        var response = service.recommend("Quiero algo que me deje pensando durante días", null);
+
+        assertEquals("FALLBACK", response.source());
+        verify(quota).refund(42L);
+    }
+
+    @Test
+    void emptyGeminiInterpretationDoesNotBecomeGenericPopularityResults() {
+        when(gemini.available()).thenReturn(true);
+        when(quota.tryConsume(42L)).thenReturn(true);
+        when(gemini.interpret(anyString(), any(), anyList(), anyList())).thenReturn(RecommendationIntent.empty());
+
+        var response = service.recommend("Quiero algo que me deje pensando durante días", null);
+
+        assertEquals("FALLBACK", response.source());
+        assertTrue(response.results().isEmpty());
+        verify(aniList, never()).browseForAssistant(any(), anyInt(), any(), any(), any(), anyList(), anyList(), any(), any(), any(), any());
+    }
+
+    @Test
+    void libraryComparisonExcludesReferenceItself() {
+        LibraryEntrySummaryResponse referenceEntry = libraryItem(1, "Frieren");
+        LibraryEntrySummaryResponse candidate = libraryItem(2, "Dungeon Meshi");
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of(referenceEntry, candidate));
+        when(aniList.getMedia(1)).thenReturn(media(1, "Frieren"));
+
+        var response = service.recommend("Algo de mi biblioteca parecido a Frieren", null);
+
+        assertEquals(List.of(2), response.results().stream().map(item -> item.anilistId()).toList());
+    }
+
+    @Test
+    void unknownReferenceIsNotReplacedByFirstSearchResult() {
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of());
+        when(aniList.search("zzzz inexistente", MediaType.ANIME, 1, 5))
+                .thenReturn(new AniListSearchResponse(1, false, List.of(media(9, "Frieren"))));
+
+        var response = service.recommend("Algo parecido a zzzz inexistente", null);
+
+        assertTrue(response.results().isEmpty());
+        assertTrue(response.reply().contains("referencia"));
+    }
+
+    private AniListMediaResponse media(int id, String title) {
+        return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title, "cover", null, null,
+                List.of(), null, 12, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
+                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("School", 70, null, null)), 2024);
+    }
+
+    private LibraryEntrySummaryResponse libraryItem(int id, String title) {
+        return new LibraryEntrySummaryResponse((long) id, id, MediaType.ANIME, "TV", "JP", title, title, "cover",
+                "Romance", "School", 12, ReleaseStatus.FINISHED, null, 2024, 0, null, 0,
+                TrackingStatus.PLANNED, null, null, null, null);
+    }
+}

@@ -47,6 +47,8 @@ public class UserPreferenceSchemaInitializer implements ApplicationRunner {
             jdbc.execute("UPDATE app_user SET notifications_initialized_at = CURRENT_TIMESTAMP WHERE account_type = 'ANILIST' AND notifications_initialized_at IS NULL");
         }
         jdbc.execute("ALTER TABLE person_favorite ADD COLUMN IF NOT EXISTS anilist_favorite_order INTEGER");
+        jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS assistant_ai_usage_date DATE");
+        jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS assistant_ai_usage_count INTEGER NOT NULL DEFAULT 0");
         LOGGER.info("Preferencia compartida del aviso de sincronización verificada correctamente");
     }
 }

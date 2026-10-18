@@ -1,6 +1,6 @@
 import { safeDarkColor, safeAccentColor, accentTextColor } from '../../lib/themeContrast.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Compass, Home, Library, LogIn, LogOut, UserRound } from 'lucide-react'
+import { Compass, Home, Library, LogIn, LogOut, Sparkles, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, useLocation, useOutlet } from 'react-router-dom'
@@ -18,6 +18,7 @@ const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
   { to: '/biblioteca', label: 'Biblioteca', icon: Library },
   { to: '/catalogo', label: 'Catálogo', icon: Compass },
+  { to: '/asistente', label: 'Asistente', icon: Sparkles },
 ]
 
 export default function AppLayout() {
@@ -36,7 +37,7 @@ export default function AppLayout() {
   const authenticated = useSelector((state) => state.auth.authenticated)
   useLayoutEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-    const names = { '/': 'Inicio', '/biblioteca': 'Biblioteca', '/catalogo': 'Catálogo', '/perfil': 'Perfil', '/login': 'Iniciar sesión' }
+    const names = { '/': 'Inicio', '/biblioteca': 'Biblioteca', '/catalogo': 'Catálogo', '/asistente': 'Asistente', '/perfil': 'Perfil', '/login': 'Iniciar sesión' }
     document.title = `${names[pathname] || 'Anime y manga'} · AniRecord`
     mainRef.current?.focus({ preventScroll: true })
   }, [pathname])

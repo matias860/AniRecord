@@ -206,6 +206,8 @@ public class AniListClient {
                   countryOfOrigin
                   title { romaji english native }
                   coverImage { large }
+                  genres
+                  startDate { year }
                   episodes
                   chapters
                   status
@@ -595,6 +597,48 @@ public class AniListClient {
                 Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
                 asList(pageData.get("media")).stream().map(this::asMap).map(this::mapMedia).toList()
         );
+    }
+
+    @Cacheable("catalog")
+    public AniListSearchResponse browseForAssistant(
+            MediaType type, int perPage, Integer yearFrom, Integer yearTo,
+            ReleaseSeason season, List<String> genres, List<String> tags,
+            ReleaseStatus status, String country, String format, String sort
+    ) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        StringBuilder declarations = new StringBuilder("$type: MediaType!, $page: Int!, $perPage: Int!, $sort: [MediaSort]");
+        StringBuilder arguments = new StringBuilder("type: $type, sort: $sort, isAdult: false");
+        variables.put("type", type.name());
+        variables.put("page", 1);
+        variables.put("perPage", Math.max(1, Math.min(50, perPage)));
+        if (yearFrom != null) {
+            declarations.append(", $startAfter: FuzzyDateInt");
+            arguments.append(", startDate_greater: $startAfter");
+            variables.put("startAfter", yearFrom * 10_000 + 100);
+        }
+        if (yearTo != null) {
+            declarations.append(", $startBefore: FuzzyDateInt");
+            arguments.append(", startDate_lesser: $startBefore");
+            variables.put("startBefore", yearTo * 10_000 + 12_32);
+        }
+        if (season != null) { declarations.append(", $season: MediaSeason"); arguments.append(", season: $season"); variables.put("season", season.name()); }
+        if (genres != null && !genres.isEmpty()) { declarations.append(", $genres: [String]"); arguments.append(", genre_in: $genres"); variables.put("genres", genres); }
+        if (tags != null && !tags.isEmpty()) { declarations.append(", $tags: [String]"); arguments.append(", tag_in: $tags"); variables.put("tags", tags); }
+        if (status != null) { declarations.append(", $status: MediaStatus"); arguments.append(", status: $status"); variables.put("status", status.name()); }
+        if (country != null && !country.isBlank()) { declarations.append(", $country: CountryCode"); arguments.append(", countryOfOrigin: $country"); variables.put("country", country); }
+        if (format != null && !format.isBlank()) { declarations.append(", $format: MediaFormat"); arguments.append(", format: $format"); variables.put("format", format); }
+        variables.put("sort", switch (sort == null ? "POPULARITY" : sort) {
+            case "SCORE" -> List.of("SCORE_DESC", "POPULARITY_DESC");
+            case "TRENDING" -> List.of("TRENDING_DESC", "POPULARITY_DESC");
+            case "NEWEST" -> List.of("START_DATE_DESC", "POPULARITY_DESC");
+            default -> List.of("POPULARITY_DESC", "SCORE_DESC");
+        });
+        String query = CATALOG_QUERY_TEMPLATE.formatted(declarations, arguments);
+        Map<String, Object> data = execute(query, variables);
+        Map<String, Object> pageData = asMap(data.get("Page"));
+        Map<String, Object> pageInfo = asMap(pageData.get("pageInfo"));
+        return new AniListSearchResponse(asInteger(pageInfo.get("currentPage")), Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
+                asList(pageData.get("media")).stream().map(this::asMap).map(item -> mapMedia(item, true)).toList());
     }
 
     @Cacheable("catalogCategories")

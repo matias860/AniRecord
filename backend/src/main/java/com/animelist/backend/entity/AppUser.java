@@ -9,6 +9,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import com.animelist.backend.enums.AccountType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -66,6 +67,10 @@ public class AppUser {
     private Boolean notificationBackfillAsRead;
     @Column(name = "last_sync_prompt_commit", length = 64)
     private String lastSyncPromptCommit;
+    @Column(name = "assistant_ai_usage_date")
+    private LocalDate assistantAiUsageDate;
+    @Column(name = "assistant_ai_usage_count", nullable = false)
+    private Integer assistantAiUsageCount = 0;
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
     @Column(name = "updated_at", nullable = false)

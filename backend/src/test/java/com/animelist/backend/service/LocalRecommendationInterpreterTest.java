@@ -1,0 +1,91 @@
+package com.animelist.backend.service;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import com.animelist.backend.dto.assistant.RecommendationIntent;
+import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.ReleaseStatus;
+import com.animelist.backend.enums.TrackingStatus;
+import org.junit.jupiter.api.Test;
+
+class LocalRecommendationInterpreterTest {
+    private final LocalRecommendationInterpreter interpreter = new LocalRecommendationInterpreter();
+
+    @Test
+    void understandsAConcreteRequestWithoutAi() {
+        var parsed = interpreter.interpret("Un romance terminado y corto, sin ecchi", null, true);
+        assertTrue(parsed.complete());
+        assertNull(parsed.intent().mediaType());
+        assertEquals(ReleaseStatus.FINISHED, parsed.intent().status());
+        assertEquals(16, parsed.intent().maximumUnits());
+        assertEquals(java.util.List.of("Romance"), parsed.intent().genres());
+        assertEquals(java.util.List.of("Ecchi"), parsed.intent().excludedGenres());
+    }
+
+    @Test
+    void keepsPreviousFiltersWhenRefining() {
+        RecommendationIntent previous = interpreter.interpret("Un manga de misterio", null, false).intent();
+        var parsed = interpreter.interpret("pero corto y sin romance", previous, true).intent();
+        assertEquals(MediaType.MANGA, parsed.mediaType());
+        assertTrue(parsed.genres().contains("Mystery"));
+        assertTrue(parsed.excludedGenres().contains("Romance"));
+        assertFalse(parsed.genres().contains("Romance"));
+        assertEquals(16, parsed.maximumUnits());
+    }
+
+    @Test
+    void recognizesLibraryOnlyRequests() {
+        var intent = interpreter.interpret("Algo corto de mis pendientes para hoy", null, false).intent();
+        assertTrue(intent.libraryOnly());
+        assertEquals(TrackingStatus.PLANNED, intent.libraryStatus());
+    }
+
+    @Test
+    void startsFreshForANewCompleteRequest() {
+        RecommendationIntent previous = interpreter.interpret("Un romance terminado y corto", null, false).intent();
+        var next = interpreter.interpret("Una película de ciencia ficción", previous, false).intent();
+        assertEquals(java.util.List.of("Sci-Fi"), next.genres());
+        assertNull(next.status());
+        assertNull(next.maximumUnits());
+        assertEquals("MOVIE", next.format());
+    }
+
+    @Test
+    void delegatesSubjectiveLanguageToAi() {
+        assertFalse(interpreter.interpret("Quiero algo acogedor y sorprendente", null, true).complete());
+    }
+
+    @Test
+    void understandsRangesMinimumsExactUnitsAndReferencesLocally() {
+        var range = interpreter.interpret("Anime entre 2010 y 2020 con más de 24 episodios", null, true);
+        assertTrue(range.complete());
+        assertEquals(2010, range.intent().yearFrom());
+        assertEquals(2020, range.intent().yearTo());
+        assertEquals(24, range.intent().minimumUnits());
+        var exact = interpreter.interpret("Un romance de 12 episodios", null, true).intent();
+        assertEquals(12, exact.minimumUnits());
+        assertEquals(12, exact.maximumUnits());
+        var reference = interpreter.interpret("Parecido a Frieren", null, true);
+        assertTrue(reference.complete());
+        assertEquals("Frieren", reference.intent().referenceTitle());
+    }
+
+    @Test
+    void distinguishesReplacementFromNaturalRefinements() {
+        RecommendationIntent previous = interpreter.interpret("Un romance terminado", null, false).intent();
+        var replacement = interpreter.interpret("Ahora una película de ciencia ficción", previous, false).intent();
+        assertEquals(java.util.List.of("Sci-Fi"), replacement.genres());
+        assertNull(replacement.status());
+        var refinement = interpreter.interpret("Hacela de 12 episodios", previous, false).intent();
+        assertEquals(java.util.List.of("Romance"), refinement.genres());
+        assertEquals(ReleaseStatus.FINISHED, refinement.status());
+        assertEquals(12, refinement.maximumUnits());
+    }
+
+    @Test
+    void libraryCanExplicitlyRequestBothMediaTypes() {
+        var intent = interpreter.interpret("Anime y manga de mis pendientes", null, true).intent();
+        assertNull(intent.mediaType());
+        assertTrue(intent.libraryOnly());
+    }
+}

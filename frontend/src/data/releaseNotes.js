@@ -1,6 +1,18 @@
-export const CURRENT_VERSION = '1.13.2'
+export const CURRENT_VERSION = '1.14.0'
 
 export const RELEASES = [
+  {
+    version: '1.14.0',
+    date: '18 de octubre de 2026',
+    title: 'Asistente de recomendaciones',
+    summary: 'Ahora podés describir qué querés ver o leer y recibir opciones comprobadas en el catálogo.',
+    changes: [
+      { type: 'Búsqueda', text: 'Pedí géneros, duración, años, países, estados o series parecidas usando tus propias palabras.' },
+      { type: 'Biblioteca', text: 'Podés buscar algo entre tus pendientes y las recomendaciones nuevas evitan lo que ya guardaste.' },
+      { type: 'Claridad', text: 'Cada opción explica con datos reales por qué encaja con tu pedido.' },
+      { type: 'Disponibilidad', text: 'Los pedidos claros siguen funcionando aunque la ayuda para interpretar frases esté temporalmente agotada.' },
+    ],
+  },
   {
     version: '1.13.2',
     date: '16 de octubre de 2026',
