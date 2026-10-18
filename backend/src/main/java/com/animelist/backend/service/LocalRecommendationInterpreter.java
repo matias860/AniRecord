@@ -34,23 +34,42 @@ public class LocalRecommendationInterpreter {
     private static final Pattern UNITS = Pattern.compile("(?:menos de|maximo|hasta)\\s+(\\d{1,4})\\s*(?:episodios|capitulos)?");
 
     public ParseResult interpret(String text, RecommendationIntent previous, boolean strict) {
+        return interpret(text, previous, strict, List.of());
+    }
+
+    public ParseResult interpret(String text, RecommendationIntent previous, boolean strict, List<String> allowedTags) {
         String value = normalize(text);
-        boolean replacement = value.matches("^(?:ahora\\s+)?(?:quiero|busca|buscame|recomenda|recomendame)?\\s*(?:en cambio\\s+)?(?:un|una|anime|manga|pelicula).*" )
+        boolean replacement = value.matches("^(?:no\\s*,?\\s*)?(?:ahora\\s+)?(?:quiero|busca|buscame|recomenda|recomendame)?\\s*(?:en cambio\\s+)?(?:un|una|anime|manga|pelicula).*" )
                 || value.matches("^(?:cambia|cambialo|cambiala)\\s+(?:a|por)\\s+.*");
         boolean refinement = previous != null && !replacement
                 && value.matches("^(otra|otro|pero|y |tambien|ademas|ahora|mas |menos |sin |con |hacela|hacelo|que sea).*");
         RecommendationIntent base = refinement ? previous : RecommendationIntent.empty();
         List<String> genres = new ArrayList<>(safe(base.genres()));
+        List<String> tags = new ArrayList<>(safe(base.tags()));
         List<String> excluded = new ArrayList<>(safe(base.excludedGenres()));
+        List<String> excludedTags = new ArrayList<>(safe(base.excludedTags()));
         int recognized = 0;
         for (var entry : GENRES.entrySet()) {
-            if (!value.contains(entry.getKey())) continue;
-            if (value.matches(".*(?:sin|evita)\\s+(?:el\\s+|la\\s+)?" + Pattern.quote(entry.getKey()) + ".*")) {
+            if (!containsTerm(value, entry.getKey())) continue;
+            if (isExcluded(value, entry.getKey())) {
                 genres.remove(entry.getValue());
                 add(excluded, entry.getValue());
             } else {
                 excluded.remove(entry.getValue());
                 add(genres, entry.getValue());
+            }
+            recognized++;
+        }
+        for (String allowedTag : allowedTags == null ? List.<String>of() : allowedTags) {
+            if (allowedTag == null || allowedTag.isBlank()) continue;
+            String normalizedTag = normalize(allowedTag);
+            if (!containsTerm(value, normalizedTag)) continue;
+            if (isExcluded(value, normalizedTag)) {
+                removeIgnoreCase(tags, allowedTag);
+                addIgnoreCase(excludedTags, allowedTag);
+            } else {
+                removeIgnoreCase(excludedTags, allowedTag);
+                addIgnoreCase(tags, allowedTag);
             }
             recognized++;
         }
@@ -98,8 +117,8 @@ public class LocalRecommendationInterpreter {
         Matcher ref = Pattern.compile("(?:parecid[oa] a|como)\\s+(.+?)(?:,| pero| sin| con|$)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE).matcher(text.trim());
         if (ref.find()) { reference = ref.group(1).trim(); recognized++; }
         if (refinement) recognized++;
-        RecommendationIntent result = new RecommendationIntent(type, List.copyOf(genres), safe(base.tags()), List.copyOf(excluded),
-                safe(base.excludedTags()), status, country, format, sort == null ? "POPULARITY" : sort,
+        RecommendationIntent result = new RecommendationIntent(type, List.copyOf(genres), List.copyOf(tags), List.copyOf(excluded),
+                List.copyOf(excludedTags), status, country, format, sort == null ? "POPULARITY" : sort,
                 yearFrom, yearTo, base.season(), min, max, reference != null ? reference : base.referenceTitle(), libraryOnly, libraryStatus);
         return new ParseResult(result, !strict || recognized > 0 && !looksSubjective(value));
     }
@@ -107,8 +126,20 @@ public class LocalRecommendationInterpreter {
     private boolean looksSubjective(String value) {
         return value.matches(".*\\b(acogedor|emocionante|profundo|triste|divertido|oscuro|raro|sorprendente|animo)\\b.*");
     }
+    private static boolean containsTerm(String value, String term) {
+        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])" + Pattern.quote(term) + "(?:$|[^\\p{L}\\p{N}])")
+                .matcher(value).find();
+    }
+    private static boolean isExcluded(String value, String term) {
+        String filler = "(?:el|la|los|las|un|una|mucho|mucha|muchos|muchas|demasiado|demasiada|tanto|tanta|nada|de|que|tenga)";
+        String prefix = "(?:sin|evita|evitar|excluye|excluir|nada\\s+de)";
+        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])" + prefix + "(?:\\s+" + filler + "){0,4}\\s+"
+                + Pattern.quote(term) + "(?:$|[^\\p{L}\\p{N}])").matcher(value).find();
+    }
     private static String normalize(String value) { return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT); }
     private static List<String> safe(List<String> value) { return value == null ? List.of() : List.copyOf(value); }
     private static void add(List<String> values, String value) { if (!values.contains(value)) values.add(value); }
+    private static void addIgnoreCase(List<String> values, String value) { if (values.stream().noneMatch(item -> item.equalsIgnoreCase(value))) values.add(value); }
+    private static void removeIgnoreCase(List<String> values, String value) { values.removeIf(item -> item.equalsIgnoreCase(value)); }
     public record ParseResult(RecommendationIntent intent, boolean complete) {}
 }

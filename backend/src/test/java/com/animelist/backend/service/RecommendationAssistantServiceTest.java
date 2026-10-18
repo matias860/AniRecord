@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
+import com.animelist.backend.dto.anilist.CatalogTagResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
 import com.animelist.backend.dto.assistant.RecommendationIntent;
 import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
@@ -34,7 +35,8 @@ class RecommendationAssistantServiceTest {
         quota = mock(AssistantQuotaService.class);
         AppUser user = new AppUser(); user.setId(42L); when(currentUser.require()).thenReturn(user);
         when(aniList.getCategories()).thenReturn(new CatalogCategoriesResponse(
-                List.of("Action", "Ecchi", "Romance", "Sci-Fi"), List.of()));
+                List.of("Action", "Drama", "Ecchi", "Romance", "Sci-Fi"),
+                List.of(new CatalogTagResponse("Yuri", "", "Theme-Sexuality"))));
         when(gemini.available()).thenReturn(false);
         when(quota.remaining(42L)).thenReturn(8);
         service = new RecommendationAssistantService(currentUser, library, aniList,
@@ -111,6 +113,27 @@ class RecommendationAssistantServiceTest {
 
         assertTrue(response.results().isEmpty());
         assertTrue(response.reply().contains("referencia"));
+    }
+
+    @Test
+    void yuriRequestKeepsStatusLengthAndDramaExclusion() {
+        AniListMediaResponse matching = new AniListMediaResponse(7, MediaType.ANIME, "TV", "JP", "Yuri largo", "Yuri largo",
+                "cover", null, null, List.of(), null, 24, null, null, ReleaseStatus.RELEASING, null, 2026, 100, null,
+                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Yuri", 90, null, null)), 2026);
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(), anyList(), eq(List.of("Yuri")),
+                eq(ReleaseStatus.RELEASING), any(), any(), eq("POPULARITY")))
+                .thenReturn(new AniListSearchResponse(1, false, List.of(matching)));
+
+        var response = service.recommend("Quiero un yuri en emisión, sin mucho drama y que sea largo", null);
+
+        assertEquals("LOCAL", response.source());
+        assertEquals(List.of(7), response.results().stream().map(item -> item.anilistId()).toList());
+        assertTrue(response.intent().excludedGenres().contains("Drama"));
+        assertTrue(response.understood().contains("Sin Drama"));
+        assertTrue(response.understood().contains("En emisión"));
+        assertTrue(response.results().get(0).reason().contains("Incluye Yuri"));
+        verify(gemini, never()).interpret(anyString(), any(), anyList(), anyList());
     }
 
     private AniListMediaResponse media(int id, String title) {

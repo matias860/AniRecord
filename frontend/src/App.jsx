@@ -13,7 +13,6 @@ const LoginView = lazy(() => import('./views/LoginView.jsx'))
 const ImportView = lazy(() => import('./views/ImportView.jsx'))
 const CharacterDetailView = lazy(() => import('./views/CharacterDetailView.jsx'))
 const StaffDetailView = lazy(() => import('./views/StaffDetailView.jsx'))
-const AssistantView = lazy(() => import('./views/AssistantView.jsx'))
 import { fetchAuth, sessionExpired, oauthFailed } from './features/auth/authSlice.js'
 import apiClient from './api/apiClient.js'
 import { clearReturnPath, currentReturnPath, getReturnPath, rememberReturnPath } from './lib/authNavigation.js'
@@ -70,7 +69,7 @@ export default function App() {
           <Route path="seiyuus/:anilistId" element={<StaffDetailView />} />
           <Route path="profesionales/:anilistId" element={<StaffDetailView />} />
           <Route path="perfil" element={<RequireAuth auth={auth}><ProfileView /></RequireAuth>} />
-          <Route path="asistente" element={<RequireAuth auth={auth}><AssistantView /></RequireAuth>} />
+          <Route path="asistente" element={<Navigate to="/" replace state={{ openAssistant: true }} />} />
           <Route path="login" element={<LoginRoute authenticated={auth.authenticated} pending={authPending} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>

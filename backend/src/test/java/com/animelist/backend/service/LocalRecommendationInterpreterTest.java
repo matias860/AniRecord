@@ -6,6 +6,7 @@ import com.animelist.backend.dto.assistant.RecommendationIntent;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseStatus;
 import com.animelist.backend.enums.TrackingStatus;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class LocalRecommendationInterpreterTest {
@@ -87,5 +88,30 @@ class LocalRecommendationInterpreterTest {
         var intent = interpreter.interpret("Anime y manga de mis pendientes", null, true).intent();
         assertNull(intent.mediaType());
         assertTrue(intent.libraryOnly());
+    }
+
+    @Test
+    void understandsAniListTagsAndFlexibleNegations() {
+        var parsed = interpreter.interpret(
+                "Quiero un yuri en emisión, sin mucho drama y que sea largo",
+                null, true, List.of("Yuri", "Female Protagonist"));
+
+        assertTrue(parsed.complete());
+        assertEquals(List.of("Yuri"), parsed.intent().tags());
+        assertEquals(List.of("Drama"), parsed.intent().excludedGenres());
+        assertFalse(parsed.intent().genres().contains("Drama"));
+        assertEquals(ReleaseStatus.RELEASING, parsed.intent().status());
+        assertEquals(24, parsed.intent().minimumUnits());
+    }
+
+    @Test
+    void correctionStartingWithNoCreatesANewRequest() {
+        RecommendationIntent previous = interpreter.interpret("Un drama largo en emisión", null, false).intent();
+        var corrected = interpreter.interpret("No, quiero un yuri sin drama", previous, true, List.of("Yuri")).intent();
+
+        assertEquals(List.of("Yuri"), corrected.tags());
+        assertEquals(List.of("Drama"), corrected.excludedGenres());
+        assertNull(corrected.status());
+        assertNull(corrected.minimumUnits());
     }
 }

@@ -43,6 +43,8 @@ public class GeminiRecommendationClient {
         String instruction = """
                 Convertí el pedido en filtros de anime o manga. Respondé solamente JSON, sin markdown.
                 No recomiendes títulos. No inventes valores. Conservá filtros anteriores solo cuando el nuevo mensaje sea un refinamiento.
+                Respetá de forma estricta las negaciones: "sin", "evitá", "nada de" y expresiones equivalentes van en excludedGenres o excludedTags, nunca en los filtros incluidos.
+                Si el usuario corrige con "no, quiero...", tratá el mensaje como un pedido nuevo. No devuelvas el mismo valor simultáneamente como incluido y excluido.
                 Campos: mediaType ANIME|MANGA|null (null significa ambos), genres[], tags[], excludedGenres[], excludedTags[], status FINISHED|RELEASING|NOT_YET_RELEASED|CANCELLED|HIATUS|null,
                 country JP|KR|CN|null, format TV|TV_SHORT|MOVIE|SPECIAL|OVA|ONA|MUSIC|MANGA|NOVEL|ONE_SHOT|null,
                 sort POPULARITY|SCORE|TRENDING|NEWEST, yearFrom, yearTo, season WINTER|SPRING|SUMMER|FALL|null,

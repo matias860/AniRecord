@@ -7,7 +7,9 @@ export const RELEASES = [
     title: 'Asistente de recomendaciones',
     summary: 'Ahora podés describir qué querés ver o leer y recibir opciones comprobadas en el catálogo.',
     changes: [
-      { type: 'Búsqueda', text: 'Pedí géneros, duración, años, países, estados o series parecidas usando tus propias palabras.' },
+      { type: 'Búsqueda', text: 'Pedí géneros, etiquetas como yuri, duración, años, países, estados o series parecidas usando tus propias palabras.' },
+      { type: 'Acceso', text: 'Abrí el asistente desde cualquier pantalla sin salir de lo que estabas viendo.' },
+      { type: 'Conversación', text: 'El asistente respeta pedidos como “sin drama” y entiende cuando corregís una búsqueda anterior.' },
       { type: 'Biblioteca', text: 'Podés buscar algo entre tus pendientes y las recomendaciones nuevas evitan lo que ya guardaste.' },
       { type: 'Claridad', text: 'Cada opción explica con datos reales por qué encaja con tu pedido.' },
       { type: 'Disponibilidad', text: 'Los pedidos claros siguen funcionando aunque la ayuda para interpretar frases esté temporalmente agotada.' },

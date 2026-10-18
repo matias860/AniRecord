@@ -58,27 +58,29 @@ public class RecommendationAssistantService {
         AppUser user = currentUserService.require();
         CatalogCategoriesResponse categories = safeCategories();
         RecommendationIntent safePrevious = previous == null ? null : sanitize(previous, categories);
-        LocalRecommendationInterpreter.ParseResult local = localInterpreter.interpret(text.trim(), safePrevious, true);
+        List<String> allowedTags = categories.tags().stream().map(CatalogTagResponse::name).toList();
+        LocalRecommendationInterpreter.ParseResult local = localInterpreter.interpret(text.trim(), safePrevious, true, allowedTags);
         RecommendationIntent raw = local.intent();
         String source = "LOCAL";
         if (!local.complete()) {
             if (gemini.available() && quota.tryConsume(user.getId())) {
                 try {
-                    raw = gemini.interpret(text.trim(), safePrevious, categories.genres(),
-                            categories.tags().stream().map(item -> item.name()).toList());
+                    raw = mergeExplicitConstraints(
+                            gemini.interpret(text.trim(), safePrevious, categories.genres(), allowedTags),
+                            local.intent());
                     source = "GEMINI";
                 } catch (GeminiRecommendationClient.BusyException exception) {
                     quota.refund(user.getId());
                     source = "FALLBACK";
-                    raw = localInterpreter.interpret(text.trim(), safePrevious, false).intent();
+                    raw = localInterpreter.interpret(text.trim(), safePrevious, false, allowedTags).intent();
                 } catch (RuntimeException exception) {
                     source = "FALLBACK";
                     log.warn("Assistant interpretation fallback: {}", exception.getClass().getSimpleName());
-                    raw = localInterpreter.interpret(text.trim(), safePrevious, false).intent();
+                    raw = localInterpreter.interpret(text.trim(), safePrevious, false, allowedTags).intent();
                 }
             } else {
                 source = "FALLBACK";
-                raw = localInterpreter.interpret(text.trim(), safePrevious, false).intent();
+                raw = localInterpreter.interpret(text.trim(), safePrevious, false, allowedTags).intent();
             }
         }
         RecommendationIntent intent;
@@ -86,7 +88,7 @@ public class RecommendationAssistantService {
             intent = sanitize(raw, categories);
         } catch (RuntimeException invalidModelOutput) {
             source = "FALLBACK";
-            intent = sanitize(localInterpreter.interpret(text.trim(), safePrevious, false).intent(), categories);
+            intent = sanitize(localInterpreter.interpret(text.trim(), safePrevious, false, allowedTags).intent(), categories);
         }
         List<LibraryEntrySummaryResponse> library = libraryEntries.findSummaries(user.getId(), intent.mediaType(), null);
         boolean unsupportedFallback = !local.complete() && !hasConcreteFilter(intent);
@@ -118,8 +120,34 @@ public class RecommendationAssistantService {
             log.warn("Assistant category fallback: {}", exception.getClass().getSimpleName());
             return new CatalogCategoriesResponse(List.of("Action", "Adventure", "Comedy", "Drama", "Ecchi", "Fantasy",
                     "Horror", "Mahou Shoujo", "Mecha", "Music", "Mystery", "Psychological", "Romance", "Sci-Fi",
-                    "Slice of Life", "Sports", "Supernatural", "Thriller"), List.<CatalogTagResponse>of());
+                    "Slice of Life", "Sports", "Supernatural", "Thriller"),
+                    List.of(new CatalogTagResponse("Yuri", "", "Theme-Sexuality")));
         }
+    }
+
+    private RecommendationIntent mergeExplicitConstraints(RecommendationIntent interpreted, RecommendationIntent explicit) {
+        if (interpreted == null) interpreted = RecommendationIntent.empty();
+        List<String> excludedGenres = merge(safeValues(interpreted.excludedGenres()), safeValues(explicit.excludedGenres()), 10);
+        List<String> excludedTags = merge(safeValues(interpreted.excludedTags()), safeValues(explicit.excludedTags()), 12);
+        List<String> genres = merge(safeValues(interpreted.genres()), safeValues(explicit.genres()), 10).stream()
+                .filter(value -> !containsIgnoreCase(excludedGenres, value)).toList();
+        List<String> tags = merge(safeValues(interpreted.tags()), safeValues(explicit.tags()), 12).stream()
+                .filter(value -> !containsIgnoreCase(excludedTags, value)).toList();
+        return new RecommendationIntent(
+                explicit.mediaType() != null ? explicit.mediaType() : interpreted.mediaType(),
+                genres, tags, excludedGenres, excludedTags,
+                explicit.status() != null ? explicit.status() : interpreted.status(),
+                explicit.country() != null ? explicit.country() : interpreted.country(),
+                explicit.format() != null ? explicit.format() : interpreted.format(),
+                interpreted.sort(),
+                explicit.yearFrom() != null ? explicit.yearFrom() : interpreted.yearFrom(),
+                explicit.yearTo() != null ? explicit.yearTo() : interpreted.yearTo(),
+                explicit.season() != null ? explicit.season() : interpreted.season(),
+                explicit.minimumUnits() != null ? explicit.minimumUnits() : interpreted.minimumUnits(),
+                explicit.maximumUnits() != null ? explicit.maximumUnits() : interpreted.maximumUnits(),
+                explicit.referenceTitle() != null ? explicit.referenceTitle() : interpreted.referenceTitle(),
+                explicit.libraryOnly() || interpreted.libraryOnly(),
+                explicit.libraryStatus() != null ? explicit.libraryStatus() : interpreted.libraryStatus());
     }
 
     private CatalogSelection fromCatalog(RecommendationIntent intent, List<LibraryEntrySummaryResponse> library) {
@@ -292,9 +320,13 @@ public class RecommendationAssistantService {
         List<String> facts = new ArrayList<>();
         List<String> matches = item.genres().stream().filter(genre -> containsIgnoreCase(intent.genres(), genre)).limit(2).toList();
         if (!matches.isEmpty()) facts.add("combina " + String.join(" y ", matches));
+        List<String> matchingTags = item.tags().stream().map(tag -> tag.name())
+                .filter(tag -> containsIgnoreCase(intent.tags(), tag)).limit(2).toList();
+        if (!matchingTags.isEmpty()) facts.add("incluye " + String.join(" y ", matchingTags));
         if (reference != null && sharesElements(item, reference)) facts.add("comparte elementos con " + reference.title());
         if (item.totalUnits() != null) facts.add("tiene " + item.totalUnits() + unitLabel(item.mediaType(), item.totalUnits()));
         if (item.releaseStatus() == ReleaseStatus.FINISHED) facts.add("está terminada");
+        if (item.releaseStatus() == ReleaseStatus.RELEASING) facts.add("está en emisión");
         if (facts.isEmpty()) facts.add("encaja con los filtros que elegiste");
         String result = String.join(", ", facts);
         return Character.toUpperCase(result.charAt(0)) + result.substring(1) + ".";
@@ -337,8 +369,13 @@ public class RecommendationAssistantService {
         if (intent.mediaType() != null) result.add(intent.mediaType() == MediaType.ANIME ? "Anime" : "Manga");
         result.addAll(intent.genres());
         result.addAll(intent.tags().stream().limit(2).toList());
+        intent.excludedGenres().stream().limit(2).map(value -> "Sin " + value).forEach(result::add);
+        intent.excludedTags().stream().limit(2).map(value -> "Sin " + value).forEach(result::add);
+        if (intent.minimumUnits() != null) result.add("Desde " + intent.minimumUnits() + " unidades");
         if (intent.maximumUnits() != null) result.add("Hasta " + intent.maximumUnits() + " unidades");
         if (intent.status() == ReleaseStatus.FINISHED) result.add("Terminadas");
+        if (intent.status() == ReleaseStatus.RELEASING) result.add("En emisión");
+        if (intent.status() == ReleaseStatus.NOT_YET_RELEASED) result.add("Próximamente");
         if (intent.libraryOnly()) result.add("De tu biblioteca");
         if (referenceApplied && intent.referenceTitle() != null) result.add("Como " + intent.referenceTitle());
         return result.stream().distinct().limit(6).toList();
@@ -364,6 +401,7 @@ public class RecommendationAssistantService {
     private static boolean containsAll(List<String> values, List<String> required) { return required.stream().allMatch(value -> containsIgnoreCase(values, value)); }
     private static boolean containsIgnoreCase(List<String> values, String target) { return values.stream().anyMatch(value -> value.equalsIgnoreCase(target)); }
     private static List<String> split(String value) { return value == null || value.isBlank() ? List.of() : List.of(value.split("\\|")); }
+    private static List<String> safeValues(List<String> values) { return values == null ? List.of() : values; }
     private static List<String> merge(List<String> first, List<String> second, int limit) { return java.util.stream.Stream.concat(first.stream(), second.stream()).distinct().limit(limit).toList(); }
     private static String upper(String value) { return value == null ? null : value.trim().toUpperCase(Locale.ROOT); }
     private static Integer clamp(Integer value, int min, int max) { return value == null ? null : Math.max(min, Math.min(max, value)); }
