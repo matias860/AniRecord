@@ -80,10 +80,14 @@ class AniListClientTest {
     @Test
     void assistantCanBrowseAnimeAndMangaInOneRequestWhenTypeIsUnspecified() throws Exception {
         String response = """
-                {"data":{"Page":{"pageInfo":{"currentPage":1,"hasNextPage":false},"media":[
-                  {"id":1,"type":"ANIME","format":"TV","title":{"romaji":"Anime"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]},
-                  {"id":2,"type":"MANGA","format":"MANGA","title":{"romaji":"Manga"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]}
-                ]}}}
+                {"data":{
+                  "anime":{"pageInfo":{"currentPage":1,"hasNextPage":false},"media":[
+                    {"id":1,"type":"ANIME","format":"TV","title":{"romaji":"Anime"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]}
+                  ]},
+                  "manga":{"pageInfo":{"currentPage":1,"hasNextPage":false},"media":[
+                    {"id":2,"type":"MANGA","format":"MANGA","title":{"romaji":"Manga"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]}
+                  ]}
+                }}
                 """;
 
         withResponse(response, client -> assertEquals(List.of("Anime", "Manga"),

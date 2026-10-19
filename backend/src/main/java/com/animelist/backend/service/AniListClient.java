@@ -219,6 +219,35 @@ public class AniListClient {
               }
             }
             """;
+    private static final String MIXED_ASSISTANT_QUERY_TEMPLATE = """
+            query MixedAssistantCatalog(%s) {
+              anime: Page(page: $page, perPage: $perPage) {
+                pageInfo { currentPage hasNextPage }
+                media(type: ANIME, %s) { ...AssistantMediaFields }
+              }
+              manga: Page(page: $page, perPage: $perPage) {
+                pageInfo { currentPage hasNextPage }
+                media(type: MANGA, %s) { ...AssistantMediaFields }
+              }
+            }
+            fragment AssistantMediaFields on Media {
+              id
+              type
+              format
+              countryOfOrigin
+              title { romaji english native }
+              coverImage { large }
+              genres
+              startDate { year }
+              episodes
+              chapters
+              status
+              season
+              seasonYear
+              tags { name rank description category isMediaSpoiler }
+              volumes
+            }
+            """;
 
     private static final String LIBRARY_MEDIA_QUERY = """
             query LibraryMedia($id: Int!) {
@@ -606,9 +635,13 @@ public class AniListClient {
             ReleaseStatus status, String country, String format, String sort
     ) {
         Map<String, Object> variables = new LinkedHashMap<>();
-        StringBuilder declarations = new StringBuilder("$type: MediaType, $page: Int!, $perPage: Int!, $sort: [MediaSort]");
-        StringBuilder arguments = new StringBuilder("type: $type, sort: $sort, isAdult: false");
-        if (type != null) variables.put("type", type.name());
+        StringBuilder declarations = new StringBuilder("$page: Int!, $perPage: Int!, $sort: [MediaSort]");
+        StringBuilder arguments = new StringBuilder("sort: $sort, isAdult: false");
+        if (type != null) {
+            declarations.append(", $type: MediaType!");
+            arguments.insert(0, "type: $type, ");
+            variables.put("type", type.name());
+        }
         variables.put("page", 1);
         variables.put("perPage", Math.max(1, Math.min(50, perPage)));
         if (yearFrom != null) {
@@ -633,8 +666,20 @@ public class AniListClient {
             case "NEWEST" -> List.of("START_DATE_DESC", "POPULARITY_DESC");
             default -> List.of("POPULARITY_DESC", "SCORE_DESC");
         });
-        String query = CATALOG_QUERY_TEMPLATE.formatted(declarations, arguments);
+        String query = type == null
+                ? MIXED_ASSISTANT_QUERY_TEMPLATE.formatted(declarations, arguments, arguments)
+                : CATALOG_QUERY_TEMPLATE.formatted(declarations, arguments);
         Map<String, Object> data = execute(query, variables);
+        if (type == null) {
+            Map<String, Object> anime = asMap(data.get("anime"));
+            Map<String, Object> manga = asMap(data.get("manga"));
+            List<AniListMediaResponse> results = new ArrayList<>();
+            results.addAll(asList(anime.get("media")).stream().map(this::asMap).map(item -> mapMedia(item, true)).toList());
+            results.addAll(asList(manga.get("media")).stream().map(this::asMap).map(item -> mapMedia(item, true)).toList());
+            boolean hasNextPage = Boolean.TRUE.equals(asMap(anime.get("pageInfo")).get("hasNextPage"))
+                    || Boolean.TRUE.equals(asMap(manga.get("pageInfo")).get("hasNextPage"));
+            return new AniListSearchResponse(1, hasNextPage, List.copyOf(results));
+        }
         Map<String, Object> pageData = asMap(data.get("Page"));
         Map<String, Object> pageInfo = asMap(pageData.get("pageInfo"));
         return new AniListSearchResponse(asInteger(pageInfo.get("currentPage")), Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
