@@ -9,6 +9,8 @@ import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.CatalogTagResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
+import com.animelist.backend.dto.anilist.MediaRelationResponse;
+import com.animelist.backend.dto.anilist.MediaRelationsResponse;
 import com.animelist.backend.dto.assistant.RecommendationIntent;
 import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.entity.AppUser;
@@ -101,6 +103,31 @@ class RecommendationAssistantServiceTest {
         var response = service.recommend("Algo de mi biblioteca parecido a Frieren", null);
 
         assertEquals(List.of(2), response.results().stream().map(item -> item.anilistId()).toList());
+    }
+
+    @Test
+    void comparisonExcludesTheReferenceFranchiseAndDeduplicatesAdaptations() {
+        AniListMediaResponse reference = withRelations(candidate(97888, "Baki", List.of("Action", "Sports"), List.of()),
+                List.of(relation(35157, "ADAPTATION", "New Grappler Baki")));
+        AniListMediaResponse oldBaki = candidate(41425, "Grappler Baki", List.of("Action", "Sports"), List.of());
+        AniListMediaResponse kenganManga = withRelations(candidate(900, "Kengan Ashura", List.of("Action", "Sports"), List.of()),
+                List.of(relation(901, "ADAPTATION", "Kengan Ashura Anime")));
+        AniListMediaResponse kenganSeason = withRelations(candidate(902, "Kengan Ashura Season 2", List.of("Action", "Sports"), List.of()),
+                List.of(relation(901, "PREQUEL", "Kengan Ashura Anime")));
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of());
+        when(aniList.search("Baki", MediaType.ANIME, 1, 5))
+                .thenReturn(new AniListSearchResponse(1, false, List.of(reference)));
+        when(aniList.search("Baki", MediaType.MANGA, 1, 5))
+                .thenReturn(new AniListSearchResponse(1, false, List.of()));
+        when(aniList.getMediaRelations(List.of(35157))).thenReturn(List.of(new MediaRelationsResponse(35157,
+                List.of(relation(41425, "PREQUEL", "Grappler Baki")))));
+        when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), anyList(), anyList(),
+                any(), any(), any(), any())).thenReturn(new AniListSearchResponse(1, false,
+                        List.of(oldBaki, kenganManga, kenganSeason)));
+
+        var response = service.recommend("Dame algo parecido a Baki", null);
+
+        assertEquals(List.of(900), response.results().stream().map(item -> item.anilistId()).toList());
     }
 
     @Test
@@ -214,6 +241,18 @@ class RecommendationAssistantServiceTest {
         return new AniListMediaResponse(id, MediaType.MANGA, "MANGA", "JP", title, title, "cover", null, null,
                 List.of(), null, 40, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
                 List.of(), List.of(), List.of(), genres, tags, 2024);
+    }
+
+    private AniListMediaResponse withRelations(AniListMediaResponse media, List<MediaRelationResponse> relations) {
+        return new AniListMediaResponse(media.anilistId(), media.mediaType(), media.mediaFormat(), media.countryOfOrigin(),
+                media.title(), media.romajiTitle(), media.coverImage(), media.bannerImage(), media.musicVideoUrl(),
+                media.streamingLinks(), media.synopsis(), media.totalUnits(), media.releaseStartDate(), media.releaseEndDate(),
+                media.releaseStatus(), media.releaseSeason(), media.releaseYear(), media.favourites(), media.nextAiringEpisode(),
+                media.credits(), relations, media.characters(), media.genres(), media.tags(), media.releaseEndYear());
+    }
+
+    private MediaRelationResponse relation(int id, String type, String title) {
+        return new MediaRelationResponse(id, type, MediaType.MANGA, "MANGA", title, "cover");
     }
 
     private LibraryEntrySummaryResponse libraryItem(int id, String title) {

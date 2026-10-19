@@ -215,6 +215,12 @@ public class AniListClient {
                   seasonYear
                   tags { name rank description category isMediaSpoiler }
                   volumes
+                  relations {
+                    edges {
+                      relationType(version: 2)
+                      node { id type format title { romaji english native } coverImage { large } }
+                    }
+                  }
                 }
               }
             }
@@ -246,6 +252,12 @@ public class AniListClient {
               seasonYear
               tags { name rank description category isMediaSpoiler }
               volumes
+              relations {
+                edges {
+                  relationType(version: 2)
+                  node { id type format title { romaji english native } coverImage { large } }
+                }
+              }
             }
             """;
 

@@ -85,14 +85,18 @@ class AniListClientTest {
                     {"id":1,"type":"ANIME","format":"TV","title":{"romaji":"Anime"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]}
                   ]},
                   "manga":{"pageInfo":{"currentPage":1,"hasNextPage":false},"media":[
-                    {"id":2,"type":"MANGA","format":"MANGA","title":{"romaji":"Manga"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]}
+                    {"id":2,"type":"MANGA","format":"MANGA","title":{"romaji":"Manga"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[],
+                     "relations":{"edges":[{"relationType":"ADAPTATION","node":{"id":9,"type":"ANIME","format":"TV","title":{"romaji":"Anime adaptation"},"coverImage":{}}}]}}
                   ]}
                 }}
                 """;
 
-        withResponse(response, client -> assertEquals(List.of("Anime", "Manga"),
-                client.browseForAssistant(null, 20, null, null, null, List.of(), List.of(),
-                        null, null, null, "POPULARITY").results().stream().map(item -> item.title()).toList()));
+        withResponse(response, client -> {
+            var results = client.browseForAssistant(null, 20, null, null, null, List.of(), List.of(),
+                    null, null, null, "POPULARITY").results();
+            assertEquals(List.of("Anime", "Manga"), results.stream().map(item -> item.title()).toList());
+            assertEquals(9, results.get(1).relations().get(0).anilistId());
+        });
     }
 
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {

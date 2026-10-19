@@ -4,6 +4,7 @@ import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.CatalogTagResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
+import com.animelist.backend.dto.anilist.MediaRelationResponse;
 import com.animelist.backend.dto.assistant.AssistantMediaResponse;
 import com.animelist.backend.dto.assistant.AssistantRecommendationResponse;
 import com.animelist.backend.dto.assistant.RecommendationIntent;
@@ -35,6 +36,9 @@ public class RecommendationAssistantService {
     private static final Set<String> COUNTRIES = Set.of("JP", "KR", "CN");
     private static final Set<String> ANIME_FORMATS = Set.of("TV", "TV_SHORT", "MOVIE", "SPECIAL", "OVA", "ONA", "MUSIC");
     private static final Set<String> MANGA_FORMATS = Set.of("MANGA", "NOVEL", "ONE_SHOT");
+    private static final Set<String> FRANCHISE_RELATIONS = Set.of(
+            "ADAPTATION", "PREQUEL", "SEQUEL", "PARENT", "ALTERNATIVE",
+            "SPIN_OFF", "SIDE_STORY", "SUMMARY", "COMPILATION", "CONTAINS", "SOURCE");
     private static final int MIN_REQUIRED_TAG_RANK = 50;
     private static final int MAX_CONTEXTUAL_PENALTY = 50;
     private static final Map<String, Map<String, Integer>> RELATED_GENRE_PENALTIES = Map.of(
@@ -168,6 +172,7 @@ public class RecommendationAssistantService {
         Set<Integer> known = library.stream().map(LibraryEntrySummaryResponse::anilistId).collect(java.util.stream.Collectors.toSet());
         AniListMediaResponse reference = findReference(intent, library);
         if (intent.referenceTitle() != null && reference == null) return new CatalogSelection(List.of(), false);
+        Set<Integer> referenceFamily = referenceFamily(reference);
         List<String> referenceGenres = reference == null ? List.of() : reference.genres();
         List<String> referenceTags = reference == null ? List.of() : reference.tags().stream()
                 .filter(tag -> tag.rank() == null || tag.rank() >= 60).map(tag -> tag.name()).toList();
@@ -178,8 +183,9 @@ public class RecommendationAssistantService {
         List<AniListMediaResponse> candidates = browseCatalog(intent, queryGenres, queryTags);
         Map<String, Integer> preferences = preferences(library);
         Integer referenceId = reference == null ? null : reference.anilistId();
-        List<AssistantMediaResponse> results = candidates.stream()
+        List<AniListMediaResponse> ranked = candidates.stream()
                 .filter(item -> !known.contains(item.anilistId()) && !item.anilistId().equals(referenceId))
+                .filter(item -> java.util.Collections.disjoint(franchiseFootprint(item), referenceFamily))
                 .filter(item -> fits(item.totalUnits(), intent.minimumUnits(), intent.maximumUnits()))
                 .filter(item -> containsAll(item.genres(), intent.genres()))
                 .filter(item -> hasRelevantRequiredTags(item.tags(), intent.tags()))
@@ -188,7 +194,9 @@ public class RecommendationAssistantService {
                 .filter(item -> contextualPenalty(item, intent) <= MAX_CONTEXTUAL_PENALTY)
                 .sorted(Comparator.comparingInt((AniListMediaResponse item) -> score(item, intent, scoringGenres, scoringTags, preferences))
                         .thenComparingInt(item -> item.favourites() == null ? 0 : item.favourites()).reversed())
-                .limit(6).map(item -> toResponse(item, null, reason(item, intent, reference))).toList();
+                .toList();
+        List<AssistantMediaResponse> results = distinctFranchises(ranked).stream().limit(6)
+                .map(item -> toResponse(item, null, reason(item, intent, reference))).toList();
         return new CatalogSelection(results, true);
     }
 
@@ -441,6 +449,45 @@ public class RecommendationAssistantService {
             }
         }
         return penalty;
+    }
+    private Set<Integer> referenceFamily(AniListMediaResponse reference) {
+        if (reference == null) return Set.of();
+        Set<Integer> family = new HashSet<>(franchiseFootprint(reference));
+        List<Integer> directRelations = family.stream().filter(id -> !id.equals(reference.anilistId())).toList();
+        try {
+            aniListClient.getMediaRelations(directRelations).forEach(response -> {
+                if (!family.contains(response.sourceAnilistId())) return;
+                response.relations().stream().filter(this::isFranchiseRelation)
+                        .map(MediaRelationResponse::anilistId).filter(java.util.Objects::nonNull).forEach(family::add);
+            });
+        } catch (RuntimeException exception) {
+            log.debug("Could not expand the reference franchise; direct relations will still be excluded", exception);
+        }
+        return Set.copyOf(family);
+    }
+    private List<AniListMediaResponse> distinctFranchises(List<AniListMediaResponse> ranked) {
+        List<AniListMediaResponse> unique = new ArrayList<>();
+        List<Set<Integer>> seenFamilies = new ArrayList<>();
+        for (AniListMediaResponse candidate : ranked) {
+            Set<Integer> footprint = franchiseFootprint(candidate);
+            if (seenFamilies.stream().anyMatch(seen -> !java.util.Collections.disjoint(seen, footprint))) continue;
+            unique.add(candidate);
+            seenFamilies.add(footprint);
+        }
+        return unique;
+    }
+    private Set<Integer> franchiseFootprint(AniListMediaResponse media) {
+        if (media == null) return Set.of();
+        Set<Integer> result = new HashSet<>();
+        if (media.anilistId() != null) result.add(media.anilistId());
+        if (media.relations() != null) {
+            media.relations().stream().filter(this::isFranchiseRelation)
+                    .map(MediaRelationResponse::anilistId).filter(java.util.Objects::nonNull).forEach(result::add);
+        }
+        return Set.copyOf(result);
+    }
+    private boolean isFranchiseRelation(MediaRelationResponse relation) {
+        return relation != null && relation.relationType() != null && FRANCHISE_RELATIONS.contains(relation.relationType());
     }
     private static boolean hasRelevantRequiredTags(List<MediaTagResponse> values, List<String> required) {
         return required.stream().allMatch(name -> values.stream().anyMatch(tag -> tag.name().equalsIgnoreCase(name)
