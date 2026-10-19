@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -74,6 +75,20 @@ class AniListClientTest {
                 """;
 
         withResponse(response, client -> assertEquals("large.jpg", client.getMediaForLibrary(20).coverImage()));
+    }
+
+    @Test
+    void assistantCanBrowseAnimeAndMangaInOneRequestWhenTypeIsUnspecified() throws Exception {
+        String response = """
+                {"data":{"Page":{"pageInfo":{"currentPage":1,"hasNextPage":false},"media":[
+                  {"id":1,"type":"ANIME","format":"TV","title":{"romaji":"Anime"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]},
+                  {"id":2,"type":"MANGA","format":"MANGA","title":{"romaji":"Manga"},"coverImage":{},"startDate":{},"endDate":{},"genres":[],"tags":[]}
+                ]}}}
+                """;
+
+        withResponse(response, client -> assertEquals(List.of("Anime", "Manga"),
+                client.browseForAssistant(null, 20, null, null, null, List.of(), List.of(),
+                        null, null, null, "POPULARITY").results().stream().map(item -> item.title()).toList()));
     }
 
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {

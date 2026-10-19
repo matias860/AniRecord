@@ -67,7 +67,7 @@ public class RecommendationAssistantService {
                 try {
                     raw = mergeExplicitConstraints(
                             gemini.interpret(text.trim(), safePrevious, categories.genres(), allowedTags),
-                            local.intent());
+                            local.intent(), local.libraryScopeSpecified());
                     source = "GEMINI";
                 } catch (GeminiRecommendationClient.BusyException exception) {
                     quota.refund(user.getId());
@@ -125,7 +125,8 @@ public class RecommendationAssistantService {
         }
     }
 
-    private RecommendationIntent mergeExplicitConstraints(RecommendationIntent interpreted, RecommendationIntent explicit) {
+    private RecommendationIntent mergeExplicitConstraints(RecommendationIntent interpreted, RecommendationIntent explicit,
+            boolean libraryScopeSpecified) {
         if (interpreted == null) interpreted = RecommendationIntent.empty();
         List<String> excludedGenres = merge(safeValues(interpreted.excludedGenres()), safeValues(explicit.excludedGenres()), 10);
         List<String> excludedTags = merge(safeValues(interpreted.excludedTags()), safeValues(explicit.excludedTags()), 12);
@@ -146,8 +147,9 @@ public class RecommendationAssistantService {
                 explicit.minimumUnits() != null ? explicit.minimumUnits() : interpreted.minimumUnits(),
                 explicit.maximumUnits() != null ? explicit.maximumUnits() : interpreted.maximumUnits(),
                 explicit.referenceTitle() != null ? explicit.referenceTitle() : interpreted.referenceTitle(),
-                explicit.libraryOnly() || interpreted.libraryOnly(),
-                explicit.libraryStatus() != null ? explicit.libraryStatus() : interpreted.libraryStatus());
+                libraryScopeSpecified ? explicit.libraryOnly() : explicit.libraryOnly() || interpreted.libraryOnly(),
+                libraryScopeSpecified ? explicit.libraryStatus()
+                        : explicit.libraryStatus() != null ? explicit.libraryStatus() : interpreted.libraryStatus());
     }
 
     private CatalogSelection fromCatalog(RecommendationIntent intent, List<LibraryEntrySummaryResponse> library) {
@@ -161,9 +163,7 @@ public class RecommendationAssistantService {
         List<String> queryTags = intent.tags();
         List<String> scoringGenres = merge(intent.genres(), referenceGenres, 8);
         List<String> scoringTags = merge(intent.tags(), referenceTags, 10);
-        List<AniListMediaResponse> candidates = aniListClient.browseForAssistant(intent.mediaType(), 45,
-                intent.yearFrom(), intent.yearTo(), intent.season(), queryGenres, queryTags, intent.status(),
-                intent.country(), intent.format(), intent.sort()).results();
+        List<AniListMediaResponse> candidates = browseCatalog(intent, queryGenres, queryTags);
         Map<String, Integer> preferences = preferences(library);
         Integer referenceId = reference == null ? null : reference.anilistId();
         List<AssistantMediaResponse> results = candidates.stream()
@@ -173,9 +173,15 @@ public class RecommendationAssistantService {
                 .filter(item -> containsAll(item.tags().stream().map(tag -> tag.name()).toList(), intent.tags()))
                 .filter(item -> disjoint(item.genres(), intent.excludedGenres()))
                 .filter(item -> disjoint(item.tags().stream().map(tag -> tag.name()).toList(), intent.excludedTags()))
-                .sorted(Comparator.comparingInt((AniListMediaResponse item) -> score(item, scoringGenres, scoringTags, preferences)).reversed())
+                .sorted(Comparator.comparingInt((AniListMediaResponse item) -> score(item, scoringGenres, scoringTags, preferences))
+                        .thenComparingInt(item -> item.favourites() == null ? 0 : item.favourites()).reversed())
                 .limit(6).map(item -> toResponse(item, null, reason(item, intent, reference))).toList();
         return new CatalogSelection(results, true);
+    }
+
+    private List<AniListMediaResponse> browseCatalog(RecommendationIntent intent, List<String> genres, List<String> tags) {
+        return aniListClient.browseForAssistant(intent.mediaType(), 45, intent.yearFrom(), intent.yearTo(),
+                intent.season(), genres, tags, intent.status(), intent.country(), intent.format(), intent.sort()).results();
     }
 
     private CatalogSelection fromLibrary(RecommendationIntent intent, List<LibraryEntrySummaryResponse> library) {
@@ -269,7 +275,7 @@ public class RecommendationAssistantService {
 
     private RecommendationIntent sanitize(RecommendationIntent raw, CatalogCategoriesResponse categories) {
         if (raw == null) raw = RecommendationIntent.empty();
-        MediaType type = raw.mediaType() == null && !raw.libraryOnly() ? MediaType.ANIME : raw.mediaType();
+        MediaType type = raw.mediaType();
         Map<String, String> genres = canonical(categories.genres());
         Map<String, String> tags = canonical(categories.tags().stream().map(item -> item.name()).toList());
         int maximumYear = Year.now().getValue() + 3;
@@ -277,7 +283,13 @@ public class RecommendationAssistantService {
         Integer to = clamp(raw.yearTo(), 1940, maximumYear);
         if (from != null && to != null && from > to) { int swap = from; from = to; to = swap; }
         String format = upper(raw.format());
-        if (format == null || !(type == MediaType.ANIME ? ANIME_FORMATS : MANGA_FORMATS).contains(format)) format = null;
+        if (format != null && type == null) {
+            if (ANIME_FORMATS.contains(format)) type = MediaType.ANIME;
+            else if (MANGA_FORMATS.contains(format)) type = MediaType.MANGA;
+            else format = null;
+        } else if (format != null && !(type == MediaType.ANIME ? ANIME_FORMATS : MANGA_FORMATS).contains(format)) {
+            format = null;
+        }
         String country = upper(raw.country());
         if (country == null || !COUNTRIES.contains(country)) country = null;
         String sort = upper(raw.sort());
@@ -383,6 +395,7 @@ public class RecommendationAssistantService {
 
     private boolean hasConcreteFilter(RecommendationIntent intent) {
         return intent.libraryOnly() || intent.referenceTitle() != null || !intent.genres().isEmpty() || !intent.tags().isEmpty()
+                || !intent.excludedGenres().isEmpty() || !intent.excludedTags().isEmpty()
                 || intent.status() != null || intent.format() != null || intent.country() != null || intent.yearFrom() != null
                 || intent.yearTo() != null || intent.minimumUnits() != null || intent.maximumUnits() != null;
     }

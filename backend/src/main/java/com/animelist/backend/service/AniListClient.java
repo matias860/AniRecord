@@ -606,9 +606,9 @@ public class AniListClient {
             ReleaseStatus status, String country, String format, String sort
     ) {
         Map<String, Object> variables = new LinkedHashMap<>();
-        StringBuilder declarations = new StringBuilder("$type: MediaType!, $page: Int!, $perPage: Int!, $sort: [MediaSort]");
+        StringBuilder declarations = new StringBuilder("$type: MediaType, $page: Int!, $perPage: Int!, $sort: [MediaSort]");
         StringBuilder arguments = new StringBuilder("type: $type, sort: $sort, isAdult: false");
-        variables.put("type", type.name());
+        if (type != null) variables.put("type", type.name());
         variables.put("page", 1);
         variables.put("perPage", Math.max(1, Math.min(50, perPage)));
         if (yearFrom != null) {

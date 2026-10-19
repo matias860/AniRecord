@@ -45,8 +45,8 @@ class RecommendationAssistantServiceTest {
 
     @Test
     void concreteRequestUsesNoAiAndExcludesKnownLibraryTitles() {
-        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of(libraryItem(1, "Guardada")));
-        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(), anyList(), anyList(),
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of(libraryItem(1, "Guardada")));
+        when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), anyList(), anyList(),
                 eq(ReleaseStatus.FINISHED), any(), any(), eq("POPULARITY")))
                 .thenReturn(new AniListSearchResponse(1, false, List.of(media(1, "Guardada"), media(2, "Nueva"))));
         var response = service.recommend("Un romance terminado y corto", null);
@@ -120,8 +120,8 @@ class RecommendationAssistantServiceTest {
         AniListMediaResponse matching = new AniListMediaResponse(7, MediaType.ANIME, "TV", "JP", "Yuri largo", "Yuri largo",
                 "cover", null, null, List.of(), null, 24, null, null, ReleaseStatus.RELEASING, null, 2026, 100, null,
                 List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Yuri", 90, null, null)), 2026);
-        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of());
-        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(), anyList(), eq(List.of("Yuri")),
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), anyList(), eq(List.of("Yuri")),
                 eq(ReleaseStatus.RELEASING), any(), any(), eq("POPULARITY")))
                 .thenReturn(new AniListSearchResponse(1, false, List.of(matching)));
 
@@ -134,6 +134,54 @@ class RecommendationAssistantServiceTest {
         assertTrue(response.understood().contains("En emisión"));
         assertTrue(response.results().get(0).reason().contains("Incluye Yuri"));
         verify(gemini, never()).interpret(anyString(), any(), anyList(), anyList());
+    }
+
+    @Test
+    void requestWithoutMediaTypeCombinesAnimeAndMangaWithoutClaimingAnimeWasRequested() {
+        AniListMediaResponse anime = media(10, "Anime romántico");
+        AniListMediaResponse manga = new AniListMediaResponse(11, MediaType.MANGA, "MANGA", "JP", "Manga romántico", "Manga romántico",
+                "cover", null, null, List.of(), null, 10, null, null, ReleaseStatus.FINISHED, null, 2024, 200, null,
+                List.of(), List.of(), List.of(), List.of("Romance"), List.of(), 2024);
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), eq(List.of("Romance")), anyList(),
+                any(), any(), any(), any())).thenReturn(new AniListSearchResponse(1, false, List.of(anime, manga)));
+
+        var response = service.recommend("Quiero un romance corto", null);
+
+        assertNull(response.intent().mediaType());
+        assertFalse(response.understood().contains("Anime"));
+        assertEquals(List.of(11, 10), response.results().stream().map(item -> item.anilistId()).toList());
+    }
+
+    @Test
+    void explicitCatalogCorrectionOverridesAnAiAttemptToKeepLibraryScope() {
+        RecommendationIntent previous = new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(),
+                null, null, null, "POPULARITY", null, null, null, null, null, null, true, TrackingStatus.PLANNED);
+        when(gemini.available()).thenReturn(true);
+        when(quota.tryConsume(42L)).thenReturn(true);
+        when(gemini.interpret(anyString(), any(), anyList(), anyList())).thenReturn(previous);
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(any(), anyInt(), any(), any(), any(), anyList(), anyList(), any(), any(), any(), any()))
+                .thenReturn(new AniListSearchResponse(1, false, List.of()));
+
+        var response = service.recommend("Ahora fuera de mi biblioteca, quiero algo profundo de acción", previous);
+
+        assertFalse(response.intent().libraryOnly());
+        assertNull(response.intent().libraryStatus());
+        assertTrue(response.intent().genres().contains("Action"));
+    }
+
+    @Test
+    void explicitExclusionsRemainUsefulWhenSubjectiveLanguageCannotUseAi() {
+        when(library.findSummaries(42L, null, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(any(), anyInt(), any(), any(), any(), anyList(), anyList(), any(), any(), any(), any()))
+                .thenReturn(new AniListSearchResponse(1, false, List.of()));
+
+        var response = service.recommend("Algo divertido sin romance", null);
+
+        assertEquals("FALLBACK", response.source());
+        assertTrue(response.intent().excludedGenres().contains("Romance"));
+        verify(aniList).browseForAssistant(isNull(), anyInt(), any(), any(), any(), anyList(), anyList(), any(), any(), any(), any());
     }
 
     private AniListMediaResponse media(int id, String title) {

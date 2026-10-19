@@ -62,13 +62,57 @@ class LocalRecommendationInterpreterTest {
         assertTrue(range.complete());
         assertEquals(2010, range.intent().yearFrom());
         assertEquals(2020, range.intent().yearTo());
-        assertEquals(24, range.intent().minimumUnits());
+        assertEquals(25, range.intent().minimumUnits());
         var exact = interpreter.interpret("Un romance de 12 episodios", null, true).intent();
         assertEquals(12, exact.minimumUnits());
         assertEquals(12, exact.maximumUnits());
         var reference = interpreter.interpret("Parecido a Frieren", null, true);
         assertTrue(reference.complete());
         assertEquals("Frieren", reference.intent().referenceTitle());
+    }
+
+    @Test
+    void understandsNaturalAndChainedNegations() {
+        var direct = interpreter.interpret("No quiero romance", null, true).intent();
+        assertEquals(List.of(), direct.genres());
+        assertEquals(List.of("Romance"), direct.excludedGenres());
+
+        var chained = interpreter.interpret("Quiero fantasía sin acción ni romance", null, true).intent();
+        assertEquals(List.of("Fantasy"), chained.genres());
+        assertTrue(chained.excludedGenres().containsAll(List.of("Action", "Romance")));
+
+        var natural = interpreter.interpret("Algo que no tenga drama ni ecchi", null, true).intent();
+        assertTrue(natural.excludedGenres().containsAll(List.of("Drama", "Ecchi")));
+    }
+
+    @Test
+    void doesNotTreatComoParaAsAReferenceTitle() {
+        var parsed = interpreter.interpret("Quiero algo corto como para ver hoy", null, true);
+        assertTrue(parsed.complete());
+        assertNull(parsed.intent().referenceTitle());
+        assertEquals(16, parsed.intent().maximumUnits());
+    }
+
+    @Test
+    void understandsUnitRangesAndStrictComparators() {
+        var range = interpreter.interpret("Entre 12 y 24 episodios", null, true).intent();
+        assertEquals(12, range.minimumUnits());
+        assertEquals(24, range.maximumUnits());
+        var moreThan = interpreter.interpret("Más de 24 episodios", null, true).intent();
+        assertEquals(25, moreThan.minimumUnits());
+        var lessThan = interpreter.interpret("Menos de 12 episodios", null, true).intent();
+        assertEquals(11, lessThan.maximumUnits());
+    }
+
+    @Test
+    void canLeaveALibraryOnlyRefinement() {
+        RecommendationIntent previous = interpreter.interpret("Algo de mis pendientes", null, false).intent();
+        var corrected = interpreter.interpret("Ahora fuera de mi biblioteca, de acción", previous, true);
+
+        assertFalse(corrected.intent().libraryOnly());
+        assertNull(corrected.intent().libraryStatus());
+        assertTrue(corrected.libraryScopeSpecified());
+        assertEquals(List.of("Action"), corrected.intent().genres());
     }
 
     @Test

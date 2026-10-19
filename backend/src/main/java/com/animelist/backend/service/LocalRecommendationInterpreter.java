@@ -31,7 +31,17 @@ public class LocalRecommendationInterpreter {
         GENRES.put("thriller", "Thriller");
     }
     private static final Pattern YEAR = Pattern.compile("\\b(19[4-9]\\d|20\\d{2})\\b");
-    private static final Pattern UNITS = Pattern.compile("(?:menos de|maximo|hasta)\\s+(\\d{1,4})\\s*(?:episodios|capitulos)?");
+    private static final String UNIT_LABEL = "(?:episodios|capitulos)\\b";
+    private static final Pattern UNIT_RANGE = Pattern.compile("(?:entre|de)\\s+(\\d{1,4})\\s+(?:y|a|hasta)\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
+    private static final Pattern UNIT_LESS_THAN = Pattern.compile("menos\\s+de\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
+    private static final Pattern UNIT_MORE_THAN = Pattern.compile("mas\\s+de\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
+    private static final Pattern UNIT_MAXIMUM = Pattern.compile("(?:maximo|hasta)\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
+    private static final Pattern UNIT_MINIMUM = Pattern.compile("(?:minimo|desde)\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
+    private static final Pattern UNIT_EXACT = Pattern.compile("\\b(\\d{1,4})\\s+(?:episodios|capitulos)\\b");
+    private static final Pattern REFERENCE = Pattern.compile(
+            "(?:parecid[oa]\\s+a|similar\\s+a|(?:algo|un anime|una serie|un manga|una pel[ií]cula)\\s+como)\\s+"
+                    + "(?!para\\b|de\\b|que\\b)(.+?)(?:,|\\s+pero\\b|\\s+sin\\b|\\s+con\\b|$)",
+            Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
 
     public ParseResult interpret(String text, RecommendationIntent previous, boolean strict) {
         return interpret(text, previous, strict, List.of());
@@ -94,10 +104,20 @@ public class LocalRecommendationInterpreter {
         else if (value.contains("tendencia")) { sort = "TRENDING"; recognized++; }
         else if (value.contains("nuevo") || value.contains("reciente")) { sort = "NEWEST"; recognized++; }
         Integer min = base.minimumUnits(), max = base.maximumUnits();
-        Matcher unitMatch = UNITS.matcher(value);
-        Matcher minimumMatch = Pattern.compile("(?:mas de|minimo|desde)\\s+(\\d{1,4})\\s*(?:episodios|capitulos)?").matcher(value);
-        Matcher exactMatch = Pattern.compile("\\b(\\d{1,4})\\s+(?:episodios|capitulos)\\b").matcher(value);
-        if (unitMatch.find()) { max = Integer.valueOf(unitMatch.group(1)); recognized++; }
+        Matcher rangeMatch = UNIT_RANGE.matcher(value);
+        Matcher lessThanMatch = UNIT_LESS_THAN.matcher(value);
+        Matcher moreThanMatch = UNIT_MORE_THAN.matcher(value);
+        Matcher maximumMatch = UNIT_MAXIMUM.matcher(value);
+        Matcher minimumMatch = UNIT_MINIMUM.matcher(value);
+        Matcher exactMatch = UNIT_EXACT.matcher(value);
+        if (rangeMatch.find()) {
+            min = Integer.valueOf(rangeMatch.group(1)); max = Integer.valueOf(rangeMatch.group(2));
+            if (min > max) { int swap = min; min = max; max = swap; }
+            recognized++;
+        }
+        else if (lessThanMatch.find()) { max = Math.max(1, Integer.parseInt(lessThanMatch.group(1)) - 1); recognized++; }
+        else if (moreThanMatch.find()) { min = Math.min(10_000, Integer.parseInt(moreThanMatch.group(1)) + 1); recognized++; }
+        else if (maximumMatch.find()) { max = Integer.valueOf(maximumMatch.group(1)); recognized++; }
         else if (minimumMatch.find()) { min = Integer.valueOf(minimumMatch.group(1)); recognized++; }
         else if (exactMatch.find()) { min = max = Integer.valueOf(exactMatch.group(1)); recognized++; }
         else if (value.contains("muy corto")) { max = 12; recognized++; }
@@ -110,17 +130,21 @@ public class LocalRecommendationInterpreter {
         else if (yearMatch.find()) { yearFrom = yearTo = Integer.valueOf(yearMatch.group(1)); recognized++; }
         Matcher decade = Pattern.compile("(?:anos|decada)(?: de)?(?: los)?\\s*(19|20)(\\d)0").matcher(value);
         if (decade.find()) { yearFrom = Integer.valueOf(decade.group(1) + decade.group(2) + "0"); yearTo = yearFrom + 9; recognized++; }
-        boolean libraryOnly = base.libraryOnly() || value.contains("mi biblioteca") || value.contains("mi lista") || value.contains("pendiente");
+        boolean catalogScope = value.matches(".*\\b(?:fuera de (?:mi )?(?:biblioteca|lista)|que no (?:este|esten) guardad[oa]s?|buscar? en (?:el )?catalogo|del catalogo)\\b.*");
+        boolean libraryScope = !catalogScope && (value.contains("mi biblioteca") || value.contains("mi lista") || value.contains("pendiente"));
+        boolean libraryScopeSpecified = catalogScope || libraryScope;
+        boolean libraryOnly = catalogScope ? false : libraryScope ? true : base.libraryOnly();
         TrackingStatus libraryStatus = base.libraryStatus();
-        if (value.contains("pendiente")) { libraryStatus = TrackingStatus.PLANNED; recognized++; }
+        if (catalogScope) { libraryStatus = null; recognized++; }
+        else if (value.contains("pendiente")) { libraryStatus = TrackingStatus.PLANNED; recognized++; }
         String reference = null;
-        Matcher ref = Pattern.compile("(?:parecid[oa] a|como)\\s+(.+?)(?:,| pero| sin| con|$)", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE).matcher(text.trim());
+        Matcher ref = REFERENCE.matcher(text.trim());
         if (ref.find()) { reference = ref.group(1).trim(); recognized++; }
         if (refinement) recognized++;
         RecommendationIntent result = new RecommendationIntent(type, List.copyOf(genres), List.copyOf(tags), List.copyOf(excluded),
                 List.copyOf(excludedTags), status, country, format, sort == null ? "POPULARITY" : sort,
                 yearFrom, yearTo, base.season(), min, max, reference != null ? reference : base.referenceTitle(), libraryOnly, libraryStatus);
-        return new ParseResult(result, !strict || recognized > 0 && !looksSubjective(value));
+        return new ParseResult(result, !strict || recognized > 0 && !looksSubjective(value), libraryScopeSpecified);
     }
 
     private boolean looksSubjective(String value) {
@@ -131,15 +155,18 @@ public class LocalRecommendationInterpreter {
                 .matcher(value).find();
     }
     private static boolean isExcluded(String value, String term) {
-        String filler = "(?:el|la|los|las|un|una|mucho|mucha|muchos|muchas|demasiado|demasiada|tanto|tanta|nada|de|que|tenga)";
-        String prefix = "(?:sin|evita|evitar|excluye|excluir|nada\\s+de)";
-        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])" + prefix + "(?:\\s+" + filler + "){0,4}\\s+"
-                + Pattern.quote(term) + "(?:$|[^\\p{L}\\p{N}])").matcher(value).find();
+        String prefix = "(?:sin|no\\s+(?:quiero|busco|deseo)|(?:que\\s+)?no\\s+(?:tenga|incluya)|"
+                + "evita|evitar|excluye|excluir|nada\\s+de|ni|tampoco)";
+        String boundary = "(?:[,.;]|\\b(?:pero|aunque|en\\s+cambio|con|quiero|busco|que\\s+tenga)\\b)";
+        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])" + prefix + "\\s+"
+                + "(?:(?!" + boundary + ").){0,120}?"
+                + "(?<![\\p{L}\\p{N}])" + Pattern.quote(term) + "(?![\\p{L}\\p{N}])")
+                .matcher(value).find();
     }
     private static String normalize(String value) { return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT); }
     private static List<String> safe(List<String> value) { return value == null ? List.of() : List.copyOf(value); }
     private static void add(List<String> values, String value) { if (!values.contains(value)) values.add(value); }
     private static void addIgnoreCase(List<String> values, String value) { if (values.stream().noneMatch(item -> item.equalsIgnoreCase(value))) values.add(value); }
     private static void removeIgnoreCase(List<String> values, String value) { values.removeIf(item -> item.equalsIgnoreCase(value)); }
-    public record ParseResult(RecommendationIntent intent, boolean complete) {}
+    public record ParseResult(RecommendationIntent intent, boolean complete, boolean libraryScopeSpecified) {}
 }
