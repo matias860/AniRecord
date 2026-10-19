@@ -10,6 +10,7 @@ import com.animelist.backend.enums.AccountType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.TrackingStatus;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -73,9 +74,9 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
     Optional<LibraryEntry> findByUserIdAndMediaAnilistId(Long userId, Integer anilistId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select entry from LibraryEntry entry join fetch entry.media where entry.user.id = :userId and entry.media.anilistId = :anilistId")
-    Optional<LibraryEntry> findForUpdateByUserIdAndMediaAnilistId(
-            @Param("userId") Long userId, @Param("anilistId") Integer anilistId);
+    @Query("select entry from LibraryEntry entry join fetch entry.media where entry.user.id = :userId and entry.media.anilistId in :anilistIds")
+    List<LibraryEntry> findAllForUpdateByUserIdAndMediaAnilistIdIn(
+            @Param("userId") Long userId, @Param("anilistIds") Collection<Integer> anilistIds);
 
     @EntityGraph(attributePaths = "media")
     List<LibraryEntry> findByUserIdAndMediaMediaTypeAndTrackingStatus(

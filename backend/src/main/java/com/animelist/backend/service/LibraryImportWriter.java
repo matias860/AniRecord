@@ -72,34 +72,44 @@ public class LibraryImportWriter {
     public BatchResult applyBatch(Long userId, List<AniListLibraryItem> items,
             Map<Integer, AniListImportService.LocalState> expectedBefore) {
         AppUser profile = users.findById(userId).orElseThrow();
+        List<Integer> anilistIds = items.stream().map(item -> item.media().anilistId()).distinct().toList();
+        Map<Integer, LibraryEntry> localEntries = library
+                .findAllForUpdateByUserIdAndMediaAnilistIdIn(userId, anilistIds).stream()
+                .collect(Collectors.toMap(entry -> entry.getMedia().getAnilistId(), entry -> entry));
+        Map<Integer, Media> localMedia = media.findAllByAnilistIdIn(anilistIds).stream()
+                .collect(Collectors.toMap(Media::getAnilistId, item -> item));
+        List<Media> mediaToSave = new java.util.ArrayList<>();
+        List<LibraryEntry> entriesToSave = new java.util.ArrayList<>();
         int created = 0;
         int updated = 0;
         for (AniListLibraryItem item : items) {
             int anilistId = item.media().anilistId();
-            LibraryEntry existing = library.findForUpdateByUserIdAndMediaAnilistId(userId, anilistId).orElse(null);
+            LibraryEntry existing = localEntries.get(anilistId);
             AniListImportService.LocalState expected = expectedBefore.get(anilistId);
             if (existing == null && expected != null || existing != null && !sameState(existing, expected)) {
                 throw new com.animelist.backend.exception.BusinessException(
                         item.media().title() + ": la biblioteca cambió durante la sincronización. Iníciala de nuevo.");
             }
             if (existing == null) {
-                Media localMedia = media.findByAnilistId(anilistId).orElseGet(Media::new);
-                copyExternalMedia(item.media(), localMedia);
-                localMedia = media.save(localMedia);
+                Media importedMedia = localMedia.computeIfAbsent(anilistId, ignored -> new Media());
+                copyExternalMedia(item.media(), importedMedia);
+                mediaToSave.add(importedMedia);
                 LibraryEntry entry = new LibraryEntry();
-                entry.setMedia(localMedia);
+                entry.setMedia(importedMedia);
                 entry.setUser(profile);
                 copyTracking(item, entry);
-                library.save(entry);
+                entriesToSave.add(entry);
                 created++;
             } else {
                 copyExternalMedia(item.media(), existing.getMedia());
-                media.save(existing.getMedia());
+                mediaToSave.add(existing.getMedia());
                 copyTracking(item, existing);
-                library.save(existing);
+                entriesToSave.add(existing);
                 updated++;
             }
         }
+        media.saveAll(mediaToSave);
+        library.saveAll(entriesToSave);
         return new BatchResult(items.size(), created, updated);
     }
 

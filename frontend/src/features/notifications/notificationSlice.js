@@ -56,8 +56,7 @@ const slice = createSlice({
       if (action.payload?.attemptedAt) state.lastSyncAttemptAt = action.payload.attemptedAt
     })
     .addCase(markNotificationRead.fulfilled, (state, action) => { const item = state.items.find((entry) => entry.id === action.payload); if (item && !item.read) { item.read = true; state.unreadCount = Math.max(0, state.unreadCount - 1) } })
-    .addCase(markNotificationsRead.pending, (state, action) => { const ids = new Set(action.meta.arg); let changed = 0; state.items.forEach((item) => { if (ids.has(item.id) && !item.read) { item.read = true; changed += 1 } }); state.unreadCount = Math.max(0, state.unreadCount - changed) })
-    .addCase(markAllNotificationsRead.pending, (state) => { state.items.forEach((item) => { item.read = true }); state.unreadCount = 0 })
+    .addCase(markNotificationsRead.fulfilled, (state, action) => { const ids = new Set(action.payload); let changed = 0; state.items.forEach((item) => { if (ids.has(item.id) && !item.read) { item.read = true; changed += 1 } }); state.unreadCount = Math.max(0, state.unreadCount - changed) })
     .addCase(markAllNotificationsRead.fulfilled, (state) => { state.items.forEach((item) => { item.read = true }); state.unreadCount = 0 })
 })
 export default slice.reducer

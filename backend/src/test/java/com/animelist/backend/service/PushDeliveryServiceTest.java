@@ -21,6 +21,32 @@ import tools.jackson.databind.ObjectMapper;
 
 class PushDeliveryServiceTest {
     @Test
+    void finishesClaimedDeliveryWhenSubscriptionWasDisabled() {
+        PushDeliveryRepository deliveries = mock(PushDeliveryRepository.class);
+        PushDeliveryClaimService claims = mock(PushDeliveryClaimService.class);
+        PushSubscriptionRepository subscriptions = mock(PushSubscriptionRepository.class);
+        WebPushGateway gateway = mock(WebPushGateway.class);
+        PushDeliveryService service = new PushDeliveryService(deliveries, claims, subscriptions,
+                mock(CurrentUserService.class), gateway, mock(ObjectMapper.class));
+        PushSubscription subscription = new PushSubscription();
+        subscription.setId(11L);
+        PushDelivery delivery = new PushDelivery();
+        delivery.setId(23L);
+        delivery.setSubscription(subscription);
+        when(claims.claim(50)).thenReturn(List.of(delivery));
+        // The scheduler only runs when push is configured; the subscription can be
+        // disabled between claiming the row and attempting the delivery.
+        when(gateway.available()).thenReturn(true);
+        when(subscriptions.findById(11L)).thenReturn(Optional.empty());
+
+        service.deliverPending();
+
+        assertEquals("SKIPPED", delivery.getStatus());
+        assertEquals("Suscripción inactiva", delivery.getLastError());
+        verify(deliveries).save(delivery);
+    }
+
+    @Test
     void sendsCommunityReminderBackToTheHomePage() throws Exception {
         PushDeliveryRepository deliveries = mock(PushDeliveryRepository.class);
         PushDeliveryClaimService claims = mock(PushDeliveryClaimService.class);

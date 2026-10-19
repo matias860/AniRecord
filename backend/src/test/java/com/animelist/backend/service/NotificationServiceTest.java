@@ -95,13 +95,7 @@ class NotificationServiceTest {
         when(currentUser.require()).thenReturn(user);
         when(auth.validToken()).thenReturn("token");
         Set<Integer> storedIds = new HashSet<>();
-        when(notifications.existsByUserIdAndAnilistNotificationId(any(), any()))
-                .thenAnswer(invocation -> storedIds.contains(invocation.getArgument(1, Integer.class)));
-        when(notifications.save(any(AppNotification.class))).thenAnswer(invocation -> {
-            AppNotification notification = invocation.getArgument(0);
-            storedIds.add(notification.getAnilistNotificationId());
-            return notification;
-        });
+        mockBatchStorage(notifications, storedIds, null);
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(times(6), requestTo("https://graphql.anilist.co"))
@@ -129,13 +123,7 @@ class NotificationServiceTest {
         when(currentUser.require()).thenReturn(user);
         when(auth.validToken()).thenReturn("token");
         Set<Integer> storedIds = new HashSet<>(Set.of(200));
-        when(notifications.existsByUserIdAndAnilistNotificationId(any(), any()))
-                .thenAnswer(invocation -> storedIds.contains(invocation.getArgument(1, Integer.class)));
-        when(notifications.save(any(AppNotification.class))).thenAnswer(invocation -> {
-            AppNotification notification = invocation.getArgument(0);
-            storedIds.add(notification.getAnilistNotificationId());
-            return notification;
-        });
+        mockBatchStorage(notifications, storedIds, null);
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         AtomicInteger response = new AtomicInteger();
@@ -271,14 +259,7 @@ class NotificationServiceTest {
         when(auth.validToken()).thenReturn("token");
         Set<Integer> storedIds = new HashSet<>();
         Map<Integer, Boolean> readState = new HashMap<>();
-        when(notifications.existsByUserIdAndAnilistNotificationId(any(), any()))
-                .thenAnswer(invocation -> storedIds.contains(invocation.getArgument(1, Integer.class)));
-        when(notifications.save(any(AppNotification.class))).thenAnswer(invocation -> {
-            AppNotification notification = invocation.getArgument(0);
-            storedIds.add(notification.getAnilistNotificationId());
-            readState.put(notification.getAnilistNotificationId(), notification.getRead());
-            return notification;
-        });
+        mockBatchStorage(notifications, storedIds, readState);
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         AtomicInteger response = new AtomicInteger();
@@ -324,8 +305,9 @@ class NotificationServiceTest {
         local.setRead(false);
         when(currentUser.require()).thenReturn(user);
         when(auth.validToken()).thenReturn("token");
-        when(notifications.existsByUserIdAndAnilistNotificationId(13L, 700)).thenReturn(false);
-        when(notifications.findByUserIdAndSourceKey(13L, "AIRING:99:4")).thenReturn(Optional.of(local));
+        when(notifications.findByUserIdAndAnilistNotificationIdIn(any(), any())).thenReturn(List.of());
+        when(notifications.findByUserIdAndSourceKeyIn(any(), any())).thenReturn(List.of(local));
+        when(notifications.saveAll(any())).thenAnswer(invocation -> invocation.getArgument(0));
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("https://graphql.anilist.co")).andRespond(withSuccess("""
@@ -338,7 +320,7 @@ class NotificationServiceTest {
 
         assertEquals(0, service.sync());
         assertEquals(700, local.getAnilistNotificationId());
-        verify(notifications).save(local);
+        verify(notifications).saveAll(any());
         server.verify();
     }
 
@@ -353,14 +335,31 @@ class NotificationServiceTest {
 
     private Set<Integer> storedNotifications(AppNotificationRepository notifications, Integer... existingIds) {
         Set<Integer> storedIds = new HashSet<>(Set.of(existingIds));
-        when(notifications.existsByUserIdAndAnilistNotificationId(any(), any()))
-                .thenAnswer(invocation -> storedIds.contains(invocation.getArgument(1, Integer.class)));
-        when(notifications.save(any(AppNotification.class))).thenAnswer(invocation -> {
-            AppNotification notification = invocation.getArgument(0);
-            storedIds.add(notification.getAnilistNotificationId());
-            return notification;
-        });
+        mockBatchStorage(notifications, storedIds, null);
         return storedIds;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void mockBatchStorage(AppNotificationRepository notifications, Set<Integer> storedIds,
+            Map<Integer, Boolean> readState) {
+        when(notifications.findByUserIdAndAnilistNotificationIdIn(any(), any())).thenAnswer(invocation -> {
+            java.util.Collection<Integer> requested = invocation.getArgument(1);
+            return requested.stream().filter(storedIds::contains).map(id -> {
+                AppNotification notification = new AppNotification();
+                notification.setId(id.longValue());
+                notification.setAnilistNotificationId(id);
+                return notification;
+            }).toList();
+        });
+        when(notifications.findByUserIdAndSourceKeyIn(any(), any())).thenReturn(List.of());
+        when(notifications.saveAll(any())).thenAnswer(invocation -> {
+            Iterable<AppNotification> saved = invocation.getArgument(0);
+            saved.forEach(notification -> {
+                storedIds.add(notification.getAnilistNotificationId());
+                if (readState != null) readState.put(notification.getAnilistNotificationId(), notification.getRead());
+            });
+            return saved;
+        });
     }
 
     private String page(int id, boolean hasNextPage) {

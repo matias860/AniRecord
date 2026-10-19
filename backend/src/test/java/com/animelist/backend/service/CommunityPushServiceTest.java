@@ -48,17 +48,19 @@ class CommunityPushServiceTest {
                 "Mozilla/5.0 (Linux; Android 16; Mobile) Chrome/152");
         when(gateway.available()).thenReturn(true);
         when(subscriptions.findByEnabledTrue()).thenReturn(List.of(subscription));
-        when(topNine.existsByUserIdAndPeriodStart(anyLong(), any())).thenReturn(false);
-        when(recommendations.existsByUserIdAndWeekStart(anyLong(), any())).thenReturn(false);
-        when(notifications.findByUserIdAndSourceKey(anyLong(), anyString())).thenReturn(Optional.empty());
+        when(topNine.findUserIdsByPeriodStartAndUserIdIn(any(), any())).thenReturn(List.of());
+        when(recommendations.findUserIdsByWeekStartAndUserIdIn(any(), any())).thenReturn(List.of());
+        when(notifications.findByUserIdInAndSourceKeyIn(any(), any())).thenReturn(List.of());
         List<AppNotification> savedNotifications = new ArrayList<>();
-        when(notifications.save(any())).thenAnswer(invocation -> {
-            AppNotification notification = invocation.getArgument(0);
-            notification.setId((long) savedNotifications.size() + 1);
-            savedNotifications.add(notification);
-            return notification;
+        when(notifications.saveAll(any())).thenAnswer(invocation -> {
+            Iterable<AppNotification> batch = invocation.getArgument(0);
+            batch.forEach(notification -> {
+                notification.setId((long) savedNotifications.size() + 1);
+                savedNotifications.add(notification);
+            });
+            return savedNotifications;
         });
-        when(deliveries.existsBySubscriptionIdAndNotificationId(anyLong(), anyLong())).thenReturn(false);
+        when(deliveries.findBySubscriptionIdInAndNotificationIdIn(any(), any())).thenReturn(List.of());
 
         service.publishAvailablePrompts();
 
@@ -66,7 +68,7 @@ class CommunityPushServiceTest {
                 savedNotifications.stream().map(AppNotification::getNotificationType).toList());
         assertTrue(savedNotifications.get(0).getSourceKey().endsWith("2026-10-16"));
         assertTrue(savedNotifications.get(1).getSourceKey().endsWith("2026-10-12"));
-        verify(deliveries, org.mockito.Mockito.times(2)).save(any(PushDelivery.class));
+        verify(deliveries).saveAll(any());
     }
 
     @Test
@@ -79,8 +81,8 @@ class CommunityPushServiceTest {
 
         service.publishAvailablePrompts();
 
-        verify(notifications, never()).save(any());
-        verify(deliveries, never()).save(any());
+        verify(notifications, never()).saveAll(any());
+        verify(deliveries, never()).saveAll(any());
     }
 
     private PushSubscription subscription(AppUser user, Long id, String userAgent) {

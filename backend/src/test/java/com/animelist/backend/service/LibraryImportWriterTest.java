@@ -79,7 +79,8 @@ class LibraryImportWriterTest {
         AniListLibraryItem remote = new AniListLibraryItem(media(10, "Clevatess"), 13,
                 new BigDecimal("8.0"), 0, TrackingStatus.COMPLETED, null, LocalDate.of(2026, 10, 8));
         when(users.findById(1L)).thenReturn(Optional.of(user));
-        when(library.findForUpdateByUserIdAndMediaAnilistId(1L, 10)).thenReturn(Optional.of(local));
+        when(library.findAllForUpdateByUserIdAndMediaAnilistIdIn(any(), any())).thenReturn(List.of(local));
+        when(media.findAllByAnilistIdIn(any())).thenReturn(List.of(localMedia));
 
         writer.applyBatch(1L, List.of(remote), java.util.Map.of(10,
                 new AniListImportService.LocalState(7, null, 0, TrackingStatus.IN_PROGRESS, null, null)));
@@ -87,7 +88,7 @@ class LibraryImportWriterTest {
         assertEquals(13, local.getProgress());
         assertEquals(TrackingStatus.COMPLETED, local.getTrackingStatus());
         assertEquals(new BigDecimal("8.0"), local.getPersonalScore());
-        verify(library).save(local);
+        verify(library).saveAll(any());
     }
 
     @Test

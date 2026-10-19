@@ -2,6 +2,7 @@ package com.animelist.backend.repository;
 
 import com.animelist.backend.entity.AppNotification;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,10 +10,12 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface AppNotificationRepository extends JpaRepository<AppNotification, Long> {
-    boolean existsByUserIdAndAnilistNotificationId(Long userId, Integer id);
-    Optional<AppNotification> findByUserIdAndAnilistNotificationId(Long userId, Integer id);
     boolean existsByUserIdAndSourceKey(Long userId, String sourceKey);
     Optional<AppNotification> findByUserIdAndSourceKey(Long userId, String sourceKey);
+    List<AppNotification> findByUserIdAndAnilistNotificationIdIn(Long userId, Collection<Integer> ids);
+    List<AppNotification> findByUserIdAndSourceKeyIn(Long userId, Collection<String> sourceKeys);
+    @org.springframework.data.jpa.repository.EntityGraph(attributePaths = "user")
+    List<AppNotification> findByUserIdInAndSourceKeyIn(Collection<Long> userIds, Collection<String> sourceKeys);
     /**
      * Only select fields required by the UI. This keeps notification reads working
      * while an additive schema migration is still being applied in production.

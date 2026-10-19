@@ -215,12 +215,37 @@ public class AniListClient {
                   seasonYear
                   tags { name rank description category isMediaSpoiler }
                   volumes
-                  relations {
-                    edges {
-                      relationType(version: 2)
-                      node { id type format title { romaji english native } coverImage { large } }
-                    }
-                  }
+                }
+              }
+            }
+            """;
+    private static final String ASSISTANT_CATALOG_QUERY_TEMPLATE = """
+            query AssistantCatalog(%s) {
+              Page(page: $page, perPage: $perPage) {
+                pageInfo { currentPage hasNextPage }
+                media(%s) { ...AssistantMediaFields }
+              }
+            }
+            fragment AssistantMediaFields on Media {
+              id
+              type
+              format
+              countryOfOrigin
+              title { romaji english native }
+              coverImage { large }
+              genres
+              startDate { year }
+              episodes
+              chapters
+              status
+              season
+              seasonYear
+              tags { name rank description category isMediaSpoiler }
+              volumes
+              relations {
+                edges {
+                  relationType(version: 2)
+                  node { id type format title { romaji english native } coverImage { large } }
                 }
               }
             }
@@ -680,7 +705,7 @@ public class AniListClient {
         });
         String query = type == null
                 ? MIXED_ASSISTANT_QUERY_TEMPLATE.formatted(declarations, arguments, arguments)
-                : CATALOG_QUERY_TEMPLATE.formatted(declarations, arguments);
+                : ASSISTANT_CATALOG_QUERY_TEMPLATE.formatted(declarations, arguments);
         Map<String, Object> data = execute(query, variables);
         if (type == null) {
             Map<String, Object> anime = asMap(data.get("anime"));

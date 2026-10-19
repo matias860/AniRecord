@@ -11,6 +11,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface PushDeliveryRepository extends JpaRepository<PushDelivery, Long> {
     boolean existsBySubscriptionIdAndNotificationId(Long subscriptionId, Long notificationId);
+    List<PushDelivery> findBySubscriptionIdInAndNotificationIdIn(
+            List<Long> subscriptionIds, List<Long> notificationIds);
 
     @Query("""
         select delivery.id from PushDelivery delivery

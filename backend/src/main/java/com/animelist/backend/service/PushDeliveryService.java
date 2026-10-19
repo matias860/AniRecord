@@ -65,7 +65,10 @@ public class PushDeliveryService {
     private void attempt(PushDelivery delivery) {
         PushSubscription subscription = subscriptions.findById(delivery.getSubscription().getId())
                 .filter(PushSubscription::isEnabled).orElse(null);
-        if (subscription == null) return;
+        if (subscription == null) {
+            finish(delivery, "SKIPPED", "Suscripción inactiva");
+            return;
+        }
         try {
             var notification = delivery.getNotification();
             Map<String, Object> message = new LinkedHashMap<>();

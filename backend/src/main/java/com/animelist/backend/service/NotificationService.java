@@ -14,6 +14,8 @@ import java.time.Duration;
 import java.sql.Timestamp;
 import java.net.http.HttpClient;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
@@ -46,6 +48,7 @@ public class NotificationService {
     private final AniListAuthService auth;
     private final CurrentUserService currentUser;
     private final RestClient client;
+    private final Map<Long, ReentrantLock> syncLocks = new ConcurrentHashMap<>();
     @Autowired
     public NotificationService(AppNotificationRepository repository, AppUserRepository users, AniListAuthService auth, CurrentUserService currentUser) {
         this(repository, users, auth, currentUser, notificationClient());
@@ -73,7 +76,7 @@ public class NotificationService {
             if (user.getAccountType() == AccountType.LOCAL) return new SyncResult(true, 0);
             String token = auth.validToken(user);
             if (token == null) return new SyncResult(false, 0);
-            int added = sync(user.getNotificationsInitializedAt() == null, token);
+            int added = withSyncLock(user.getId(), () -> sync(user, user.getNotificationsInitializedAt() == null, token));
             return new SyncResult(true, added);
         }
         catch (RuntimeException exception) {
@@ -87,21 +90,22 @@ public class NotificationService {
     @Transactional
     @SuppressWarnings("unchecked")
     public int sync() {
+        var user = currentUser.require();
         String token = auth.validToken();
-        return token == null ? 0 : sync(false, token);
+        return token == null ? 0 : withSyncLock(user.getId(), () -> sync(user, false, token));
     }
 
     @Transactional
     @SuppressWarnings("unchecked")
     public int initialSync() {
+        var user = currentUser.require();
         String token = auth.validToken();
-        return token == null ? 0 : sync(true, token);
+        return token == null ? 0 : withSyncLock(user.getId(), () -> sync(user, true, token));
     }
 
     @Transactional
     @SuppressWarnings("unchecked")
-    private int sync(boolean markImportedAsRead, String token) {
-        var user=currentUser.require();
+    private int sync(com.animelist.backend.entity.AppUser user, boolean markImportedAsRead, String token) {
         Integer originalBackfillPage = user.getNotificationBackfillPage();
         Integer originalCatchupPage = user.getNotificationCatchupPage();
         Integer originalCatchupAnchorId = user.getNotificationCatchupAnchorId();
@@ -132,6 +136,16 @@ public class NotificationService {
                 || !Objects.equals(originalCatchupPage, user.getNotificationCatchupPage())
                 || !Objects.equals(originalCatchupAnchorId, user.getNotificationCatchupAnchorId())) users.save(user);
         return added;
+    }
+
+    private int withSyncLock(Long userId, java.util.function.IntSupplier action) {
+        ReentrantLock lock = syncLocks.computeIfAbsent(userId, ignored -> new ReentrantLock());
+        lock.lock();
+        try {
+            return action.getAsInt();
+        } finally {
+            lock.unlock();
+        }
     }
 
     private int syncSequentially(com.animelist.backend.entity.AppUser user, String token, boolean markImportedAsRead) {
@@ -284,7 +298,8 @@ public class NotificationService {
         }
         Map<String, Object> page = (Map<String, Object>) rawPage;
         List<Map<String, Object>> items = (List<Map<String, Object>>) page.getOrDefault("notifications", List.of());
-        int added = 0;
+        record ImportedItem(Integer externalId, AppNotification mapped) {}
+        List<ImportedItem> importedItems = new ArrayList<>();
         boolean reachedKnownBoundary = false;
         Integer firstNotificationId = null;
         List<Integer> notificationIds = new ArrayList<>(items.size());
@@ -296,28 +311,60 @@ public class NotificationService {
             if (firstNotificationId == null) firstNotificationId = externalId;
             notificationIds.add(externalId);
             if (!shouldImport(typename, episode)) continue;
-            if (repository.existsByUserIdAndAnilistNotificationId(user.getId(), externalId)) {
+            importedItems.add(new ImportedItem(externalId, map(item, typename, episode, externalId)));
+        }
+        Set<Integer> externalIds = importedItems.stream().map(ImportedItem::externalId).collect(java.util.stream.Collectors.toSet());
+        Set<String> sourceKeys = importedItems.stream().map(ImportedItem::mapped).filter(Objects::nonNull)
+                .map(AppNotification::getSourceKey).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        Map<Integer, AppNotification> byExternalId = externalIds.isEmpty() ? new HashMap<>()
+                : repository.findByUserIdAndAnilistNotificationIdIn(user.getId(), externalIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(AppNotification::getAnilistNotificationId, item -> item));
+        Map<String, AppNotification> bySourceKey = sourceKeys.isEmpty() ? new HashMap<>()
+                : repository.findByUserIdAndSourceKeyIn(user.getId(), sourceKeys).stream()
+                        .collect(java.util.stream.Collectors.toMap(AppNotification::getSourceKey, item -> item));
+        List<AppNotification> toSave = new ArrayList<>();
+        List<AppNotification> toDelete = new ArrayList<>();
+        int added = 0;
+        for (ImportedItem importedItem : importedItems) {
+            AppNotification existing = byExternalId.get(importedItem.externalId());
+            AppNotification notification = importedItem.mapped();
+            if (existing != null) {
                 reachedKnownBoundary = true;
-                reconcileExistingAiring(user.getId(), item, typename, episode, externalId);
+                AppNotification local = notification == null || notification.getSourceKey() == null
+                        ? null : bySourceKey.get(notification.getSourceKey());
+                if (local != null && !Objects.equals(existing.getId(), local.getId())) {
+                    existing.setRead(Boolean.TRUE.equals(existing.getRead()) || Boolean.TRUE.equals(local.getRead()));
+                    existing.setSourceKey(notification.getSourceKey());
+                    toDelete.add(local);
+                    toSave.add(existing);
+                    bySourceKey.put(notification.getSourceKey(), existing);
+                }
                 continue;
             }
             reachedKnownBoundary = false;
-            AppNotification notification = map(item, typename, episode, externalId);
             if (notification != null) {
                 notification.setUser(user);
                 notification.setRead(markImportedAsRead);
                 if (notification.getSourceKey() != null) {
-                    Optional<AppNotification> local = repository.findByUserIdAndSourceKey(user.getId(), notification.getSourceKey());
-                    if (local.isPresent()) {
-                        mergeImported(local.get(), notification, markImportedAsRead);
+                    AppNotification local = bySourceKey.get(notification.getSourceKey());
+                    if (local != null) {
+                        mergeImported(local, notification, markImportedAsRead, toSave);
+                        byExternalId.put(importedItem.externalId(), local);
                         reachedKnownBoundary = true;
                         continue;
                     }
                 }
-                repository.save(notification);
+                toSave.add(notification);
+                byExternalId.put(importedItem.externalId(), notification);
+                if (notification.getSourceKey() != null) bySourceKey.put(notification.getSourceKey(), notification);
                 added++;
             }
         }
+        if (!toDelete.isEmpty()) {
+            repository.deleteAll(toDelete);
+            repository.flush();
+        }
+        if (!toSave.isEmpty()) repository.saveAll(toSave);
         Map<String, Object> pageInfo = page.get("pageInfo") instanceof Map<?, ?> info ? (Map<String, Object>) info : Map.of();
         return new PageResult(added, reachedKnownBoundary, Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
                 firstNotificationId, List.copyOf(notificationIds));
@@ -368,25 +415,12 @@ public class NotificationService {
         return "AiringNotification".equals(typename) && mediaId != null && episode != null
                 ? "AIRING:" + mediaId + ':' + episode : null;
     }
-    private void mergeImported(AppNotification target, AppNotification imported, boolean markImportedAsRead) {
+    private void mergeImported(AppNotification target, AppNotification imported, boolean markImportedAsRead,
+            List<AppNotification> toSave) {
         target.setAnilistNotificationId(imported.getAnilistNotificationId());
         target.setRead(Boolean.TRUE.equals(target.getRead()) || markImportedAsRead);
         if (target.getCoverImage() == null) target.setCoverImage(imported.getCoverImage());
-        repository.save(target);
-    }
-    private void reconcileExistingAiring(Long userId, Map<String, Object> item, String typename, Integer episode, Integer externalId) {
-        AppNotification mapped = map(item, typename, episode, externalId);
-        if (mapped == null || mapped.getSourceKey() == null) return;
-        Optional<AppNotification> imported = repository.findByUserIdAndAnilistNotificationId(userId, externalId);
-        Optional<AppNotification> local = repository.findByUserIdAndSourceKey(userId, mapped.getSourceKey());
-        if (imported.isEmpty() || local.isEmpty() || imported.get() == local.get()
-                || Objects.equals(imported.get().getId(), local.get().getId())) return;
-        AppNotification importedNotification = imported.get();
-        importedNotification.setRead(Boolean.TRUE.equals(importedNotification.getRead()) || Boolean.TRUE.equals(local.get().getRead()));
-        repository.delete(local.get());
-        repository.flush();
-        importedNotification.setSourceKey(mapped.getSourceKey());
-        repository.save(importedNotification);
+        if (!toSave.contains(target)) toSave.add(target);
     }
     private String message(Map<String, Object> item, NotificationType type) { Object context = item.get("context"); Object reason = item.get("reason"); return switch(type) { case FIRST_EPISODE -> "Se estrenó el primer episodio"; case AIRING_EPISODE -> "Se estrenó el episodio " + number(item.get("episode")); case RELATED_MEDIA_ADDITION -> Objects.toString(context, "Se anunció una nueva obra relacionada"); case MEDIA_DATA_CHANGE -> Objects.toString(reason, Objects.toString(context, "AniList actualizó información importante")); case MEDIA_MERGE -> Objects.toString(reason, "AniList fusionó esta ficha"); case MEDIA_DELETION -> Objects.toString(reason, "AniList eliminó esta ficha"); case TOP_NINE_AVAILABLE -> "Ya podés armar un nuevo 3×3"; case WEEKLY_RECOMMENDATION_AVAILABLE -> "Ya podés recomendar una serie esta semana"; }; }
     private Integer number(Object value) { return value instanceof Number number ? number.intValue() : null; }

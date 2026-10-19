@@ -5,9 +5,12 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AniListClientTest {
 
@@ -99,10 +102,32 @@ class AniListClientTest {
         });
     }
 
+    @Test
+    void regularCatalogDoesNotRequestRelationsButAssistantDoes() throws Exception {
+        String response = """
+                {"data":{"Page":{"pageInfo":{"currentPage":1,"hasNextPage":false},"media":[]}}}
+                """;
+        AtomicReference<String> request = new AtomicReference<>();
+        withResponse(response, request, client -> client.browse(
+                com.animelist.backend.enums.MediaType.ANIME, 1, 20, null, null, null,
+                List.of(), List.of(), null, null, null, "POPULARITY"));
+        assertFalse(request.get().contains("relations"));
+
+        withResponse(response, request, client -> client.browseForAssistant(
+                com.animelist.backend.enums.MediaType.ANIME, 20, null, null, null,
+                List.of(), List.of(), null, null, null, "POPULARITY"));
+        assertTrue(request.get().contains("relations"));
+    }
+
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {
+        withResponse(responseBody, new AtomicReference<>(), assertion);
+    }
+
+    private static void withResponse(String responseBody, AtomicReference<String> requestBody,
+            ThrowingConsumer<AniListClient> assertion) throws Exception {
         var server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         server.createContext("/", exchange -> {
-            exchange.getRequestBody().readAllBytes();
+            requestBody.set(new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
             byte[] response = responseBody.getBytes(StandardCharsets.UTF_8);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
             exchange.sendResponseHeaders(200, response.length);

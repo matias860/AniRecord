@@ -8,9 +8,14 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TopNineSubmissionRepository extends JpaRepository<TopNineSubmission, Long> {
     boolean existsByUserIdAndPeriodStart(Long userId, LocalDate periodStart);
+
+    @Query("select submission.user.id from TopNineSubmission submission where submission.periodStart = :periodStart and submission.user.id in :userIds")
+    List<Long> findUserIdsByPeriodStartAndUserIdIn(
+            @Param("periodStart") LocalDate periodStart, @Param("userIds") List<Long> userIds);
 
     @Query("select submission.id from TopNineSubmission submission where submission.periodStart = :periodStart order by submission.publishedAt desc")
     List<Long> findIdsByPeriodStartOrderByPublishedAtDesc(LocalDate periodStart, Pageable pageable);

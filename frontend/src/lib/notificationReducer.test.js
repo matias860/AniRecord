@@ -85,10 +85,23 @@ test('limited notification history does not replace the server unread total', ()
   assert.equal(state.items.length, 1)
 
   state = notificationReducer(state, {
-    type: markNotificationsRead.pending.type,
-    meta: { arg: [1] },
+    type: markNotificationsRead.fulfilled.type,
+    payload: [1],
   })
 
   assert.equal(state.unreadCount, 26)
   assert.equal(state.items[0].read, true)
+})
+
+test('failed read request keeps visible notifications unread', () => {
+  const state = notificationReducer({
+    items: [existingNotification],
+    unreadCount: 1,
+  }, {
+    type: markNotificationsRead.rejected.type,
+    meta: { arg: [1] },
+  })
+
+  assert.equal(state.unreadCount, 1)
+  assert.equal(state.items[0].read, false)
 })
