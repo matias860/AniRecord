@@ -132,8 +132,28 @@ class RecommendationAssistantServiceTest {
         assertTrue(response.intent().excludedGenres().contains("Drama"));
         assertTrue(response.understood().contains("Sin Drama"));
         assertTrue(response.understood().contains("En emisión"));
-        assertTrue(response.results().get(0).reason().contains("Incluye Yuri"));
+        assertTrue(response.results().get(0).reason().contains("Yuri tiene 90% de relevancia"));
         verify(gemini, never()).interpret(anyString(), any(), anyList(), anyList());
+    }
+
+    @Test
+    void yuriUsesAniListRelevanceAndPenalizesThemesRelatedToDrama() {
+        AniListMediaResponse incidentalYuri = candidate(20, "Yuri incidental", List.of("Psychological", "Horror", "Mystery"),
+                List.of(new MediaTagResponse("Yuri", 35, null, null), new MediaTagResponse("Tragedy", 90, null, null)));
+        AniListMediaResponse dramaticYuri = candidate(21, "Yuri dramático", List.of("Psychological", "Mystery"),
+                List.of(new MediaTagResponse("Yuri", 90, null, null), new MediaTagResponse("Tragedy", 85, null, null)));
+        AniListMediaResponse centralYuri = candidate(22, "Yuri tranquilo", List.of("Romance", "Slice of Life"),
+                List.of(new MediaTagResponse("Yuri", 82, null, null)));
+        when(library.findSummaries(42L, MediaType.MANGA, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.MANGA), anyInt(), any(), any(), any(), anyList(), eq(List.of("Yuri")),
+                any(), any(), any(), any())).thenReturn(new AniListSearchResponse(1, false,
+                        List.of(incidentalYuri, dramaticYuri, centralYuri)));
+
+        var response = service.recommend("Quiero un manga yuri con varios capítulos y sin mucho drama", null);
+
+        assertEquals(List.of(22), response.results().stream().map(item -> item.anilistId()).toList());
+        assertTrue(response.results().get(0).reason().contains("82% de relevancia"));
+        assertEquals(20, response.intent().minimumUnits());
     }
 
     @Test
@@ -188,6 +208,12 @@ class RecommendationAssistantServiceTest {
         return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title, "cover", null, null,
                 List.of(), null, 12, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
                 List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("School", 70, null, null)), 2024);
+    }
+
+    private AniListMediaResponse candidate(int id, String title, List<String> genres, List<MediaTagResponse> tags) {
+        return new AniListMediaResponse(id, MediaType.MANGA, "MANGA", "JP", title, title, "cover", null, null,
+                List.of(), null, 40, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
+                List.of(), List.of(), List.of(), genres, tags, 2024);
     }
 
     private LibraryEntrySummaryResponse libraryItem(int id, String title) {

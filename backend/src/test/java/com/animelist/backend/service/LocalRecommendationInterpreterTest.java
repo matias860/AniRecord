@@ -102,6 +102,8 @@ class LocalRecommendationInterpreterTest {
         assertEquals(25, moreThan.minimumUnits());
         var lessThan = interpreter.interpret("Menos de 12 episodios", null, true).intent();
         assertEquals(11, lessThan.maximumUnits());
+        var several = interpreter.interpret("Un manga yuri con varios capítulos", null, true, List.of("Yuri")).intent();
+        assertEquals(20, several.minimumUnits());
     }
 
     @Test

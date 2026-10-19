@@ -3,6 +3,7 @@ package com.animelist.backend.service;
 import com.animelist.backend.dto.anilist.AniListMediaResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.CatalogTagResponse;
+import com.animelist.backend.dto.anilist.MediaTagResponse;
 import com.animelist.backend.dto.assistant.AssistantMediaResponse;
 import com.animelist.backend.dto.assistant.AssistantRecommendationResponse;
 import com.animelist.backend.dto.assistant.RecommendationIntent;
@@ -34,6 +35,17 @@ public class RecommendationAssistantService {
     private static final Set<String> COUNTRIES = Set.of("JP", "KR", "CN");
     private static final Set<String> ANIME_FORMATS = Set.of("TV", "TV_SHORT", "MOVIE", "SPECIAL", "OVA", "ONA", "MUSIC");
     private static final Set<String> MANGA_FORMATS = Set.of("MANGA", "NOVEL", "ONE_SHOT");
+    private static final int MIN_REQUIRED_TAG_RANK = 50;
+    private static final int MAX_CONTEXTUAL_PENALTY = 50;
+    private static final Map<String, Map<String, Integer>> RELATED_GENRE_PENALTIES = Map.of(
+            "drama", Map.of("psychological", 38, "horror", 32, "thriller", 28, "mystery", 18),
+            "horror", Map.of("psychological", 30, "thriller", 24, "mystery", 16),
+            "ecchi", Map.of("romance", 8));
+    private static final Map<String, Map<String, Integer>> RELATED_TAG_PENALTIES = Map.of(
+            "drama", Map.of("tragedy", 65, "suicide", 65, "bullying", 45, "revenge", 35,
+                    "death", 30, "war", 24, "survival", 20),
+            "horror", Map.of("body horror", 60, "gore", 55, "survival", 28, "death", 25),
+            "ecchi", Map.of("nudity", 65, "fanservice", 55, "sexual content", 65));
 
     private final CurrentUserService currentUserService;
     private final LibraryEntryRepository libraryEntries;
@@ -170,10 +182,11 @@ public class RecommendationAssistantService {
                 .filter(item -> !known.contains(item.anilistId()) && !item.anilistId().equals(referenceId))
                 .filter(item -> fits(item.totalUnits(), intent.minimumUnits(), intent.maximumUnits()))
                 .filter(item -> containsAll(item.genres(), intent.genres()))
-                .filter(item -> containsAll(item.tags().stream().map(tag -> tag.name()).toList(), intent.tags()))
+                .filter(item -> hasRelevantRequiredTags(item.tags(), intent.tags()))
                 .filter(item -> disjoint(item.genres(), intent.excludedGenres()))
-                .filter(item -> disjoint(item.tags().stream().map(tag -> tag.name()).toList(), intent.excludedTags()))
-                .sorted(Comparator.comparingInt((AniListMediaResponse item) -> score(item, scoringGenres, scoringTags, preferences))
+                .filter(item -> !hasRelevantExcludedTag(item.tags(), intent.excludedTags()))
+                .filter(item -> contextualPenalty(item, intent) <= MAX_CONTEXTUAL_PENALTY)
+                .sorted(Comparator.comparingInt((AniListMediaResponse item) -> score(item, intent, scoringGenres, scoringTags, preferences))
                         .thenComparingInt(item -> item.favourites() == null ? 0 : item.favourites()).reversed())
                 .limit(6).map(item -> toResponse(item, null, reason(item, intent, reference))).toList();
         return new CatalogSelection(results, true);
@@ -315,26 +328,30 @@ public class RecommendationAssistantService {
         return result;
     }
 
-    private int score(AniListMediaResponse item, List<String> genres, List<String> tags, Map<String, Integer> preferences) {
+    private int score(AniListMediaResponse item, RecommendationIntent intent, List<String> genres, List<String> tags,
+            Map<String, Integer> preferences) {
         int score = 0;
         for (String genre : item.genres()) {
             if (containsIgnoreCase(genres, genre)) score += 30;
             score += Math.min(8, preferences.getOrDefault(genre.toLowerCase(Locale.ROOT), 0));
         }
         for (var tag : item.tags()) {
-            if (containsIgnoreCase(tags, tag.name())) score += 20;
+            if (containsIgnoreCase(tags, tag.name())) score += relevance(tag);
             score += Math.min(5, preferences.getOrDefault(tag.name().toLowerCase(Locale.ROOT), 0));
         }
-        return score;
+        return score - contextualPenalty(item, intent);
     }
 
     private String reason(AniListMediaResponse item, RecommendationIntent intent, AniListMediaResponse reference) {
         List<String> facts = new ArrayList<>();
         List<String> matches = item.genres().stream().filter(genre -> containsIgnoreCase(intent.genres(), genre)).limit(2).toList();
         if (!matches.isEmpty()) facts.add("combina " + String.join(" y ", matches));
-        List<String> matchingTags = item.tags().stream().map(tag -> tag.name())
-                .filter(tag -> containsIgnoreCase(intent.tags(), tag)).limit(2).toList();
-        if (!matchingTags.isEmpty()) facts.add("incluye " + String.join(" y ", matchingTags));
+        List<MediaTagResponse> matchingTags = item.tags().stream()
+                .filter(tag -> containsIgnoreCase(intent.tags(), tag.name())).limit(2).toList();
+        if (!matchingTags.isEmpty()) {
+            facts.add(matchingTags.stream().map(tag -> tag.name() + " tiene " + relevance(tag)
+                    + "% de relevancia en AniList").collect(java.util.stream.Collectors.joining(" y ")));
+        }
         if (reference != null && sharesElements(item, reference)) facts.add("comparte elementos con " + reference.title());
         if (item.totalUnits() != null) facts.add("tiene " + item.totalUnits() + unitLabel(item.mediaType(), item.totalUnits()));
         if (item.releaseStatus() == ReleaseStatus.FINISHED) facts.add("está terminada");
@@ -408,6 +425,33 @@ public class RecommendationAssistantService {
             score += (int) split(item.tags()).stream().filter(tag -> containsIgnoreCase(referenceTags, tag)).count() * 10;
         }
         return score;
+    }
+    private int contextualPenalty(AniListMediaResponse item, RecommendationIntent intent) {
+        int penalty = 0;
+        for (String excluded : intent.excludedGenres()) {
+            String key = excluded.toLowerCase(Locale.ROOT);
+            Map<String, Integer> relatedGenres = RELATED_GENRE_PENALTIES.getOrDefault(key, Map.of());
+            for (String genre : item.genres()) {
+                penalty += relatedGenres.getOrDefault(genre.toLowerCase(Locale.ROOT), 0);
+            }
+            Map<String, Integer> relatedTags = RELATED_TAG_PENALTIES.getOrDefault(key, Map.of());
+            for (MediaTagResponse tag : item.tags()) {
+                int weight = relatedTags.getOrDefault(tag.name().toLowerCase(Locale.ROOT), 0);
+                penalty += weight * relevance(tag) / 100;
+            }
+        }
+        return penalty;
+    }
+    private static boolean hasRelevantRequiredTags(List<MediaTagResponse> values, List<String> required) {
+        return required.stream().allMatch(name -> values.stream().anyMatch(tag -> tag.name().equalsIgnoreCase(name)
+                && relevance(tag) >= MIN_REQUIRED_TAG_RANK));
+    }
+    private static boolean hasRelevantExcludedTag(List<MediaTagResponse> values, List<String> excluded) {
+        return excluded.stream().anyMatch(name -> values.stream().anyMatch(tag -> tag.name().equalsIgnoreCase(name)
+                && relevance(tag) >= MIN_REQUIRED_TAG_RANK));
+    }
+    private static int relevance(MediaTagResponse tag) {
+        return tag.rank() == null ? MIN_REQUIRED_TAG_RANK : Math.max(0, Math.min(100, tag.rank()));
     }
     private static boolean fits(Integer value, Integer min, Integer max) { return value == null ? min == null && max == null : (min == null || value >= min) && (max == null || value <= max); }
     private static boolean disjoint(List<String> values, List<String> excluded) { return excluded.stream().noneMatch(value -> containsIgnoreCase(values, value)); }

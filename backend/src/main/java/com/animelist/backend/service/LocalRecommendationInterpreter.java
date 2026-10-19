@@ -122,6 +122,7 @@ public class LocalRecommendationInterpreter {
         else if (exactMatch.find()) { min = max = Integer.valueOf(exactMatch.group(1)); recognized++; }
         else if (value.contains("muy corto")) { max = 12; recognized++; }
         else if (value.contains("corto")) { max = 16; recognized++; }
+        else if (value.matches(".*\\b(?:varios|muchos|bastantes)\\s+(?:episodios|capitulos)\\b.*")) { min = 20; recognized++; }
         else if (value.contains("largo")) { min = 24; recognized++; }
         Integer yearFrom = base.yearFrom(), yearTo = base.yearTo();
         Matcher yearRange = Pattern.compile("\\b(19[4-9]\\d|20\\d{2})\\s*(?:a|y|hasta|-)\\s*(19[4-9]\\d|20\\d{2})\\b").matcher(value);
