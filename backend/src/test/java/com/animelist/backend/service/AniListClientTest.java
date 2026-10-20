@@ -119,6 +119,25 @@ class AniListClientTest {
         assertTrue(request.get().contains("relations"));
     }
 
+    @Test
+    void assistantBatchLoadsRelationsAndTagRelevanceForLibraryVerification() throws Exception {
+        String response = """
+                {"data":{"Page":{"media":[{
+                  "id":20,"type":"ANIME","format":"TV","countryOfOrigin":"JP",
+                  "title":{"romaji":"Example"},"coverImage":{"large":"cover.jpg"},
+                  "startDate":{"year":2024},"genres":["Romance"],"episodes":12,"status":"FINISHED",
+                  "tags":[{"name":"Love Triangle","rank":87,"category":"Theme-Romance","isMediaSpoiler":false}],
+                  "relations":{"edges":[{"relationType":"SEQUEL","node":{"id":21,"type":"ANIME","format":"TV","title":{"romaji":"Season 2"},"coverImage":{}}}]}
+                }]}}}
+                """;
+
+        withResponse(response, client -> {
+            var media = client.getMediaForAssistant(List.of(20)).get(0);
+            assertEquals(87, media.tags().get(0).rank());
+            assertEquals("SEQUEL", media.relations().get(0).relationType());
+        });
+    }
+
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {
         withResponse(responseBody, new AtomicReference<>(), assertion);
     }

@@ -69,6 +69,28 @@ public class AniListClient {
             }
             """;
 
+    private static final String ASSISTANT_BATCH_QUERY = """
+            query AssistantMediaBatch($ids: [Int!]!, $perPage: Int!) {
+              Page(page: 1, perPage: $perPage) {
+                media(id_in: $ids) {
+                  id type format countryOfOrigin
+                  title { romaji english native }
+                  coverImage { large }
+                  genres
+                  startDate { year }
+                  episodes chapters volumes status season seasonYear
+                  tags { name rank description category isMediaSpoiler }
+                  relations {
+                    edges {
+                      relationType(version: 2)
+                      node { id type format title { romaji english native } coverImage { large } }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
     private static final String SEARCH_QUERY = """
             query SearchMedia($search: String!, $type: MediaType!, $page: Int!, $perPage: Int!) {
               Page(page: $page, perPage: $perPage) {
@@ -591,6 +613,18 @@ public class AniListClient {
                             asInteger(media.get("id")),
                             mapRelations(media.get("relations"))))
                     .forEach(result::add);
+        }
+        return result;
+    }
+
+    public List<AniListMediaResponse> getMediaForAssistant(List<Integer> anilistIds) {
+        if (anilistIds == null || anilistIds.isEmpty()) return List.of();
+        List<AniListMediaResponse> result = new ArrayList<>();
+        for (int start = 0; start < anilistIds.size(); start += 50) {
+            List<Integer> batch = anilistIds.subList(start, Math.min(start + 50, anilistIds.size()));
+            Map<String, Object> data = execute(ASSISTANT_BATCH_QUERY, Map.of("ids", batch, "perPage", batch.size()));
+            asList(asMap(data.get("Page")).get("media")).stream()
+                    .map(this::asMap).map(this::mapMedia).forEach(result::add);
         }
         return result;
     }

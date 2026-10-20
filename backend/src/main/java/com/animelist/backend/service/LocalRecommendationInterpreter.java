@@ -1,6 +1,7 @@
 package com.animelist.backend.service;
 
 import com.animelist.backend.dto.assistant.RecommendationIntent;
+import com.animelist.backend.enums.InstallmentPreference;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseStatus;
 import com.animelist.backend.enums.TrackingStatus;
@@ -18,11 +19,15 @@ import org.springframework.stereotype.Component;
 @Component
 public class LocalRecommendationInterpreter {
     private static final Map<String, String> GENRES = new LinkedHashMap<>();
-    private static final Map<String, String> TAG_ALIASES = Map.of(
-            "triangulo amoroso", "Love Triangle",
-            "amor no correspondido", "Unrequited Love",
-            "harem femenino", "Female Harem",
-            "harem masculino", "Male Harem");
+    private static final Map<String, String> TAG_ALIASES = Map.ofEntries(
+            Map.entry("triangulo amoroso", "Love Triangle"),
+            Map.entry("triangulos amorosos", "Love Triangle"),
+            Map.entry("amor no correspondido", "Unrequited Love"),
+            Map.entry("amores no correspondidos", "Unrequited Love"),
+            Map.entry("harem femenino", "Female Harem"),
+            Map.entry("haremes femeninos", "Female Harem"),
+            Map.entry("harem masculino", "Male Harem"),
+            Map.entry("haremes masculinos", "Male Harem"));
     static {
         GENRES.put("ciencia ficcion", "Sci-Fi"); GENRES.put("slice of life", "Slice of Life");
         GENRES.put("recuentos de la vida", "Slice of Life"); GENRES.put("mahou shoujo", "Mahou Shoujo");
@@ -36,13 +41,13 @@ public class LocalRecommendationInterpreter {
         GENRES.put("thriller", "Thriller");
     }
     private static final Pattern YEAR = Pattern.compile("\\b(19[4-9]\\d|20\\d{2})\\b");
-    private static final String UNIT_LABEL = "(?:episodios|capitulos)\\b";
+    private static final String UNIT_LABEL = "(?:episodios?|capitulos?|caps?)\\b";
     private static final Pattern UNIT_RANGE = Pattern.compile("(?:entre|de)\\s+(\\d{1,4})\\s+(?:y|a|hasta)\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
     private static final Pattern UNIT_LESS_THAN = Pattern.compile("menos\\s+de\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
     private static final Pattern UNIT_MORE_THAN = Pattern.compile("mas\\s+de\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
     private static final Pattern UNIT_MAXIMUM = Pattern.compile("(?:maximo|hasta)\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
     private static final Pattern UNIT_MINIMUM = Pattern.compile("(?:minimo|desde)\\s+(\\d{1,4})\\s*" + UNIT_LABEL);
-    private static final Pattern UNIT_EXACT = Pattern.compile("\\b(\\d{1,4})\\s+(?:episodios|capitulos)\\b");
+    private static final Pattern UNIT_EXACT = Pattern.compile("\\b(\\d{1,4})\\s+(?:episodios?|capitulos?|caps?)\\b");
     private static final Pattern REFERENCE = Pattern.compile(
             "(?:parecid[oa]\\s+a|similar\\s+a|(?:algo|un anime|una serie|un manga|una pel[ií]cula)\\s+como)\\s+"
                     + "(?!para\\b|de\\b|que\\b)(.+?)(?:,|\\s+pero\\b|\\s+sin\\b|\\s+con\\b|$)",
@@ -59,11 +64,15 @@ public class LocalRecommendationInterpreter {
         boolean refinement = previous != null && !replacement
                 && value.matches("^(otra|otro|pero|y |tambien|ademas|ahora|mas |menos |sin |con |hacela|hacelo|que sea).*");
         RecommendationIntent base = refinement ? previous : RecommendationIntent.empty();
+        List<MediaType> excludedMediaTypes = new ArrayList<>(safe(base.excludedMediaTypes()));
         List<String> genres = new ArrayList<>(safe(base.genres()));
         List<String> primaryGenres = new ArrayList<>(safe(base.primaryGenres()));
         List<String> tags = new ArrayList<>(safe(base.tags()));
         List<String> excluded = new ArrayList<>(safe(base.excludedGenres()));
         List<String> excludedTags = new ArrayList<>(safe(base.excludedTags()));
+        List<ReleaseStatus> excludedStatuses = new ArrayList<>(safe(base.excludedStatuses()));
+        List<String> excludedCountries = new ArrayList<>(safe(base.excludedCountries()));
+        List<String> excludedFormats = new ArrayList<>(safe(base.excludedFormats()));
         int recognized = 0;
         for (var entry : GENRES.entrySet()) {
             if (!containsTerm(value, entry.getKey())) continue;
@@ -105,23 +114,58 @@ public class LocalRecommendationInterpreter {
             }
             recognized++;
         }
-        boolean mentionsManga = value.contains("manga") || value.contains("manhwa") || value.contains("manhua");
-        boolean mentionsAnime = value.contains("anime") || value.contains("serie") || value.contains("pelicula")
-                || value.contains("temporada");
-        MediaType type = mentionsAnime && mentionsManga ? null : mentionsManga ? MediaType.MANGA : mentionsAnime ? MediaType.ANIME : base.mediaType();
+        boolean mentionsManga = hasPositiveTerm(value, "manga") || hasPositiveTerm(value, "manhwa") || hasPositiveTerm(value, "manhua");
+        boolean mentionsAnime = hasPositiveTerm(value, "anime") || hasPositiveTerm(value, "serie")
+                || hasPositiveTerm(value, "pelicula") || containsTerm(value, "temporada");
+        boolean excludesManga = isMentionedAsExcluded(value, "manga");
+        boolean excludesAnime = isMentionedAsExcluded(value, "anime") || isMentionedAsExcluded(value, "serie")
+                || isMentionedAsExcluded(value, "pelicula");
+        if (excludesManga) add(excludedMediaTypes, MediaType.MANGA); else if (mentionsManga) excludedMediaTypes.remove(MediaType.MANGA);
+        if (excludesAnime) add(excludedMediaTypes, MediaType.ANIME); else if (mentionsAnime) excludedMediaTypes.remove(MediaType.ANIME);
+        MediaType type = mentionsAnime && mentionsManga ? null : mentionsManga ? MediaType.MANGA
+                : mentionsAnime ? MediaType.ANIME : base.mediaType();
         if (mentionsAnime || mentionsManga) recognized++;
         String format = base.format();
-        if (value.contains("pelicula") || value.contains("movie")) { format = "MOVIE"; recognized++; }
-        else if (value.contains("one shot")) { format = "ONE_SHOT"; recognized++; }
-        else if (value.contains("novela")) { format = "NOVEL"; type = MediaType.MANGA; recognized++; }
+        if (isMentionedAsExcluded(value, "pelicula") || isMentionedAsExcluded(value, "movie")) {
+            format = "MOVIE".equals(format) ? null : format; add(excludedFormats, "MOVIE"); recognized++;
+        } else if (hasPositiveTerm(value, "pelicula") || hasPositiveTerm(value, "movie")) {
+            format = "MOVIE"; excludedFormats.remove("MOVIE"); recognized++;
+        }
+        if (isMentionedAsExcluded(value, "one shot")) {
+            format = "ONE_SHOT".equals(format) ? null : format; add(excludedFormats, "ONE_SHOT"); recognized++;
+        } else if (hasPositiveTerm(value, "one shot")) {
+            format = "ONE_SHOT"; excludedFormats.remove("ONE_SHOT"); recognized++;
+        }
+        if (isMentionedAsExcluded(value, "novela")) {
+            format = "NOVEL".equals(format) ? null : format; add(excludedFormats, "NOVEL"); recognized++;
+        } else if (hasPositiveTerm(value, "novela")) {
+            format = "NOVEL"; excludedFormats.remove("NOVEL"); type = MediaType.MANGA; recognized++;
+        }
         ReleaseStatus status = base.status();
-        if (value.contains("terminad") || value.contains("complet")) { status = ReleaseStatus.FINISHED; recognized++; }
-        else if (value.contains("en emision")) { status = ReleaseStatus.RELEASING; recognized++; }
-        else if (value.contains("proxim") || value.contains("todavia no sal")) { status = ReleaseStatus.NOT_YET_RELEASED; recognized++; }
+        if (mentionsStem(value, "terminad", "complet")) {
+            if (isExcludedStem(value, "terminad", "complet")) {
+                if (status == ReleaseStatus.FINISHED) status = null;
+                add(excludedStatuses, ReleaseStatus.FINISHED);
+            } else {
+                status = ReleaseStatus.FINISHED; excludedStatuses.remove(ReleaseStatus.FINISHED);
+            }
+            recognized++;
+        } else if (value.contains("en emision")) { status = ReleaseStatus.RELEASING; excludedStatuses.remove(ReleaseStatus.RELEASING); recognized++; }
+        else if (value.contains("proxim") || value.contains("todavia no sal")) { status = ReleaseStatus.NOT_YET_RELEASED; excludedStatuses.remove(ReleaseStatus.NOT_YET_RELEASED); recognized++; }
         String country = base.country();
-        if (value.contains("corean") || value.contains("manhwa")) { country = "KR"; recognized++; }
-        else if (value.contains("chin") || value.contains("manhua")) { country = "CN"; recognized++; }
-        else if (value.contains("japones")) { country = "JP"; recognized++; }
+        if (mentionsStem(value, "corean") || containsTerm(value, "manhwa")) {
+            if (isExcludedStem(value, "corean")) { if ("KR".equals(country)) country = null; add(excludedCountries, "KR"); }
+            else { country = "KR"; excludedCountries.remove("KR"); }
+            recognized++;
+        } else if (mentionsStem(value, "chin") || containsTerm(value, "manhua")) {
+            if (isExcludedStem(value, "chin")) { if ("CN".equals(country)) country = null; add(excludedCountries, "CN"); }
+            else { country = "CN"; excludedCountries.remove("CN"); }
+            recognized++;
+        } else if (mentionsStem(value, "japones")) {
+            if (isExcludedStem(value, "japones")) { if ("JP".equals(country)) country = null; add(excludedCountries, "JP"); }
+            else { country = "JP"; excludedCountries.remove("JP"); }
+            recognized++;
+        }
         String sort = base.sort();
         if (value.contains("mejor puntu") || value.contains("mejor valor")) { sort = "SCORE"; recognized++; }
         else if (value.contains("tendencia")) { sort = "TRENDING"; recognized++; }
@@ -165,17 +209,35 @@ public class LocalRecommendationInterpreter {
         Matcher ref = REFERENCE.matcher(text.trim());
         if (ref.find()) { reference = ref.group(1).trim(); recognized++; }
         boolean standaloneOnly = base.standaloneOnly();
-        if (value.matches(".*(?:sin (?:una )?(?:segunda|otra) temporada|sin continuacion(?:es)?|una sola temporada|autoconclusiv[oa]).*")) {
+        InstallmentPreference installmentPreference = base.installmentPreference() == null
+                ? InstallmentPreference.FIRST : base.installmentPreference();
+        boolean asksStandalone = value.matches(".*(?:sin (?:una )?(?:segunda|otra) temporada|que no (?:tenga|incluya) (?:una )?(?:segunda|otra) temporada|"
+                + "sin (?:temporada\\s*[2-9]|continuacion(?:es)?|otra parte)|una sola temporada|autoconclusiv[oa]).*");
+        boolean asksSequel = !asksStandalone && value.matches(".*(?:\\b(?:segunda|tercera|cuarta) temporada\\b|\\btemporada\\s*[2-9]\\b|\\bcontinuacion(?:es)?\\b).*");
+        if (asksStandalone) {
             standaloneOnly = true;
+            installmentPreference = InstallmentPreference.FIRST;
+            recognized++;
+        } else if (asksSequel) {
+            standaloneOnly = false;
+            installmentPreference = InstallmentPreference.SEQUEL;
+            recognized++;
+        } else if (value.matches(".*(?:cualquier temporada|no importa (?:la )?temporada|primera o segunda temporada).*")) {
+            standaloneOnly = false;
+            installmentPreference = InstallmentPreference.ANY;
             recognized++;
         }
         if (refinement) recognized++;
-        RecommendationIntent result = new RecommendationIntent(type, List.copyOf(genres), List.copyOf(primaryGenres),
+        RecommendationIntent result = new RecommendationIntent(type, List.copyOf(excludedMediaTypes),
+                List.copyOf(genres), List.copyOf(primaryGenres),
                 List.copyOf(tags), List.copyOf(excluded),
-                List.copyOf(excludedTags), status, country, format, sort == null ? "POPULARITY" : sort,
+                List.copyOf(excludedTags), status, List.copyOf(excludedStatuses), country,
+                List.copyOf(excludedCountries), format, List.copyOf(excludedFormats), sort == null ? "POPULARITY" : sort,
                 yearFrom, yearTo, base.season(), min, max, reference != null ? reference : base.referenceTitle(),
-                standaloneOnly, libraryOnly, libraryStatus);
-        return new ParseResult(result, !strict || recognized > 0 && !looksSubjective(value), libraryScopeSpecified);
+                installmentPreference, standaloneOnly, libraryOnly, libraryStatus);
+        boolean unresolvedRestriction = hasUnresolvedNegativeRestriction(value, allowedTags);
+        return new ParseResult(result, !strict || recognized > 0 && !looksSubjective(value) && !unresolvedRestriction,
+                libraryScopeSpecified);
     }
 
     private boolean looksSubjective(String value) {
@@ -186,21 +248,81 @@ public class LocalRecommendationInterpreter {
                 .matcher(value).find();
     }
     private static boolean isExcluded(String value, String term) {
-        String prefix = "(?:sin|no\\s+(?:quiero|busco|deseo)|(?:que\\s+)?no\\s+(?:tenga|incluya)|"
+        String prefix = "(?:sin|no(?:\\s+(?:quiero|busco|deseo|tenga|incluya|sea|este))?|(?:que\\s+)?no\\s+(?:tenga|incluya|sea|este)|"
                 + "evita|evitar|excluye|excluir|nada\\s+de|ni|tampoco)";
         String boundary = "(?:[,.;]|\\b(?:pero|aunque|en\\s+cambio|con|quiero|busco|que\\s+tenga)\\b)";
-        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])" + prefix + "\\s+"
+        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])" + prefix + "\\s+(?:(?:un|una|el|la|los|las)\\s+)?"
                 + "(?:(?!" + boundary + ").){0,120}?"
                 + "(?<![\\p{L}\\p{N}])" + Pattern.quote(term) + "(?![\\p{L}\\p{N}])")
                 .matcher(value).find();
+    }
+    private static boolean hasPositiveTerm(String value, String term) {
+        return containsTerm(value, term) && !isExcluded(value, term);
+    }
+    private static boolean isMentionedAsExcluded(String value, String term) {
+        return containsTerm(value, term) && isExcluded(value, term);
+    }
+    private static boolean mentionsStem(String value, String... stems) {
+        for (String stem : stems) if (value.matches(".*\\b" + Pattern.quote(stem) + "[a-z]*\\b.*")) return true;
+        return false;
+    }
+    private static boolean isExcludedStem(String value, String... stems) {
+        for (String stem : stems) {
+            Matcher matcher = Pattern.compile("\\b(" + Pattern.quote(stem) + "[a-z]*)\\b").matcher(value);
+            while (matcher.find()) if (isExcluded(value, matcher.group(1))) return true;
+        }
+        return false;
     }
     private static boolean isSecondaryMention(String value, String term) {
         return Pattern.compile("(?:^|[^\\p{L}\\p{N}])con\\s+(?:algo\\s+de\\s+|un\\s+poco\\s+de\\s+)?"
                 + Pattern.quote(term) + "(?:$|[^\\p{L}\\p{N}])").matcher(value).find();
     }
-    private static String normalize(String value) { return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT); }
-    private static List<String> safe(List<String> value) { return value == null ? List.of() : List.copyOf(value); }
-    private static void add(List<String> values, String value) { if (!values.contains(value)) values.add(value); }
+    private static boolean hasUnresolvedNegativeRestriction(String value, List<String> allowedTags) {
+        Matcher matcher = Pattern.compile("(?:^|\\b)(?:sin|no(?:\\s+(?:quiero|busco|deseo|tenga|incluya|sea|este))?|"
+                + "(?:que\\s+)?no\\s+(?:tenga|incluya|sea|este)|evita(?:r)?|exclu(?:ye|ir)|nada\\s+de|tampoco)\\s+"
+                + "([^,.;]+?)(?=\\s+\\b(?:pero|aunque|en cambio|con|quiero|busco|que tenga|y que sea|y sin)\\b|$)").matcher(value);
+        while (matcher.find()) {
+            String remainder = matcher.group(1);
+            for (String term : GENRES.keySet()) remainder = removeTerm(remainder, term);
+            for (String term : TAG_ALIASES.keySet()) remainder = removeTerm(remainder, term);
+            for (String term : allowedTags == null ? List.<String>of() : allowedTags) remainder = removeTerm(remainder, normalize(term));
+            for (String term : List.of("anime", "manga", "serie", "pelicula", "movie", "one shot", "novela",
+                    "japones", "japonesa", "japoneses", "japonesas", "coreano", "coreana", "chino", "china",
+                    "terminado", "terminada", "terminados", "terminadas", "completo", "completa", "completos", "completas",
+                    "segunda temporada", "otra temporada", "temporada 2", "continuacion", "continuaciones", "otra parte")) {
+                remainder = removeTerm(remainder, term);
+            }
+            remainder = remainder.replaceAll("\\b(?:un|una|el|la|los|las|mucho|mucha|muchos|muchas|algo|nada|de|del|"
+                    + "ni|y|o|tambien|tampoco|que|sea|este|esta|tenga|incluya)\\b", " ")
+                    .replaceAll("\\b\\d{1,4}\\s*(?:episodios?|capitulos?|caps?)\\b", " ")
+                    .replaceAll("[^\\p{L}\\p{N}]+", " ").trim();
+            if (remainder.matches(".*\\p{L}{3,}.*")) return true;
+        }
+        return false;
+    }
+    private static String removeTerm(String value, String term) {
+        return value.replaceAll("(?<![\\p{L}\\p{N}])" + Pattern.quote(term) + "(?![\\p{L}\\p{N}])", " ");
+    }
+    private static String normalize(String value) {
+        String normalized = Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT);
+        Map<String, Integer> numbers = Map.ofEntries(Map.entry("uno", 1), Map.entry("una", 1), Map.entry("dos", 2),
+                Map.entry("tres", 3), Map.entry("cuatro", 4), Map.entry("cinco", 5), Map.entry("seis", 6),
+                Map.entry("siete", 7), Map.entry("ocho", 8), Map.entry("nueve", 9), Map.entry("diez", 10),
+                Map.entry("once", 11), Map.entry("doce", 12), Map.entry("trece", 13), Map.entry("catorce", 14),
+                Map.entry("quince", 15), Map.entry("dieciseis", 16), Map.entry("diecisiete", 17),
+                Map.entry("dieciocho", 18), Map.entry("diecinueve", 19), Map.entry("veinte", 20),
+                Map.entry("veintiuno", 21), Map.entry("veintidos", 22), Map.entry("veintitres", 23),
+                Map.entry("veinticuatro", 24), Map.entry("veinticinco", 25), Map.entry("veintiseis", 26),
+                Map.entry("veintisiete", 27), Map.entry("veintiocho", 28), Map.entry("veintinueve", 29),
+                Map.entry("treinta", 30));
+        for (var number : numbers.entrySet()) {
+            normalized = normalized.replaceAll("\\b" + number.getKey() + "(?=\\s+(?:episodios?|capitulos?|caps?)\\b)",
+                    number.getValue().toString());
+        }
+        return normalized;
+    }
+    private static <T> List<T> safe(List<T> value) { return value == null ? List.of() : List.copyOf(value); }
+    private static <T> void add(List<T> values, T value) { if (!values.contains(value)) values.add(value); }
     private static void addIgnoreCase(List<String> values, String value) { if (values.stream().noneMatch(item -> item.equalsIgnoreCase(value))) values.add(value); }
     private static void removeIgnoreCase(List<String> values, String value) { values.removeIf(item -> item.equalsIgnoreCase(value)); }
     public record ParseResult(RecommendationIntent intent, boolean complete, boolean libraryScopeSpecified) {}

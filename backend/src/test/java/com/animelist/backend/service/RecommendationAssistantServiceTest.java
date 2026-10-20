@@ -15,6 +15,7 @@ import com.animelist.backend.dto.assistant.RecommendationIntent;
 import com.animelist.backend.dto.library.LibraryEntrySummaryResponse;
 import com.animelist.backend.entity.AppUser;
 import com.animelist.backend.enums.MediaType;
+import com.animelist.backend.enums.InstallmentPreference;
 import com.animelist.backend.enums.ReleaseStatus;
 import com.animelist.backend.enums.TrackingStatus;
 import com.animelist.backend.repository.LibraryEntryRepository;
@@ -62,6 +63,7 @@ class RecommendationAssistantServiceTest {
     @Test
     void libraryOnlyRequestDoesNotNeedCatalogSearch() {
         when(library.findSummaries(42L, null, null)).thenReturn(List.of(libraryItem(1, "Pendiente")));
+        when(aniList.getMediaForAssistant(List.of(1))).thenReturn(List.of(media(1, "Pendiente")));
         var response = service.recommend("Algo corto de mis pendientes para hoy", null);
         assertEquals(1, response.results().size());
         assertEquals(TrackingStatus.PLANNED, response.results().get(0).libraryStatus());
@@ -100,6 +102,7 @@ class RecommendationAssistantServiceTest {
         LibraryEntrySummaryResponse candidate = libraryItem(2, "Dungeon Meshi");
         when(library.findSummaries(42L, null, null)).thenReturn(List.of(referenceEntry, candidate));
         when(aniList.getMedia(1)).thenReturn(media(1, "Frieren"));
+        when(aniList.getMediaForAssistant(List.of(2))).thenReturn(List.of(media(2, "Dungeon Meshi")));
 
         var response = service.recommend("Algo de mi biblioteca parecido a Frieren", null);
 
@@ -203,8 +206,9 @@ class RecommendationAssistantServiceTest {
 
     @Test
     void explicitCatalogCorrectionOverridesAnAiAttemptToKeepLibraryScope() {
-        RecommendationIntent previous = new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(), List.of(),
-                null, null, null, "POPULARITY", null, null, null, null, null, null, false, true, TrackingStatus.PLANNED);
+        RecommendationIntent previous = new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(), List.of(), List.of(),
+                null, List.of(), null, List.of(), null, List.of(), "POPULARITY", null, null, null, null, null, null,
+                InstallmentPreference.FIRST, false, true, TrackingStatus.PLANNED);
         when(gemini.available()).thenReturn(true);
         when(quota.tryConsume(42L)).thenReturn(true);
         when(gemini.interpret(anyString(), any(), anyList(), anyList())).thenReturn(previous);
@@ -260,6 +264,77 @@ class RecommendationAssistantServiceTest {
         assertTrue(response.intent().standaloneOnly());
         assertTrue(response.understood().contains("Romance principal"));
         assertTrue(response.understood().contains("Sin continuaciones"));
+    }
+
+    @Test
+    void explicitSecondSeasonReturnsOnlySequels() {
+        AniListMediaResponse first = animeCandidate(30, "Action First", List.of("Action"), List.of(), List.of());
+        AniListMediaResponse sequel = animeCandidate(31, "Action Season 2", List.of("Action"), List.of(),
+                List.of(new MediaRelationResponse(30, "PREQUEL", MediaType.ANIME, "TV", "Action First", "cover")));
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(), eq(List.of("Action")),
+                anyList(), any(), any(), any(), any())).thenReturn(new AniListSearchResponse(1, false, List.of(first, sequel)));
+
+        var response = service.recommend("Recomendame una segunda temporada de acción", null);
+
+        assertEquals(List.of(31), response.results().stream().map(item -> item.anilistId()).toList());
+        assertEquals(InstallmentPreference.SEQUEL, response.intent().installmentPreference());
+        assertTrue(response.understood().contains("Continuaciones"));
+    }
+
+    @Test
+    void negativeCountryAndStatusFiltersAreAppliedToResults() {
+        AniListMediaResponse japaneseFinished = new AniListMediaResponse(32, MediaType.MANGA, "MANGA", "JP",
+                "Japanese", "Japanese", "cover", null, null, List.of(), null, 20, null, null,
+                ReleaseStatus.FINISHED, null, 2024, 10, null, List.of(), List.of(), List.of(),
+                List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024);
+        AniListMediaResponse koreanReleasing = new AniListMediaResponse(33, MediaType.MANGA, "MANGA", "KR",
+                "Korean", "Korean", "cover", null, null, List.of(), null, 20, null, null,
+                ReleaseStatus.RELEASING, null, 2024, 10, null, List.of(), List.of(), List.of(),
+                List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), null);
+        when(library.findSummaries(42L, MediaType.MANGA, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.MANGA), anyInt(), any(), any(), any(), eq(List.of("Romance")),
+                anyList(), isNull(), isNull(), isNull(), any())).thenReturn(
+                        new AniListSearchResponse(1, false, List.of(japaneseFinished, koreanReleasing)));
+
+        var response = service.recommend("Quiero un manga de romance no japonés que no esté terminado", null);
+
+        assertEquals(List.of(33), response.results().stream().map(item -> item.anilistId()).toList());
+        assertEquals(List.of("JP"), response.intent().excludedCountries());
+        assertEquals(List.of(ReleaseStatus.FINISHED), response.intent().excludedStatuses());
+    }
+
+    @Test
+    void libraryRecommendationsVerifyRelationsAndTagRelevance() {
+        LibraryEntrySummaryResponse continued = libraryItem(40, "Romance continued");
+        LibraryEntrySummaryResponse standalone = libraryItem(41, "Romance standalone");
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of(continued, standalone));
+        when(aniList.getMediaForAssistant(List.of(40, 41))).thenReturn(List.of(
+                animeCandidate(40, "Romance continued", List.of("Romance"),
+                        List.of(new MediaTagResponse("Love Triangle", 90, null, null)),
+                        List.of(new MediaRelationResponse(42, "SEQUEL", MediaType.ANIME, "TV", "Next", "cover"))),
+                animeCandidate(41, "Romance standalone", List.of("Romance"),
+                        List.of(new MediaTagResponse("Love Triangle", 90, null, null)), List.of())));
+
+        var response = service.recommend(
+                "De mis pendientes, un romance de 12 capítulos sin segunda temporada con triángulo amoroso", null);
+
+        assertEquals(List.of(41), response.results().stream().map(item -> item.anilistId()).toList());
+        assertTrue(response.understood().contains("Sin continuaciones"));
+    }
+
+    @Test
+    void fallbackCategoriesKeepSupportedAliases() {
+        when(aniList.getCategories()).thenThrow(new RuntimeException("offline"));
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(), eq(List.of("Romance")),
+                eq(List.of("Love Triangle")), any(), any(), any(), any()))
+                .thenReturn(new AniListSearchResponse(1, false, List.of()));
+
+        var response = service.recommend(
+                "Romance de 12 capítulos sin segunda temporada y con triángulo amoroso", null);
+
+        assertEquals(List.of("Love Triangle"), response.intent().tags());
     }
 
     private AniListMediaResponse media(int id, String title) {

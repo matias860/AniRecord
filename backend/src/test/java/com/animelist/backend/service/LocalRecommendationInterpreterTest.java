@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import com.animelist.backend.dto.assistant.RecommendationIntent;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseStatus;
+import com.animelist.backend.enums.InstallmentPreference;
 import com.animelist.backend.enums.TrackingStatus;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -173,5 +174,54 @@ class LocalRecommendationInterpreterTest {
         assertTrue(parsed.intent().standaloneOnly());
         assertEquals(12, parsed.intent().minimumUnits());
         assertEquals(12, parsed.intent().maximumUnits());
+    }
+
+    @Test
+    void understandsNaturalVariationsWithoutDroppingRestrictions() {
+        var parsed = interpreter.interpret(
+                "Quiero un romance de doce capítulos, que no tenga segunda temporada y sin triángulos amorosos",
+                null, true, List.of("Love Triangle"));
+
+        assertTrue(parsed.complete());
+        assertEquals(12, parsed.intent().minimumUnits());
+        assertEquals(12, parsed.intent().maximumUnits());
+        assertTrue(parsed.intent().standaloneOnly());
+        assertEquals(List.of("Love Triangle"), parsed.intent().excludedTags());
+    }
+
+    @Test
+    void appliesNegationToTypeCountryFormatAndStatus() {
+        var status = interpreter.interpret("Quiero un manga de romance que no esté terminado", null, true);
+        assertEquals(MediaType.MANGA, status.intent().mediaType());
+        assertNull(status.intent().status());
+        assertEquals(List.of(ReleaseStatus.FINISHED), status.intent().excludedStatuses());
+
+        var country = interpreter.interpret("Manga no japonés", null, true);
+        assertNull(country.intent().country());
+        assertEquals(List.of("JP"), country.intent().excludedCountries());
+
+        var type = interpreter.interpret("No quiero anime, quiero manga", null, true);
+        assertEquals(MediaType.MANGA, type.intent().mediaType());
+        assertEquals(List.of(MediaType.ANIME), type.intent().excludedMediaTypes());
+
+        var format = interpreter.interpret("No quiero una película", null, true);
+        assertNull(format.intent().format());
+        assertEquals(List.of("MOVIE"), format.intent().excludedFormats());
+    }
+
+    @Test
+    void explicitSecondSeasonChangesTheInstallmentPreference() {
+        var parsed = interpreter.interpret("Recomendame una segunda temporada de acción", null, true);
+
+        assertEquals(InstallmentPreference.SEQUEL, parsed.intent().installmentPreference());
+        assertFalse(parsed.intent().standaloneOnly());
+    }
+
+    @Test
+    void unknownNegativeRestrictionRequiresAiInterpretation() {
+        var parsed = interpreter.interpret("Un romance sin violencia gráfica", null, true);
+
+        assertFalse(parsed.complete());
+        assertEquals(List.of("Romance"), parsed.intent().genres());
     }
 }
