@@ -111,7 +111,16 @@ function AssistantAnswer({ message, onNavigate }) {
     {!!message.understood?.length && <div className="assistant-understood"><b><Check /> Entendí</b>{message.understood.map((item) => <span key={item}>{item}</span>)}</div>}
     {!!message.results?.length && <div className="assistant-results">{message.results.map((media) => <Link to={`/media/${media.anilistId}`} className="assistant-result" key={media.anilistId} onClick={onNavigate}>
       <img src={media.coverImage || COVER_FALLBACK} onError={(event) => { event.currentTarget.src = COVER_FALLBACK }} alt={`Portada de ${media.title}`} loading="lazy" decoding="async" />
-      <div><small>{media.mediaType === 'ANIME' ? 'Anime' : 'Manga'}{media.releaseYear ? ` · ${media.releaseYear}` : ''}</small><h3>{media.title}</h3><p>{media.reason}</p><div>{media.genres?.slice(0, 3).map((genre) => <span key={genre}>{genre}</span>)}</div></div>
+      <div><small>{publicationLabel(media)}{media.releaseYear ? ` · ${media.releaseYear}` : ''}</small><h3>{media.title}</h3><p>{media.reason}</p><div>{media.genres?.slice(0, 3).map((genre) => <span key={genre}>{genre}</span>)}</div></div>
     </Link>)}</div>}
   </article>
+}
+
+function publicationLabel(media) {
+  if (media.mediaType === 'ANIME') return media.countryOfOrigin === 'CN' ? 'Donghua' : 'Anime'
+  if (media.mediaFormat === 'NOVEL') return 'Novela ligera'
+  if (media.countryOfOrigin === 'KR') return 'Manhwa'
+  if (media.countryOfOrigin === 'CN') return 'Manhua'
+  if (media.mediaFormat === 'ONE_SHOT') return 'One-shot'
+  return 'Manga'
 }

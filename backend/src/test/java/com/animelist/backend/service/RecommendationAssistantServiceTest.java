@@ -305,6 +305,41 @@ class RecommendationAssistantServiceTest {
     }
 
     @Test
+    void plainMangaExcludesManhwaManhuaAndLightNovels() {
+        AniListMediaResponse manga = printedCandidate(50, "Japanese manga", "MANGA", "JP");
+        AniListMediaResponse manhwa = printedCandidate(51, "Korean comic", "MANGA", "KR");
+        AniListMediaResponse manhua = printedCandidate(52, "Chinese comic", "MANGA", "CN");
+        AniListMediaResponse novel = printedCandidate(53, "Japanese novel", "NOVEL", "JP");
+        when(library.findSummaries(42L, MediaType.MANGA, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.MANGA), anyInt(), any(), any(), any(), eq(List.of("Romance")),
+                anyList(), isNull(), eq("JP"), isNull(), any())).thenReturn(
+                        new AniListSearchResponse(1, false, List.of(manga, manhwa, manhua, novel)));
+
+        var response = service.recommend("Dame un manga de romance", null);
+
+        assertEquals(List.of(50), response.results().stream().map(item -> item.anilistId()).toList());
+        assertEquals("JP", response.results().get(0).countryOfOrigin());
+        assertTrue(response.understood().contains("Manga"));
+        assertTrue(response.understood().contains("Romance principal"));
+    }
+
+    @Test
+    void manhwaKeepsItsRegionalIdentity() {
+        AniListMediaResponse manhwa = printedCandidate(54, "Korean comic", "MANGA", "KR");
+        AniListMediaResponse manga = printedCandidate(55, "Japanese manga", "MANGA", "JP");
+        when(library.findSummaries(42L, MediaType.MANGA, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.MANGA), anyInt(), any(), any(), any(), eq(List.of("Romance")),
+                anyList(), isNull(), eq("KR"), isNull(), any())).thenReturn(
+                        new AniListSearchResponse(1, false, List.of(manhwa, manga)));
+
+        var response = service.recommend("Dame un manhwa de romance", null);
+
+        assertEquals(List.of(54), response.results().stream().map(item -> item.anilistId()).toList());
+        assertTrue(response.understood().contains("Manhwa"));
+        assertFalse(response.understood().contains("Manga"));
+    }
+
+    @Test
     void libraryRecommendationsVerifyRelationsAndTagRelevance() {
         LibraryEntrySummaryResponse continued = libraryItem(40, "Romance continued");
         LibraryEntrySummaryResponse standalone = libraryItem(41, "Romance standalone");
@@ -348,6 +383,13 @@ class RecommendationAssistantServiceTest {
         return new AniListMediaResponse(id, MediaType.MANGA, "MANGA", "JP", title, title, "cover", null, null,
                 List.of(), null, 40, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
                 List.of(), List.of(), List.of(), genres, tags, 2024);
+    }
+
+    private AniListMediaResponse printedCandidate(int id, String title, String format, String country) {
+        return new AniListMediaResponse(id, MediaType.MANGA, format, country, title, title, "cover", null, null,
+                List.of(), null, 40, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
+                List.of(), List.of(), List.of(), List.of("Romance"),
+                List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024);
     }
 
     private AniListMediaResponse withRelations(AniListMediaResponse media, List<MediaRelationResponse> relations) {

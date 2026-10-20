@@ -217,6 +217,8 @@ public class RecommendationAssistantService {
                 .filter(item -> !intent.standaloneOnly() || isStandalone(item))
                 .filter(item -> !intent.excludedMediaTypes().contains(item.mediaType()))
                 .filter(item -> !intent.excludedStatuses().contains(item.releaseStatus()))
+                .filter(item -> intent.country() == null || intent.country().equals(item.countryOfOrigin()))
+                .filter(item -> intent.format() == null || intent.format().equals(item.mediaFormat()))
                 .filter(item -> !containsIgnoreCase(intent.excludedCountries(), item.countryOfOrigin()))
                 .filter(item -> !containsIgnoreCase(intent.excludedFormats(), item.mediaFormat()))
                 .filter(item -> fits(item.totalUnits(), intent.minimumUnits(), intent.maximumUnits()))
@@ -279,7 +281,7 @@ public class RecommendationAssistantService {
                     || !hasRelevantRequiredTags(details.tags(), intent.tags())
                     || hasRelevantExcludedTag(details.tags(), intent.excludedTags())
                     || contextualPenalty(details, intent) > MAX_CONTEXTUAL_PENALTY) continue;
-            results.add(new AssistantMediaResponse(item.anilistId(), item.mediaType(), item.mediaFormat(), item.title(),
+            results.add(new AssistantMediaResponse(item.anilistId(), item.mediaType(), item.mediaFormat(), item.countryOfOrigin(), item.title(),
                     item.romajiTitle(), item.coverImage(), item.totalUnits(), item.releaseStatus(), item.releaseYear(),
                     details.genres(), details.tags().stream().map(MediaTagResponse::name).toList(), item.trackingStatus(),
                     libraryReason(item, reference)));
@@ -476,16 +478,28 @@ public class RecommendationAssistantService {
     }
 
     private AssistantMediaResponse toResponse(AniListMediaResponse item, TrackingStatus libraryStatus, String reason) {
-        return new AssistantMediaResponse(item.anilistId(), item.mediaType(), item.mediaFormat(), item.title(), item.romajiTitle(),
+        return new AssistantMediaResponse(item.anilistId(), item.mediaType(), item.mediaFormat(), item.countryOfOrigin(), item.title(), item.romajiTitle(),
                 item.coverImage(), item.totalUnits(), item.releaseStatus(), item.releaseYear(), item.genres(),
                 item.tags().stream().map(tag -> tag.name()).toList(), libraryStatus, reason);
     }
 
     private List<String> understood(RecommendationIntent intent, boolean referenceApplied) {
         List<String> result = new ArrayList<>();
-        if (intent.mediaType() != null) result.add(intent.mediaType() == MediaType.ANIME ? "Anime" : "Manga");
-        if (intent.format() != null) result.add(formatLabel(intent.format()));
-        if (intent.country() != null) result.add(countryName(intent.country()));
+        boolean regionalComic = intent.mediaType() == MediaType.MANGA && !"NOVEL".equals(intent.format())
+                && ("KR".equals(intent.country()) || "CN".equals(intent.country()));
+        boolean comicPublication = intent.mediaType() == MediaType.MANGA && !"NOVEL".equals(intent.format())
+                && (regionalComic || "JP".equals(intent.country()));
+        if (intent.mediaType() != null) {
+            if (intent.mediaType() == MediaType.ANIME) result.add("Anime");
+            else if ("NOVEL".equals(intent.format())) result.add("Novela ligera");
+            else if ("KR".equals(intent.country())) result.add("Manhwa");
+            else if ("CN".equals(intent.country())) result.add("Manhua");
+            else result.add("Manga");
+        }
+        if (intent.format() != null && !"NOVEL".equals(intent.format())) result.add(formatLabel(intent.format()));
+        if (intent.country() != null && !regionalComic && !(intent.mediaType() == MediaType.MANGA && "JP".equals(intent.country()))) {
+            result.add(countryName(intent.country()));
+        }
         intent.genres().stream().map(genre -> containsIgnoreCase(intent.primaryGenres(), genre)
                 ? genre + " principal" : genre).forEach(result::add);
         intent.tags().stream().limit(2).map(this::displayTag).forEach(result::add);
@@ -493,7 +507,8 @@ public class RecommendationAssistantService {
         intent.excludedTags().stream().limit(2).map(value -> "Sin " + value).forEach(result::add);
         intent.excludedMediaTypes().stream().limit(1).map(value -> value == MediaType.ANIME ? "Sin anime" : "Sin manga").forEach(result::add);
         intent.excludedCountries().stream().limit(1).map(value -> "Sin obras de " + countryName(value)).forEach(result::add);
-        intent.excludedFormats().stream().limit(1).map(value -> "Sin " + formatName(value)).forEach(result::add);
+        intent.excludedFormats().stream().filter(value -> !(comicPublication && "NOVEL".equals(value))).limit(1)
+                .map(value -> "Sin " + formatName(value)).forEach(result::add);
         if (intent.minimumUnits() != null) result.add("Desde " + intent.minimumUnits() + " unidades");
         if (intent.maximumUnits() != null) result.add("Hasta " + intent.maximumUnits() + " unidades");
         if (intent.status() == ReleaseStatus.FINISHED) result.add("Terminadas");

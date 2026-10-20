@@ -230,10 +230,12 @@ class LocalRecommendationInterpreterTest {
         var manhua = interpreter.interpret("Recomendame un manhua de acción", null, true).intent();
         assertEquals(MediaType.MANGA, manhua.mediaType());
         assertEquals("CN", manhua.country());
+        assertTrue(manhua.excludedFormats().contains("NOVEL"));
 
         var manhwa = interpreter.interpret("Quiero un manhwa romántico", null, true).intent();
         assertEquals(MediaType.MANGA, manhwa.mediaType());
         assertEquals("KR", manhwa.country());
+        assertTrue(manhwa.excludedFormats().contains("NOVEL"));
 
         var misspelledManhwa = interpreter.interpret("Quiero un manwha romántico", null, true).intent();
         assertEquals(MediaType.MANGA, misspelledManhwa.mediaType());
@@ -252,5 +254,14 @@ class LocalRecommendationInterpreterTest {
             assertEquals(MediaType.MANGA, novel.mediaType());
             assertEquals("NOVEL", novel.format());
         }
+    }
+
+    @Test
+    void plainMangaMeansJapaneseComicInsteadOfEveryPrintedMedia() {
+        var manga = interpreter.interpret("Dame un manga de romance", null, true).intent();
+
+        assertEquals(MediaType.MANGA, manga.mediaType());
+        assertEquals("JP", manga.country());
+        assertTrue(manga.excludedFormats().contains("NOVEL"));
     }
 }

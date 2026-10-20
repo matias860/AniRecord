@@ -114,6 +114,10 @@ public class LocalRecommendationInterpreter {
             }
             recognized++;
         }
+        boolean mentionsPlainManga = hasPositiveTerm(value, "manga");
+        boolean mentionsManhwa = hasAnyPositiveTerm(value, "manhwa", "manwha");
+        boolean mentionsManhua = hasPositiveTerm(value, "manhua");
+        boolean mentionsWebtoon = hasPositiveTerm(value, "webtoon");
         boolean mentionsManga = hasAnyPositiveTerm(value, "manga", "manhwa", "manwha", "manhua", "webtoon",
                 "novela", "novela ligera", "novela liviana", "light novel", "ranobe");
         boolean mentionsAnime = hasPositiveTerm(value, "anime") || hasPositiveTerm(value, "serie")
@@ -145,6 +149,7 @@ public class LocalRecommendationInterpreter {
         } else if (mentionsNovel) {
             format = "NOVEL"; excludedFormats.remove("NOVEL"); type = MediaType.MANGA; recognized++;
         }
+        if ((mentionsManhwa || mentionsManhua) && !mentionsNovel) add(excludedFormats, "NOVEL");
         ReleaseStatus status = base.status();
         if (mentionsStem(value, "terminad", "complet")) {
             if (isExcludedStem(value, "terminad", "complet")) {
@@ -173,6 +178,14 @@ public class LocalRecommendationInterpreter {
             if (isExcludedStem(value, "japones")) { if ("JP".equals(country)) country = null; add(excludedCountries, "JP"); }
             else { country = "JP"; excludedCountries.remove("JP"); }
             recognized++;
+        }
+        boolean regionalComic = mentionsManhwa || mentionsManhua || mentionsWebtoon
+                || mentionsStem(value, "corean") || mentionsStem(value, "chin");
+        if (type == MediaType.MANGA && mentionsPlainManga && !regionalComic && !mentionsNovel
+                && !excludedCountries.contains("JP")) {
+            country = "JP";
+            excludedCountries.remove("JP");
+            add(excludedFormats, "NOVEL");
         }
         String sort = base.sort();
         if (value.contains("mejor puntu") || value.contains("mejor valor")) { sort = "SCORE"; recognized++; }

@@ -9,6 +9,7 @@ public record AssistantMediaResponse(
         Integer anilistId,
         MediaType mediaType,
         String mediaFormat,
+        String countryOfOrigin,
         String title,
         String romajiTitle,
         String coverImage,
