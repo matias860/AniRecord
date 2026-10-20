@@ -18,6 +18,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class LocalRecommendationInterpreter {
     private static final Map<String, String> GENRES = new LinkedHashMap<>();
+    private static final Map<String, String> TAG_ALIASES = Map.of(
+            "triangulo amoroso", "Love Triangle",
+            "amor no correspondido", "Unrequited Love",
+            "harem femenino", "Female Harem",
+            "harem masculino", "Male Harem");
     static {
         GENRES.put("ciencia ficcion", "Sci-Fi"); GENRES.put("slice of life", "Slice of Life");
         GENRES.put("recuentos de la vida", "Slice of Life"); GENRES.put("mahou shoujo", "Mahou Shoujo");
@@ -55,6 +60,7 @@ public class LocalRecommendationInterpreter {
                 && value.matches("^(otra|otro|pero|y |tambien|ademas|ahora|mas |menos |sin |con |hacela|hacelo|que sea).*");
         RecommendationIntent base = refinement ? previous : RecommendationIntent.empty();
         List<String> genres = new ArrayList<>(safe(base.genres()));
+        List<String> primaryGenres = new ArrayList<>(safe(base.primaryGenres()));
         List<String> tags = new ArrayList<>(safe(base.tags()));
         List<String> excluded = new ArrayList<>(safe(base.excludedGenres()));
         List<String> excludedTags = new ArrayList<>(safe(base.excludedTags()));
@@ -63,10 +69,26 @@ public class LocalRecommendationInterpreter {
             if (!containsTerm(value, entry.getKey())) continue;
             if (isExcluded(value, entry.getKey())) {
                 genres.remove(entry.getValue());
+                primaryGenres.remove(entry.getValue());
                 add(excluded, entry.getValue());
             } else {
                 excluded.remove(entry.getValue());
                 add(genres, entry.getValue());
+                if (!isSecondaryMention(value, entry.getKey())) add(primaryGenres, entry.getValue());
+            }
+            recognized++;
+        }
+        for (var alias : TAG_ALIASES.entrySet()) {
+            if (!containsTerm(value, alias.getKey())) continue;
+            String allowedTag = (allowedTags == null ? List.<String>of() : allowedTags).stream()
+                    .filter(item -> item.equalsIgnoreCase(alias.getValue())).findFirst().orElse(null);
+            if (allowedTag == null) continue;
+            if (isExcluded(value, alias.getKey())) {
+                removeIgnoreCase(tags, allowedTag);
+                addIgnoreCase(excludedTags, allowedTag);
+            } else {
+                removeIgnoreCase(excludedTags, allowedTag);
+                addIgnoreCase(tags, allowedTag);
             }
             recognized++;
         }
@@ -84,7 +106,8 @@ public class LocalRecommendationInterpreter {
             recognized++;
         }
         boolean mentionsManga = value.contains("manga") || value.contains("manhwa") || value.contains("manhua");
-        boolean mentionsAnime = value.contains("anime") || value.contains("serie") || value.contains("pelicula");
+        boolean mentionsAnime = value.contains("anime") || value.contains("serie") || value.contains("pelicula")
+                || value.contains("temporada");
         MediaType type = mentionsAnime && mentionsManga ? null : mentionsManga ? MediaType.MANGA : mentionsAnime ? MediaType.ANIME : base.mediaType();
         if (mentionsAnime || mentionsManga) recognized++;
         String format = base.format();
@@ -141,10 +164,17 @@ public class LocalRecommendationInterpreter {
         String reference = null;
         Matcher ref = REFERENCE.matcher(text.trim());
         if (ref.find()) { reference = ref.group(1).trim(); recognized++; }
+        boolean standaloneOnly = base.standaloneOnly();
+        if (value.matches(".*(?:sin (?:una )?(?:segunda|otra) temporada|sin continuacion(?:es)?|una sola temporada|autoconclusiv[oa]).*")) {
+            standaloneOnly = true;
+            recognized++;
+        }
         if (refinement) recognized++;
-        RecommendationIntent result = new RecommendationIntent(type, List.copyOf(genres), List.copyOf(tags), List.copyOf(excluded),
+        RecommendationIntent result = new RecommendationIntent(type, List.copyOf(genres), List.copyOf(primaryGenres),
+                List.copyOf(tags), List.copyOf(excluded),
                 List.copyOf(excludedTags), status, country, format, sort == null ? "POPULARITY" : sort,
-                yearFrom, yearTo, base.season(), min, max, reference != null ? reference : base.referenceTitle(), libraryOnly, libraryStatus);
+                yearFrom, yearTo, base.season(), min, max, reference != null ? reference : base.referenceTitle(),
+                standaloneOnly, libraryOnly, libraryStatus);
         return new ParseResult(result, !strict || recognized > 0 && !looksSubjective(value), libraryScopeSpecified);
     }
 
@@ -163,6 +193,10 @@ public class LocalRecommendationInterpreter {
                 + "(?:(?!" + boundary + ").){0,120}?"
                 + "(?<![\\p{L}\\p{N}])" + Pattern.quote(term) + "(?![\\p{L}\\p{N}])")
                 .matcher(value).find();
+    }
+    private static boolean isSecondaryMention(String value, String term) {
+        return Pattern.compile("(?:^|[^\\p{L}\\p{N}])con\\s+(?:algo\\s+de\\s+|un\\s+poco\\s+de\\s+)?"
+                + Pattern.quote(term) + "(?:$|[^\\p{L}\\p{N}])").matcher(value).find();
     }
     private static String normalize(String value) { return Normalizer.normalize(value, Normalizer.Form.NFD).replaceAll("\\p{M}", "").toLowerCase(Locale.ROOT); }
     private static List<String> safe(List<String> value) { return value == null ? List.of() : List.copyOf(value); }

@@ -49,10 +49,12 @@ public class GeminiRecommendationClient {
                 "Más de X" es minimumUnits X+1, "menos de X" es maximumUnits X-1 y "entre X e Y" establece ambos límites inclusivos.
                 Frases como "como para ver hoy" no contienen un título de referencia. Solo usá referenceTitle ante una comparación inequívoca con una obra.
                 Si pide salir de su biblioteca, buscar en el catálogo o algo que no esté guardado, devolvé libraryOnly false y libraryStatus null.
-                Campos: mediaType ANIME|MANGA|null (null significa ambos), genres[], tags[], excludedGenres[], excludedTags[], status FINISHED|RELEASING|NOT_YET_RELEASED|CANCELLED|HIATUS|null,
+                Campos: mediaType ANIME|MANGA|null (null significa ambos), genres[], primaryGenres[], tags[], excludedGenres[], excludedTags[], status FINISHED|RELEASING|NOT_YET_RELEASED|CANCELLED|HIATUS|null,
                 country JP|KR|CN|null, format TV|TV_SHORT|MOVIE|SPECIAL|OVA|ONA|MUSIC|MANGA|NOVEL|ONE_SHOT|null,
                 sort POPULARITY|SCORE|TRENDING|NEWEST, yearFrom, yearTo, season WINTER|SPRING|SUMMER|FALL|null,
-                minimumUnits, maximumUnits, referenceTitle, libraryOnly, libraryStatus PLANNED|IN_PROGRESS|PAUSED|COMPLETED|DROPPED|null.
+                minimumUnits, maximumUnits, referenceTitle, standaloneOnly, libraryOnly, libraryStatus PLANNED|IN_PROGRESS|PAUSED|COMPLETED|DROPPED|null.
+                primaryGenres contiene los géneros que el usuario pidió como eje principal; "un romance" incluye Romance, mientras "acción con romance" no lo incluye.
+                standaloneOnly es true si pide una obra sin segunda temporada, sin continuaciones o autoconclusiva.
                 Para estados de ánimo elegí géneros o etiquetas equivalentes. Usá únicamente valores de las listas permitidas.
                 """;
         String payload;

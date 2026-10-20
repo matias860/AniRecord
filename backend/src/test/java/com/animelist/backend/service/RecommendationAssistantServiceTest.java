@@ -38,7 +38,8 @@ class RecommendationAssistantServiceTest {
         AppUser user = new AppUser(); user.setId(42L); when(currentUser.require()).thenReturn(user);
         when(aniList.getCategories()).thenReturn(new CatalogCategoriesResponse(
                 List.of("Action", "Drama", "Ecchi", "Romance", "Sci-Fi"),
-                List.of(new CatalogTagResponse("Yuri", "", "Theme-Sexuality"))));
+                List.of(new CatalogTagResponse("Yuri", "", "Theme-Sexuality"),
+                        new CatalogTagResponse("Love Triangle", "", "Theme-Romance"))));
         when(gemini.available()).thenReturn(false);
         when(quota.remaining(42L)).thenReturn(8);
         service = new RecommendationAssistantService(currentUser, library, aniList,
@@ -188,7 +189,7 @@ class RecommendationAssistantServiceTest {
         AniListMediaResponse anime = media(10, "Anime romántico");
         AniListMediaResponse manga = new AniListMediaResponse(11, MediaType.MANGA, "MANGA", "JP", "Manga romántico", "Manga romántico",
                 "cover", null, null, List.of(), null, 10, null, null, ReleaseStatus.FINISHED, null, 2024, 200, null,
-                List.of(), List.of(), List.of(), List.of("Romance"), List.of(), 2024);
+                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024);
         when(library.findSummaries(42L, null, null)).thenReturn(List.of());
         when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), eq(List.of("Romance")), anyList(),
                 any(), any(), any(), any())).thenReturn(new AniListSearchResponse(1, false, List.of(anime, manga)));
@@ -202,8 +203,8 @@ class RecommendationAssistantServiceTest {
 
     @Test
     void explicitCatalogCorrectionOverridesAnAiAttemptToKeepLibraryScope() {
-        RecommendationIntent previous = new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(),
-                null, null, null, "POPULARITY", null, null, null, null, null, null, true, TrackingStatus.PLANNED);
+        RecommendationIntent previous = new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(), List.of(),
+                null, null, null, "POPULARITY", null, null, null, null, null, null, false, true, TrackingStatus.PLANNED);
         when(gemini.available()).thenReturn(true);
         when(quota.tryConsume(42L)).thenReturn(true);
         when(gemini.interpret(anyString(), any(), anyList(), anyList())).thenReturn(previous);
@@ -231,10 +232,41 @@ class RecommendationAssistantServiceTest {
         verify(aniList).browseForAssistant(isNull(), anyInt(), any(), any(), any(), anyList(), anyList(), any(), any(), any(), any());
     }
 
+    @Test
+    void romanceSearchUsesCentralThemeAndOnlyOffersFirstStandaloneInstallments() {
+        AniListMediaResponse incidental = animeCandidate(20, "High School of the Dead",
+                List.of("Action", "Drama", "Ecchi", "Horror", "Romance"),
+                List.of(new MediaTagResponse("Love Triangle", 72, null, null)), List.of());
+        AniListMediaResponse secondSeason = animeCandidate(21, "Romance Season 2", List.of("Romance"),
+                List.of(new MediaTagResponse("Love Triangle", 95, null, null)),
+                List.of(new MediaRelationResponse(10, "PREQUEL", MediaType.ANIME, "TV", "Romance", "cover")));
+        AniListMediaResponse continued = animeCandidate(22, "Romance with sequel", List.of("Romance"),
+                List.of(new MediaTagResponse("Love Triangle", 95, null, null)),
+                List.of(new MediaRelationResponse(23, "SEQUEL", MediaType.ANIME, "TV", "Season 2", "cover")));
+        AniListMediaResponse standalone = animeCandidate(24, "Standalone Romance", List.of("Drama", "Romance"),
+                List.of(new MediaTagResponse("Love Triangle", 88, null, null)), List.of());
+        when(library.findSummaries(42L, MediaType.ANIME, null)).thenReturn(List.of());
+        when(aniList.browseForAssistant(eq(MediaType.ANIME), anyInt(), any(), any(), any(),
+                eq(List.of("Romance")), eq(List.of("Love Triangle")), any(), any(), any(), any()))
+                .thenReturn(new AniListSearchResponse(1, false,
+                        List.of(incidental, secondSeason, continued, standalone)));
+
+        var response = service.recommend(
+                "Dame un romance de 12 capítulos sin segunda temporada, con triángulo amoroso", null);
+
+        assertEquals(List.of(24), response.results().stream().map(item -> item.anilistId()).toList());
+        assertEquals(List.of("Romance"), response.intent().primaryGenres());
+        assertEquals(List.of("Love Triangle"), response.intent().tags());
+        assertTrue(response.intent().standaloneOnly());
+        assertTrue(response.understood().contains("Romance principal"));
+        assertTrue(response.understood().contains("Sin continuaciones"));
+    }
+
     private AniListMediaResponse media(int id, String title) {
         return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title, "cover", null, null,
                 List.of(), null, 12, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
-                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("School", 70, null, null)), 2024);
+                List.of(), List.of(), List.of(), List.of("Romance"),
+                List.of(new MediaTagResponse("Heterosexual", 90, null, null), new MediaTagResponse("School", 70, null, null)), 2024);
     }
 
     private AniListMediaResponse candidate(int id, String title, List<String> genres, List<MediaTagResponse> tags) {
@@ -249,6 +281,13 @@ class RecommendationAssistantServiceTest {
                 media.streamingLinks(), media.synopsis(), media.totalUnits(), media.releaseStartDate(), media.releaseEndDate(),
                 media.releaseStatus(), media.releaseSeason(), media.releaseYear(), media.favourites(), media.nextAiringEpisode(),
                 media.credits(), relations, media.characters(), media.genres(), media.tags(), media.releaseEndYear());
+    }
+
+    private AniListMediaResponse animeCandidate(int id, String title, List<String> genres,
+            List<MediaTagResponse> tags, List<MediaRelationResponse> relations) {
+        return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title, "cover", null, null,
+                List.of(), null, 12, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
+                List.of(), relations, List.of(), genres, tags, 2024);
     }
 
     private MediaRelationResponse relation(int id, String type, String title) {

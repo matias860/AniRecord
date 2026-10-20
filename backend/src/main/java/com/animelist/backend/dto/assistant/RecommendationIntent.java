@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 public record RecommendationIntent(
         MediaType mediaType,
         @Size(max = 10) List<@Size(max = 80) String> genres,
+        @Size(max = 10) List<@Size(max = 80) String> primaryGenres,
         @Size(max = 12) List<@Size(max = 80) String> tags,
         @Size(max = 10) List<@Size(max = 80) String> excludedGenres,
         @Size(max = 12) List<@Size(max = 80) String> excludedTags,
@@ -23,11 +24,12 @@ public record RecommendationIntent(
         Integer minimumUnits,
         Integer maximumUnits,
         @Size(max = 100) String referenceTitle,
+        boolean standaloneOnly,
         boolean libraryOnly,
         TrackingStatus libraryStatus
 ) {
     public static RecommendationIntent empty() {
-        return new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(),
-                null, null, null, "POPULARITY", null, null, null, null, null, null, false, null);
+        return new RecommendationIntent(null, List.of(), List.of(), List.of(), List.of(), List.of(),
+                null, null, null, "POPULARITY", null, null, null, null, null, null, false, false, null);
     }
 }

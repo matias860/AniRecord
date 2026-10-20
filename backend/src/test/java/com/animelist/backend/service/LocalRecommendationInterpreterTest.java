@@ -160,4 +160,18 @@ class LocalRecommendationInterpreterTest {
         assertNull(corrected.status());
         assertNull(corrected.minimumUnits());
     }
+
+    @Test
+    void understandsPrimaryRomanceSpanishTagAndNoContinuation() {
+        var parsed = interpreter.interpret(
+                "Dame un romance de 12 capítulos sin segunda temporada, con triángulo amoroso",
+                null, true, List.of("Love Triangle"));
+
+        assertTrue(parsed.complete());
+        assertEquals(List.of("Romance"), parsed.intent().primaryGenres());
+        assertEquals(List.of("Love Triangle"), parsed.intent().tags());
+        assertTrue(parsed.intent().standaloneOnly());
+        assertEquals(12, parsed.intent().minimumUnits());
+        assertEquals(12, parsed.intent().maximumUnits());
+    }
 }

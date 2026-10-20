@@ -40,6 +40,7 @@ public class RecommendationAssistantService {
             "ADAPTATION", "PREQUEL", "SEQUEL", "PARENT", "ALTERNATIVE",
             "SPIN_OFF", "SIDE_STORY", "SUMMARY", "COMPILATION", "CONTAINS", "SOURCE");
     private static final int MIN_REQUIRED_TAG_RANK = 50;
+    private static final int MIN_PRIMARY_GENRE_SCORE = 60;
     private static final int MAX_CONTEXTUAL_PENALTY = 50;
     private static final Map<String, Map<String, Integer>> RELATED_GENRE_PENALTIES = Map.of(
             "drama", Map.of("psychological", 38, "horror", 32, "thriller", 28, "mystery", 18),
@@ -50,6 +51,12 @@ public class RecommendationAssistantService {
                     "death", 30, "war", 24, "survival", 20),
             "horror", Map.of("body horror", 60, "gore", 55, "survival", 28, "death", 25),
             "ecchi", Map.of("nudity", 65, "fanservice", 55, "sexual content", 65));
+    private static final Set<String> ROMANCE_THEME_TAGS = Set.of(
+            "heterosexual", "love triangle", "unrequited love", "yuri", "boys' love",
+            "female harem", "male harem", "marriage", "age gap");
+    private static final Map<String, Integer> ROMANCE_DISTRACTOR_PENALTIES = Map.of(
+            "action", 15, "adventure", 10, "horror", 25, "psychological", 20,
+            "thriller", 20, "ecchi", 10);
 
     private final CurrentUserService currentUserService;
     private final LibraryEntryRepository libraryEntries;
@@ -148,11 +155,13 @@ public class RecommendationAssistantService {
         List<String> excludedTags = merge(safeValues(interpreted.excludedTags()), safeValues(explicit.excludedTags()), 12);
         List<String> genres = merge(safeValues(interpreted.genres()), safeValues(explicit.genres()), 10).stream()
                 .filter(value -> !containsIgnoreCase(excludedGenres, value)).toList();
+        List<String> primaryGenres = merge(safeValues(interpreted.primaryGenres()), safeValues(explicit.primaryGenres()), 10).stream()
+                .filter(value -> containsIgnoreCase(genres, value)).toList();
         List<String> tags = merge(safeValues(interpreted.tags()), safeValues(explicit.tags()), 12).stream()
                 .filter(value -> !containsIgnoreCase(excludedTags, value)).toList();
         return new RecommendationIntent(
                 explicit.mediaType() != null ? explicit.mediaType() : interpreted.mediaType(),
-                genres, tags, excludedGenres, excludedTags,
+                genres, primaryGenres, tags, excludedGenres, excludedTags,
                 explicit.status() != null ? explicit.status() : interpreted.status(),
                 explicit.country() != null ? explicit.country() : interpreted.country(),
                 explicit.format() != null ? explicit.format() : interpreted.format(),
@@ -163,6 +172,7 @@ public class RecommendationAssistantService {
                 explicit.minimumUnits() != null ? explicit.minimumUnits() : interpreted.minimumUnits(),
                 explicit.maximumUnits() != null ? explicit.maximumUnits() : interpreted.maximumUnits(),
                 explicit.referenceTitle() != null ? explicit.referenceTitle() : interpreted.referenceTitle(),
+                explicit.standaloneOnly() || interpreted.standaloneOnly(),
                 libraryScopeSpecified ? explicit.libraryOnly() : explicit.libraryOnly() || interpreted.libraryOnly(),
                 libraryScopeSpecified ? explicit.libraryStatus()
                         : explicit.libraryStatus() != null ? explicit.libraryStatus() : interpreted.libraryStatus());
@@ -186,8 +196,11 @@ public class RecommendationAssistantService {
         List<AniListMediaResponse> ranked = candidates.stream()
                 .filter(item -> !known.contains(item.anilistId()) && !item.anilistId().equals(referenceId))
                 .filter(item -> java.util.Collections.disjoint(franchiseFootprint(item), referenceFamily))
+                .filter(this::isEntryPoint)
+                .filter(item -> !intent.standaloneOnly() || isStandalone(item))
                 .filter(item -> fits(item.totalUnits(), intent.minimumUnits(), intent.maximumUnits()))
                 .filter(item -> containsAll(item.genres(), intent.genres()))
+                .filter(item -> hasCentralRequiredGenres(item, intent.primaryGenres()))
                 .filter(item -> hasRelevantRequiredTags(item.tags(), intent.tags()))
                 .filter(item -> disjoint(item.genres(), intent.excludedGenres()))
                 .filter(item -> !hasRelevantExcludedTag(item.tags(), intent.excludedTags()))
@@ -320,9 +333,13 @@ public class RecommendationAssistantService {
         String reference = raw.referenceTitle() == null ? null : raw.referenceTitle().trim();
         if (reference != null && reference.length() > 100) reference = reference.substring(0, 100);
         if (reference != null && reference.isBlank()) reference = null;
-        return new RecommendationIntent(type, valid(raw.genres(), genres, 4), valid(raw.tags(), tags, 5),
+        List<String> validGenres = valid(raw.genres(), genres, 4);
+        List<String> primaryGenres = valid(raw.primaryGenres(), genres, 4).stream()
+                .filter(value -> containsIgnoreCase(validGenres, value)).toList();
+        return new RecommendationIntent(type, validGenres, primaryGenres, valid(raw.tags(), tags, 5),
                 valid(raw.excludedGenres(), genres, 4), valid(raw.excludedTags(), tags, 5), raw.status(), country,
-                format, sort, from, to, raw.season(), min, max, reference, raw.libraryOnly(), raw.libraryStatus());
+                format, sort, from, to, raw.season(), min, max, reference, raw.standaloneOnly(),
+                raw.libraryOnly(), raw.libraryStatus());
     }
 
     private Map<String, Integer> preferences(List<LibraryEntrySummaryResponse> library) {
@@ -352,12 +369,16 @@ public class RecommendationAssistantService {
 
     private String reason(AniListMediaResponse item, RecommendationIntent intent, AniListMediaResponse reference) {
         List<String> facts = new ArrayList<>();
-        List<String> matches = item.genres().stream().filter(genre -> containsIgnoreCase(intent.genres(), genre)).limit(2).toList();
+        List<String> primaryMatches = item.genres().stream()
+                .filter(genre -> containsIgnoreCase(intent.primaryGenres(), genre)).limit(2).toList();
+        if (!primaryMatches.isEmpty()) facts.add(String.join(" y ", primaryMatches) + " es uno de sus ejes principales");
+        List<String> matches = item.genres().stream().filter(genre -> containsIgnoreCase(intent.genres(), genre)
+                && !containsIgnoreCase(intent.primaryGenres(), genre)).limit(2).toList();
         if (!matches.isEmpty()) facts.add("combina " + String.join(" y ", matches));
         List<MediaTagResponse> matchingTags = item.tags().stream()
                 .filter(tag -> containsIgnoreCase(intent.tags(), tag.name())).limit(2).toList();
         if (!matchingTags.isEmpty()) {
-            facts.add(matchingTags.stream().map(tag -> tag.name() + " tiene " + relevance(tag)
+            facts.add(matchingTags.stream().map(tag -> displayTag(tag.name()) + " tiene " + relevance(tag)
                     + "% de relevancia en AniList").collect(java.util.stream.Collectors.joining(" y ")));
         }
         if (reference != null && sharesElements(item, reference)) facts.add("comparte elementos con " + reference.title());
@@ -404,8 +425,9 @@ public class RecommendationAssistantService {
     private List<String> understood(RecommendationIntent intent, boolean referenceApplied) {
         List<String> result = new ArrayList<>();
         if (intent.mediaType() != null) result.add(intent.mediaType() == MediaType.ANIME ? "Anime" : "Manga");
-        result.addAll(intent.genres());
-        result.addAll(intent.tags().stream().limit(2).toList());
+        intent.genres().stream().map(genre -> containsIgnoreCase(intent.primaryGenres(), genre)
+                ? genre + " principal" : genre).forEach(result::add);
+        intent.tags().stream().limit(2).map(this::displayTag).forEach(result::add);
         intent.excludedGenres().stream().limit(2).map(value -> "Sin " + value).forEach(result::add);
         intent.excludedTags().stream().limit(2).map(value -> "Sin " + value).forEach(result::add);
         if (intent.minimumUnits() != null) result.add("Desde " + intent.minimumUnits() + " unidades");
@@ -413,6 +435,7 @@ public class RecommendationAssistantService {
         if (intent.status() == ReleaseStatus.FINISHED) result.add("Terminadas");
         if (intent.status() == ReleaseStatus.RELEASING) result.add("En emisión");
         if (intent.status() == ReleaseStatus.NOT_YET_RELEASED) result.add("Próximamente");
+        if (intent.standaloneOnly()) result.add("Sin continuaciones");
         if (intent.libraryOnly()) result.add("De tu biblioteca");
         if (referenceApplied && intent.referenceTitle() != null) result.add("Como " + intent.referenceTitle());
         return result.stream().distinct().limit(6).toList();
@@ -488,6 +511,31 @@ public class RecommendationAssistantService {
     }
     private boolean isFranchiseRelation(MediaRelationResponse relation) {
         return relation != null && relation.relationType() != null && FRANCHISE_RELATIONS.contains(relation.relationType());
+    }
+    private String displayTag(String tag) {
+        return "Love Triangle".equalsIgnoreCase(tag) ? "Triángulo amoroso" : tag;
+    }
+    private boolean isEntryPoint(AniListMediaResponse media) {
+        return media.relations() == null || media.relations().stream()
+                .noneMatch(relation -> relation != null && "PREQUEL".equals(relation.relationType()));
+    }
+    private boolean isStandalone(AniListMediaResponse media) {
+        return media.relations() == null || media.relations().stream()
+                .noneMatch(relation -> relation != null && "SEQUEL".equals(relation.relationType()));
+    }
+    private boolean hasCentralRequiredGenres(AniListMediaResponse media, List<String> primaryGenres) {
+        for (String genre : primaryGenres) {
+            if (!"Romance".equalsIgnoreCase(genre)) continue;
+            int evidence = media.tags().stream()
+                    .filter(tag -> ROMANCE_THEME_TAGS.contains(tag.name().toLowerCase(Locale.ROOT)))
+                    .mapToInt(RecommendationAssistantService::relevance).max().orElse(50);
+            int penalty = 0;
+            for (String candidateGenre : media.genres()) {
+                penalty += ROMANCE_DISTRACTOR_PENALTIES.getOrDefault(candidateGenre.toLowerCase(Locale.ROOT), 0);
+            }
+            if (evidence - penalty < MIN_PRIMARY_GENRE_SCORE) return false;
+        }
+        return true;
     }
     private static boolean hasRelevantRequiredTags(List<MediaTagResponse> values, List<String> required) {
         return required.stream().allMatch(name -> values.stream().anyMatch(tag -> tag.name().equalsIgnoreCase(name)
