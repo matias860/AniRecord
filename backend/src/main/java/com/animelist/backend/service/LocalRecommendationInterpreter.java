@@ -114,12 +114,14 @@ public class LocalRecommendationInterpreter {
             }
             recognized++;
         }
-        boolean mentionsManga = hasPositiveTerm(value, "manga") || hasPositiveTerm(value, "manhwa") || hasPositiveTerm(value, "manhua");
+        boolean mentionsManga = hasAnyPositiveTerm(value, "manga", "manhwa", "manwha", "manhua", "webtoon",
+                "novela", "novela ligera", "novela liviana", "light novel", "ranobe");
         boolean mentionsAnime = hasPositiveTerm(value, "anime") || hasPositiveTerm(value, "serie")
-                || hasPositiveTerm(value, "pelicula") || containsTerm(value, "temporada");
-        boolean excludesManga = isMentionedAsExcluded(value, "manga");
+                || hasPositiveTerm(value, "pelicula") || hasPositiveTerm(value, "donghua") || containsTerm(value, "temporada");
+        boolean excludesManga = hasAnyExcludedTerm(value, "manga", "manhwa", "manwha", "manhua", "webtoon",
+                "novela", "novela ligera", "novela liviana", "light novel", "ranobe");
         boolean excludesAnime = isMentionedAsExcluded(value, "anime") || isMentionedAsExcluded(value, "serie")
-                || isMentionedAsExcluded(value, "pelicula");
+                || isMentionedAsExcluded(value, "pelicula") || isMentionedAsExcluded(value, "donghua");
         if (excludesManga) add(excludedMediaTypes, MediaType.MANGA); else if (mentionsManga) excludedMediaTypes.remove(MediaType.MANGA);
         if (excludesAnime) add(excludedMediaTypes, MediaType.ANIME); else if (mentionsAnime) excludedMediaTypes.remove(MediaType.ANIME);
         MediaType type = mentionsAnime && mentionsManga ? null : mentionsManga ? MediaType.MANGA
@@ -136,9 +138,11 @@ public class LocalRecommendationInterpreter {
         } else if (hasPositiveTerm(value, "one shot")) {
             format = "ONE_SHOT"; excludedFormats.remove("ONE_SHOT"); recognized++;
         }
-        if (isMentionedAsExcluded(value, "novela")) {
+        boolean excludesNovel = hasAnyExcludedTerm(value, "novela", "novela ligera", "novela liviana", "light novel", "ranobe");
+        boolean mentionsNovel = hasAnyPositiveTerm(value, "novela", "novela ligera", "novela liviana", "light novel", "ranobe");
+        if (excludesNovel) {
             format = "NOVEL".equals(format) ? null : format; add(excludedFormats, "NOVEL"); recognized++;
-        } else if (hasPositiveTerm(value, "novela")) {
+        } else if (mentionsNovel) {
             format = "NOVEL"; excludedFormats.remove("NOVEL"); type = MediaType.MANGA; recognized++;
         }
         ReleaseStatus status = base.status();
@@ -153,12 +157,16 @@ public class LocalRecommendationInterpreter {
         } else if (value.contains("en emision")) { status = ReleaseStatus.RELEASING; excludedStatuses.remove(ReleaseStatus.RELEASING); recognized++; }
         else if (value.contains("proxim") || value.contains("todavia no sal")) { status = ReleaseStatus.NOT_YET_RELEASED; excludedStatuses.remove(ReleaseStatus.NOT_YET_RELEASED); recognized++; }
         String country = base.country();
-        if (mentionsStem(value, "corean") || containsTerm(value, "manhwa")) {
-            if (isExcludedStem(value, "corean")) { if ("KR".equals(country)) country = null; add(excludedCountries, "KR"); }
+        if (mentionsStem(value, "corean") || containsTerm(value, "manhwa") || containsTerm(value, "manwha")) {
+            if (isExcludedStem(value, "corean") || hasAnyExcludedTerm(value, "manhwa", "manwha")) {
+                if ("KR".equals(country)) country = null; add(excludedCountries, "KR");
+            }
             else { country = "KR"; excludedCountries.remove("KR"); }
             recognized++;
-        } else if (mentionsStem(value, "chin") || containsTerm(value, "manhua")) {
-            if (isExcludedStem(value, "chin")) { if ("CN".equals(country)) country = null; add(excludedCountries, "CN"); }
+        } else if (mentionsStem(value, "chin") || containsTerm(value, "manhua") || containsTerm(value, "donghua")) {
+            if (isExcludedStem(value, "chin") || hasAnyExcludedTerm(value, "manhua", "donghua")) {
+                if ("CN".equals(country)) country = null; add(excludedCountries, "CN");
+            }
             else { country = "CN"; excludedCountries.remove("CN"); }
             recognized++;
         } else if (mentionsStem(value, "japones")) {
@@ -262,6 +270,14 @@ public class LocalRecommendationInterpreter {
     private static boolean isMentionedAsExcluded(String value, String term) {
         return containsTerm(value, term) && isExcluded(value, term);
     }
+    private static boolean hasAnyPositiveTerm(String value, String... terms) {
+        for (String term : terms) if (hasPositiveTerm(value, term)) return true;
+        return false;
+    }
+    private static boolean hasAnyExcludedTerm(String value, String... terms) {
+        for (String term : terms) if (isMentionedAsExcluded(value, term)) return true;
+        return false;
+    }
     private static boolean mentionsStem(String value, String... stems) {
         for (String stem : stems) if (value.matches(".*\\b" + Pattern.quote(stem) + "[a-z]*\\b.*")) return true;
         return false;
@@ -286,7 +302,8 @@ public class LocalRecommendationInterpreter {
             for (String term : GENRES.keySet()) remainder = removeTerm(remainder, term);
             for (String term : TAG_ALIASES.keySet()) remainder = removeTerm(remainder, term);
             for (String term : allowedTags == null ? List.<String>of() : allowedTags) remainder = removeTerm(remainder, normalize(term));
-            for (String term : List.of("anime", "manga", "serie", "pelicula", "movie", "one shot", "novela",
+            for (String term : List.of("anime", "manga", "manhwa", "manwha", "manhua", "webtoon", "donghua",
+                    "serie", "pelicula", "movie", "one shot", "novela", "novela ligera", "novela liviana", "light novel", "ranobe",
                     "japones", "japonesa", "japoneses", "japonesas", "coreano", "coreana", "chino", "china",
                     "terminado", "terminada", "terminados", "terminadas", "completo", "completa", "completos", "completas",
                     "segunda temporada", "otra temporada", "temporada 2", "continuacion", "continuaciones", "otra parte")) {

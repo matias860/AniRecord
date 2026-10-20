@@ -224,4 +224,33 @@ class LocalRecommendationInterpreterTest {
         assertFalse(parsed.complete());
         assertEquals(List.of("Romance"), parsed.intent().genres());
     }
+
+    @Test
+    void understandsRegionalComicsAnimationAndLightNovelNames() {
+        var manhua = interpreter.interpret("Recomendame un manhua de acción", null, true).intent();
+        assertEquals(MediaType.MANGA, manhua.mediaType());
+        assertEquals("CN", manhua.country());
+
+        var manhwa = interpreter.interpret("Quiero un manhwa romántico", null, true).intent();
+        assertEquals(MediaType.MANGA, manhwa.mediaType());
+        assertEquals("KR", manhwa.country());
+
+        var misspelledManhwa = interpreter.interpret("Quiero un manwha romántico", null, true).intent();
+        assertEquals(MediaType.MANGA, misspelledManhwa.mediaType());
+        assertEquals("KR", misspelledManhwa.country());
+
+        var donghua = interpreter.interpret("Un donghua de fantasía", null, true).intent();
+        assertEquals(MediaType.ANIME, donghua.mediaType());
+        assertEquals("CN", donghua.country());
+
+        var webtoon = interpreter.interpret("Un webtoon largo", null, true).intent();
+        assertEquals(MediaType.MANGA, webtoon.mediaType());
+        assertNull(webtoon.country());
+
+        for (String wording : List.of("novela ligera", "light novel", "ranobe")) {
+            var novel = interpreter.interpret("Quiero una " + wording + " de fantasía", null, true).intent();
+            assertEquals(MediaType.MANGA, novel.mediaType());
+            assertEquals("NOVEL", novel.format());
+        }
+    }
 }

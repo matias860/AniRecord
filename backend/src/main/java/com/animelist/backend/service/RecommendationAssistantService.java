@@ -484,6 +484,8 @@ public class RecommendationAssistantService {
     private List<String> understood(RecommendationIntent intent, boolean referenceApplied) {
         List<String> result = new ArrayList<>();
         if (intent.mediaType() != null) result.add(intent.mediaType() == MediaType.ANIME ? "Anime" : "Manga");
+        if (intent.format() != null) result.add(formatLabel(intent.format()));
+        if (intent.country() != null) result.add(countryName(intent.country()));
         intent.genres().stream().map(genre -> containsIgnoreCase(intent.primaryGenres(), genre)
                 ? genre + " principal" : genre).forEach(result::add);
         intent.tags().stream().limit(2).map(this::displayTag).forEach(result::add);
@@ -588,6 +590,9 @@ public class RecommendationAssistantService {
     }
     private String formatName(String format) {
         return switch (format) { case "MOVIE" -> "películas"; case "NOVEL" -> "novelas"; case "ONE_SHOT" -> "one-shots"; default -> format; };
+    }
+    private String formatLabel(String format) {
+        return switch (format) { case "MOVIE" -> "Película"; case "NOVEL" -> "Novela ligera"; case "ONE_SHOT" -> "One-shot"; default -> format; };
     }
     private boolean matchesInstallment(AniListMediaResponse media, InstallmentPreference preference) {
         InstallmentPreference effective = preference == null ? InstallmentPreference.FIRST : preference;

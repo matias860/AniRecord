@@ -58,6 +58,8 @@ public class GeminiRecommendationClient {
                 primaryGenres contiene los géneros que el usuario pidió como eje principal; "un romance" incluye Romance, mientras "acción con romance" no lo incluye.
                 standaloneOnly es true si pide una obra sin segunda temporada, sin continuaciones o autoconclusiva.
                 installmentPreference es FIRST por defecto, SEQUEL si pide específicamente una segunda temporada o continuación y ANY si acepta cualquier entrega.
+                manhwa/manwha significa MANGA de Corea (KR), manhua significa MANGA de China (CN), donghua significa ANIME de China (CN),
+                y novela ligera/light novel/ranobe significa MANGA con format NOVEL. Webtoon significa MANGA sin asumir un país.
                 Para estados de ánimo elegí géneros o etiquetas equivalentes. Usá únicamente valores de las listas permitidas.
                 """;
         String payload;
