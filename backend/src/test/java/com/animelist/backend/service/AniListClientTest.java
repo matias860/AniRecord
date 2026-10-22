@@ -54,7 +54,8 @@ class AniListClientTest {
                     {"name":"Tag 4","rank":96,"isMediaSpoiler":false,"isGeneralSpoiler":false,"description":"4","category":"A"},
                     {"name":"Tag 5","rank":95,"isMediaSpoiler":false,"isGeneralSpoiler":false,"description":"5","category":"A"},
                     {"name":"Tag 6","rank":94,"isMediaSpoiler":false,"isGeneralSpoiler":false,"description":"6","category":"A"},
-                    {"name":"Tag 7","rank":93,"isMediaSpoiler":false,"isGeneralSpoiler":false,"description":"7","category":"A"}
+                    {"name":"Tag 7","rank":93,"isMediaSpoiler":false,"isGeneralSpoiler":false,"description":"7","category":"A"},
+                    {"name":"Hidden reveal","rank":92,"isMediaSpoiler":true,"isGeneralSpoiler":false,"description":"Spoiler","category":"A"}
                   ],
                   "staff":{"edges":[]},"studios":{"nodes":[]},"relations":{"edges":[]},
                   "mainCharacters":{"edges":[]},"supportingCharacters":{"edges":[]},
@@ -62,7 +63,12 @@ class AniListClientTest {
                 }}}
                 """;
 
-        withResponse(response, client -> assertEquals(7, client.getMedia(20).tags().size()));
+        withResponse(response, client -> {
+            var tags = client.getMedia(20).tags();
+            assertEquals(8, tags.size());
+            assertTrue(tags.stream().filter(tag -> "Hidden reveal".equals(tag.name())).findFirst().orElseThrow().spoiler());
+            assertEquals(7, client.getMediaForLibrary(20).tags().size());
+        });
     }
 
     @Test

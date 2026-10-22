@@ -522,7 +522,7 @@ public class AniListClient {
         List<Object> characterEdges = new ArrayList<>(asList(asMap(media.get("mainCharacters")).get("edges")));
         characterEdges.addAll(asList(asMap(media.get("supportingCharacters")).get("edges")));
         media.put("characters", Map.of("edges", characterEdges));
-        return mapMedia(media, true, true);
+        return mapMedia(media, true, true, true);
     }
 
     @Cacheable(value = "mediaDetails", key = "'library:' + #anilistId")
@@ -1015,14 +1015,19 @@ public class AniListClient {
     }
 
     private AniListMediaResponse mapMedia(Map<String, Object> media) {
-        return mapMedia(media, false, false);
+        return mapMedia(media, false, false, false);
     }
 
     private AniListMediaResponse mapMedia(Map<String, Object> media, boolean includeAllTags) {
-        return mapMedia(media, includeAllTags, false);
+        return mapMedia(media, includeAllTags, false, false);
     }
 
     private AniListMediaResponse mapMedia(Map<String, Object> media, boolean includeAllTags, boolean preferExtraLarge) {
+        return mapMedia(media, includeAllTags, preferExtraLarge, false);
+    }
+
+    private AniListMediaResponse mapMedia(Map<String, Object> media, boolean includeAllTags, boolean preferExtraLarge,
+            boolean includeSpoilerTags) {
         MediaType mediaType = enumValue(MediaType.class, asString(media.get("type")));
         Map<String, Object> coverImage = asMap(media.get("coverImage"));
         Map<String, Object> titles = asMap(media.get("title"));
@@ -1061,7 +1066,7 @@ public class AniListClient {
                 mapRelations(media.get("relations")),
                 mapCharacters(media.get("characters")),
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
-                mapTags(media.get("tags"), includeAllTags ? Integer.MAX_VALUE : 5),
+                mapTags(media.get("tags"), includeAllTags ? Integer.MAX_VALUE : 5, includeSpoilerTags),
                 asInteger(asMap(media.get("endDate")).get("year"))
         );
     }
@@ -1193,10 +1198,10 @@ public class AniListClient {
         }
     }
 
-    private List<MediaTagResponse> mapTags(Object tagsValue, int limit) {
+    private List<MediaTagResponse> mapTags(Object tagsValue, int limit, boolean includeSpoilers) {
         List<MediaTagResponse> tags = asList(tagsValue).stream()
                 .map(this::asMap)
-                .filter(tag -> !Boolean.TRUE.equals(tag.get("isMediaSpoiler")))
+                .filter(tag -> includeSpoilers || !Boolean.TRUE.equals(tag.get("isMediaSpoiler")))
                 .sorted((first, second) -> Integer.compare(
                         asInteger(second.get("rank")) == null ? 0 : asInteger(second.get("rank")),
                         asInteger(first.get("rank")) == null ? 0 : asInteger(first.get("rank"))))
@@ -1204,7 +1209,8 @@ public class AniListClient {
                         asString(tag.get("name")),
                         asInteger(tag.get("rank")),
                         asString(tag.get("description")),
-                        asString(tag.get("category"))))
+                        asString(tag.get("category")),
+                        Boolean.TRUE.equals(tag.get("isMediaSpoiler"))))
                 .toList();
         if (limit >= tags.size()) return tags;
         List<MediaTagResponse> visible = new ArrayList<>(tags.stream().limit(limit).toList());

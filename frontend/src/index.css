@@ -393,7 +393,7 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
 @media(max-width:1100px){.staff-role-grid>article{grid-template-columns:112px minmax(0,1fr)}}
 @media(max-width:620px){.staff-role-grid{grid-template-columns:1fr}.detail-extras .relations img,.detail-extras .characters-section .character-page img{width:66px;height:94px}.detail-extras .relations a,.detail-extras .characters-section .character-page article{height:116px;min-height:116px}.characters-section .character-page article{grid-template-columns:66px minmax(0,1fr)}}
 
-/* AniList's five most relevant, non-spoiler tags */
+/* AniList categories; spoiler tags stay hidden until the user reveals them. */
 .detail-discovery-row { grid-column:1/-1; display:flex; align-items:flex-start; justify-content:space-between; gap:28px; padding-top:13px; }
 .detail-tags { flex:1; min-width:0; }
 .detail-tags>.eyebrow,.streaming-links>.eyebrow { display:block; line-height:1.25; }
@@ -413,6 +413,9 @@ a { color:inherit; text-decoration:none; } button { cursor:pointer; }
 .media-tag-tooltip-head b { flex:none; padding:4px 7px; border-radius:99px; color:#d9ceff; background:color-mix(in srgb,var(--accent) 17%,transparent); font-size:9px; }
 .media-tag-tooltip p { margin:8px 0 0; color:#b7bdcc; font-size:10px; line-height:1.55; }
 .media-tag-tooltip>small { display:block; margin-top:9px; color:var(--accent); font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:.8px; }
+.media-tag-item.spoiler .media-tag-label { border-color:color-mix(in srgb,#f4b65f 42%,var(--line)); background:color-mix(in srgb,#f4b65f 7%,var(--surface)); }
+.media-tag-item.spoiler .media-tag-label::before { background:linear-gradient(90deg,color-mix(in srgb,#f4b65f 20%,transparent),transparent); }
+.media-tag-item.spoiler .media-tag-label small { color:#f4c681; }
 
 /* Compact tag row used by catalog and search cards */
 .media-tags.compact { flex-wrap:nowrap; gap:5px; margin-top:8px; }
@@ -823,8 +826,9 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
 .media-genre-item{display:flex;align-items:center;padding:9px 12px;border:1px solid color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;color:color-mix(in srgb,var(--accent) 58%,#fff);background:color-mix(in srgb,var(--accent) 10%,var(--surface));font-size:10px;font-weight:850;transition:transform .2s,border-color .2s,background .2s,box-shadow .2s}
 .media-genre-item:hover,.media-genre-item:focus-visible{outline:none;transform:translateY(-2px);border-color:var(--accent);color:#fff;background:color-mix(in srgb,var(--accent) 19%,var(--surface));box-shadow:0 8px 24px color-mix(in srgb,var(--accent) 14%,rgba(0,0,0,.35))}
 .media-tags-expand{height:36px;display:flex;align-items:center;gap:5px;padding:0 11px;border:1px dashed color-mix(in srgb,var(--accent) 35%,var(--line));border-radius:10px;color:var(--muted);background:transparent;font-size:9px;font-weight:800}.media-tags-expand:hover{color:#fff;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}.media-tags-expand svg{width:13px}
+.media-tags-spoiler-toggle{height:36px;display:flex;align-items:center;gap:6px;padding:0 12px;border:1px solid color-mix(in srgb,#f4b65f 38%,var(--line));border-radius:10px;color:#d7c7ae;background:color-mix(in srgb,#f4b65f 6%,transparent);font-size:9px;font-weight:850;cursor:pointer;transition:color .2s,border-color .2s,background .2s}.media-tags-spoiler-toggle:hover,.media-tags-spoiler-toggle:focus-visible,.media-tags-spoiler-toggle.active{outline:none;color:#fff;border-color:#f4b65f;background:color-mix(in srgb,#f4b65f 14%,var(--surface))}.media-tags-spoiler-toggle svg{width:13px}
 @media(max-width:760px){.category-group>div{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:460px){.genre-multi-popover{padding:12px}.genre-multi-popover>header,.genre-multi-popover>.category-search,.genre-multi-popover>.category-options{width:auto;max-width:100%;transform:none}.genre-multi-popover>.category-options{flex:1}.category-group>div{grid-template-columns:1fr 1fr}.category-group button{font-size:9px}.media-tag-item,.media-tag-label,.media-genre-item{min-width:0;flex:1 1 44%}.media-tags-expand{flex:1 1 100%;justify-content:center}}
+@media(max-width:460px){.genre-multi-popover{padding:12px}.genre-multi-popover>header,.genre-multi-popover>.category-search,.genre-multi-popover>.category-options{width:auto;max-width:100%;transform:none}.genre-multi-popover>.category-options{flex:1}.category-group>div{grid-template-columns:1fr 1fr}.category-group button{font-size:9px}.media-tag-item,.media-tag-label,.media-genre-item{min-width:0;flex:1 1 44%}.media-tags-expand,.media-tags-spoiler-toggle{flex:1 1 100%;justify-content:center}}
 
 /* Stable catalog filter grid and viewport-safe dropdowns. */
 .catalog-filters{
