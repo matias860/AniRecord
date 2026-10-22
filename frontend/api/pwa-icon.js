@@ -12,8 +12,9 @@ export default function handler(request) {
   const size = [96, 128, 180, 192, 512].includes(Number(params.get('size'))) ? Number(params.get('size')) : 512
   const accent = color(params.get('accent'), '#9b72ff')
   const background = color(params.get('background'), '#080a12')
+  const rounded = params.get('shape') === 'rounded'
   return new ImageResponse(
-    h('div', { style: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(145deg,${accent},${background} 88%)` } },
+    h('div', { style: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: rounded ? '22%' : 0, background: `linear-gradient(145deg,${accent},${background} 88%)` } },
       h('svg', { width: '100%', height: '100%', viewBox: '0 0 512 512', fill: '#fff' },
         h('path', { d: A, transform: 'translate(61 370) scale(.153664 -.153664)' }),
         h('path', { d: R, transform: 'translate(264.913 370) scale(.153664 -.153664)' }),
