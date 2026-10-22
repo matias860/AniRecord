@@ -10,22 +10,23 @@ import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import GenreMultiSelect from '../components/common/GenreMultiSelect.jsx'
 import MediaTypeSwitch from '../components/common/MediaTypeSwitch.jsx'
-import { fetchCatalog, fetchCatalogCategories } from '../features/catalog/catalogSlice.js'
 import { fetchLibrary } from '../features/library/librarySlice.js'
 import { catalogRequestFilters, emptyCatalogFilters, filtersFromSearchParams, normalizeCatalogFilters, searchParamsFromFilters } from '../lib/catalogFilters.js'
+import { useGetCatalogCategoriesQuery, useGetCatalogQuery } from '../api/anirecordApi.js'
 
 const publicationTypes = [{ value: '', label: 'Todos' }, { value: 'JP', label: 'Manga' }, { value: 'KR', label: 'Manhwa' }, { value: 'CN', label: 'Manhua' }]
 const seasons = [['WINTER', 'Invierno'], ['SPRING', 'Primavera'], ['SUMMER', 'Verano'], ['FALL', 'Otoño']]
 const statuses = [['RELEASING', 'En emisión'], ['FINISHED', 'Finalizado'], ['NOT_YET_RELEASED', 'Próximamente'], ['HIATUS', 'En pausa'], ['CANCELLED', 'Cancelado']]
 const maximumCatalogYear = new Date().getFullYear() + 3
 const years = Array.from({ length: maximumCatalogYear - 1939 }, (_, index) => maximumCatalogYear - index)
+const emptyCatalogItems = []
 export default function CatalogView() {
   const { mediaType } = useParams()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const dispatch = useDispatch()
-  const catalog = useSelector((state) => state.catalog)
-  const library = useSelector((state) => state.library)
+  const libraryItems = useSelector((state) => state.library.items)
+  const libraryStatus = useSelector((state) => state.library.status)
   const authenticated = useSelector((state) => state.auth.authenticated)
   const [filtersOpen, setFiltersOpen] = useState(true)
   const type = mediaType?.toLowerCase() === 'anime' ? 'ANIME' : mediaType?.toLowerCase() === 'manga' ? 'MANGA' : null
@@ -33,6 +34,18 @@ export default function CatalogView() {
   const filters = useMemo(() => filtersFromSearchParams(new URLSearchParams(rawSearchParams), type), [rawSearchParams, type])
   const [searchDraft, setSearchDraft] = useState(filters.search)
   const [requestSearch, setRequestSearch] = useState(filters.search)
+  const currentPage = Math.max(1, Number.parseInt(searchParams.get('pagina') || '1', 10) || 1)
+  const applicableFilters = useMemo(() => type === 'MANGA'
+    ? { ...filters, search: requestSearch, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
+    : { ...filters, search: requestSearch, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }, [filters, requestSearch, type])
+  const requestFilters = useMemo(() => catalogRequestFilters(applicableFilters), [applicableFilters])
+  const catalogQuery = useGetCatalogQuery({ type, page: currentPage, filters: requestFilters }, { skip: !type })
+  const categoriesQuery = useGetCatalogCategoriesQuery(undefined, { skip: !type })
+  const catalogData = catalogQuery.currentData ?? (catalogQuery.data?.results?.every((item) => item.mediaType === type) ? catalogQuery.data : null)
+  const catalogItems = catalogData?.results ?? emptyCatalogItems
+  const categories = categoriesQuery.data ?? { genres: [], tags: [] }
+  const unavailable = Boolean(catalogQuery.error?.data?.unavailable || categoriesQuery.error?.data?.unavailable)
+  const catalogError = catalogQuery.error?.data?.message
 
   const setFilters = (update) => {
     const nextFilters = typeof update === 'function' ? update(filters) : update
@@ -57,23 +70,13 @@ export default function CatalogView() {
 
   useEffect(() => {
     if (!type) return
-    if (catalog.categoriesStatus === 'idle') dispatch(fetchCatalogCategories())
-    if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
-  }, [authenticated, catalog.categoriesStatus, dispatch, library.status, type])
-
-  useEffect(() => {
-    if (!type || requestSearch !== filters.search) return undefined
-    const applicableFilters = type === 'MANGA'
-      ? { ...filters, search: requestSearch, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
-      : { ...filters, search: requestSearch, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
-    const request = dispatch(fetchCatalog({ type, page: 1, filters: catalogRequestFilters(applicableFilters) }))
-    return () => request.abort()
-  }, [dispatch, filters, requestSearch, type])
+    if (authenticated && libraryStatus === 'idle') dispatch(fetchLibrary())
+  }, [authenticated, dispatch, libraryStatus, type])
 
   const displayedItems = useMemo(() => {
     const query = filters.search.trim().toLocaleLowerCase('es')
-    if (!query) return catalog.items
-    const localMatches = (authenticated ? library.items : []).filter((item) => item.mediaType === type
+    if (!query) return catalogItems
+    const localMatches = (authenticated ? libraryItems : []).filter((item) => item.mediaType === type
       && [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(query))
       && (!filters.year || String(item.releaseYear) === filters.year)
       && (type !== 'ANIME' || !filters.season || item.releaseSeason === filters.season)
@@ -83,32 +86,37 @@ export default function CatalogView() {
       && !filters.genre.length
       && !filters.tag.length)
     const localIds = new Set(localMatches.map((item) => item.anilistId))
-    return [...localMatches, ...catalog.items.filter((item) => !localIds.has(item.anilistId))]
-  }, [authenticated, catalog.items, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.tag.length, filters.year, library.items, type])
+    return [...localMatches, ...catalogItems.filter((item) => !localIds.has(item.anilistId))]
+  }, [authenticated, catalogItems, filters.country, filters.format, filters.genre.length, filters.search, filters.season, filters.status, filters.tag.length, filters.year, libraryItems, type])
 
   if (mediaType && !type) return <Navigate to="/catalogo" replace />
   if (!type) return <CatalogLanding />
-  if ((catalog.status === 'idle' || catalog.status === 'loading') && !catalog.items.length) return <PageState fullPage loading />
+  if (catalogQuery.isLoading && !catalogItems.length) return <PageState fullPage loading />
 
   const resetFilters = () => {
     setSearchDraft('')
     setRequestSearch('')
     setFilters({ ...emptyCatalogFilters, genre: [], tag: [] })
   }
-  const changePage = (page) => { dispatch(fetchCatalog({ type, page, filters: catalog.filters })); window.scrollTo({ top: 0, behavior: 'smooth' }) }
+  const changePage = (page) => {
+    const params = searchParamsFromFilters(filters)
+    if (page > 1) params.set('pagina', String(page))
+    setSearchParams(params)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
   const update = (key) => (value) => setFilters((current) => ({ ...current, [key]: value }))
 
   return (
     <>
-      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><MediaTypeSwitch value={type} onChange={(nextType) => navigateToMediaType(navigate, nextType, { ...filters, search: searchDraft })} ariaLabel="Cambiar tipo de catálogo" />{!catalog.unavailable && <button className="filter-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
+      <div className="catalog-heading"><div><Link className="catalog-back" to="/catalogo"><ArrowLeft /> Elegir otro catálogo</Link><span className="eyebrow">Catálogo de {type === 'ANIME' ? 'anime' : 'manga'}</span><h1>{type === 'ANIME' ? 'Anime' : 'Manga'}</h1><p>Explora AniList y encuentra tu próxima historia.</p></div><div className="catalog-heading-actions"><MediaTypeSwitch value={type} onChange={(nextType) => navigateToMediaType(navigate, nextType, { ...filters, search: searchDraft })} ariaLabel="Cambiar tipo de catálogo" />{!unavailable && <button className="filter-toggle" aria-expanded={filtersOpen} aria-controls="catalog-filters" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros</button>}</div></div>
 
       <AnimatePresence mode="wait" initial={false}><motion.div className="catalog-type-content" key={type} initial={{ opacity: 0, x: type === 'ANIME' ? -18 : 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: type === 'ANIME' ? 18 : -18 }} transition={{ duration: .26, ease: 'easeOut' }}>
-      {catalog.unavailable ? <AniListUnavailable /> : <>
+      {unavailable ? <AniListUnavailable /> : <>
       <form id="catalog-filters" className={`catalog-filters ${filtersOpen ? 'open' : ''}`} data-media-type={type.toLowerCase()} onSubmit={(event) => event.preventDefault()}>
         <CatalogSearch value={searchDraft} onChange={updateSearchDraft} />
         <StyledSelect className="catalog-filter-year" ariaLabel="Año" fieldLabel="Año" value={filters.year} onChange={update('year')} options={[{ value: '', label: 'Todos' }, ...years.map((year) => ({ value: String(year), label: String(year) }))]} />
         {type === 'ANIME' && <StyledSelect className="catalog-filter-season" ariaLabel="Temporada" fieldLabel="Temporada" value={filters.season} onChange={update('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
-        <GenreMultiSelect className="catalog-filter-categories" genres={catalog.genres} tags={catalog.tags} value={{ genre: filters.genre, tag: filters.tag }} onChange={({ genre, tag }) => setFilters((current) => ({ ...current, genre, tag }))} />
+        <GenreMultiSelect className="catalog-filter-categories" genres={categories.genres} tags={categories.tags} value={{ genre: filters.genre, tag: filters.tag }} onChange={({ genre, tag }) => setFilters((current) => ({ ...current, genre, tag }))} />
         {type === 'MANGA' && <StyledSelect className="catalog-filter-country" ariaLabel="Origen de publicación" fieldLabel="Origen" value={filters.country} onChange={update('country')} options={publicationTypes} />}
         <StyledSelect className="catalog-filter-format" ariaLabel="Formato" fieldLabel="Formato" value={filters.format} onChange={update('format')} options={formatsFor(type)} />
         <StyledSelect className="catalog-filter-status" ariaLabel="Estado de emisión" fieldLabel="Emisión" value={filters.status} onChange={update('status')} options={[{ value: '', label: 'Todos' }, ...statuses.map(([value, label]) => ({ value, label }))]} />
@@ -116,8 +124,8 @@ export default function CatalogView() {
         <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 
-      <PageState loading={catalog.status === 'loading'} error={catalog.error} onRetry={() => dispatch(fetchCatalog({ type, page: catalog.currentPage, filters: catalog.filters }))} />
-      {catalog.status === 'succeeded' && <>{!displayedItems.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={catalog.currentPage === 1} onClick={() => changePage(catalog.currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{catalog.currentPage}</b></span><button disabled={!catalog.hasNextPage} onClick={() => changePage(catalog.currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
+      <PageState loading={catalogQuery.isFetching} error={catalogError} onRetry={catalogQuery.refetch} />
+      {catalogData && <>{!displayedItems.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{currentPage}</b></span><button disabled={!catalogData.hasNextPage} onClick={() => changePage(currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
       </>}
       </motion.div></AnimatePresence>
     </>

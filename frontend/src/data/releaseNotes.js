@@ -1,6 +1,19 @@
-export const CURRENT_VERSION = '1.14.0'
+export const CURRENT_VERSION = '1.15.0'
 
 export const RELEASES = [
+  {
+    version: '1.15.0',
+    date: '22 de octubre de 2026',
+    title: 'Navegación más fluida',
+    summary: 'Abrir títulos, recorrer listas y volver a una pantalla ahora requiere menos esperas.',
+    changes: [
+      { type: 'Navegación', text: 'Al volver a una biblioteca o catálogo recuperamos la posición, los filtros y la página que estabas viendo.' },
+      { type: 'Velocidad', text: 'AniRecord prepara los títulos antes de que los abras y conserva por un tiempo los datos ya consultados.' },
+      { type: 'Continuidad', text: 'La barra principal permanece disponible mientras termina de cargar una pantalla nueva.' },
+      { type: 'Biblioteca', text: 'Las búsquedas y cambios de filtros conservan sus animaciones con menos trabajo para el dispositivo.' },
+      { type: 'Celular', text: 'Reducimos efectos visuales costosos y trabajo fuera de pantalla para mejorar el desplazamiento.' },
+    ],
+  },
   {
     version: '1.14.0',
     date: '18 de octubre de 2026',

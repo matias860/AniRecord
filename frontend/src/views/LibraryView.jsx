@@ -1,5 +1,5 @@
 import { formatsFor } from '../lib/mediaFormats.js'
-import { useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
 import { Library, Search, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -18,7 +18,7 @@ import {
   setLibraryMediaType,
   setLibraryTrackingStatus,
 } from '../features/library/librarySlice.js'
-import { fetchCatalogCategories } from '../features/catalog/catalogSlice.js'
+import { useGetCatalogCategoriesQuery } from '../api/anirecordApi.js'
 
 const statuses = [['ALL', 'Todos'], ['IN_PROGRESS', 'En curso'], ['PLANNED', 'Pendientes'], ['COMPLETED', 'Completados'], ['PAUSED', 'Pausados'], ['DROPPED', 'Abandonados']]
 const sectionOrder = ['IN_PROGRESS', 'COMPLETED', 'PLANNED', 'PAUSED', 'DROPPED']
@@ -49,8 +49,11 @@ const byPersonalScore = (a, b) => {
 export default function LibraryView() {
   const dispatch = useDispatch()
   const [searchParams] = useSearchParams()
-  const { items, status, error, filters = {} } = useSelector((state) => state.library)
-  const catalog = useSelector((state) => state.catalog)
+  const items = useSelector((state) => state.library.items)
+  const status = useSelector((state) => state.library.status)
+  const error = useSelector((state) => state.library.error)
+  const filters = useSelector((state) => state.library.filters) ?? {}
+  const { data: categories = { genres: [], tags: [] } } = useGetCatalogCategoriesQuery()
   const mediaType = filters.mediaType === 'MANGA' ? 'MANGA' : 'ANIME'
   const trackingStatus = filters.trackingStatus ?? 'ALL'
   const deferredSearch = useDeferredValue(filters.search ?? '')
@@ -62,13 +65,13 @@ export default function LibraryView() {
   const selectedReleaseStatus = filters.releaseStatus ?? ''
   const selectedScore = Number(filters.score) || 0
   const [pagination, setPagination] = useState({ key: '', counts: {} })
+  const handleIncrement = useCallback((id) => dispatch(incrementProgress(id)), [dispatch])
   const updateFilter = (key) => (value) => dispatch(setLibraryFilter({ key, value }))
   const availableYears = useMemo(() => [...new Set(items
     .filter((item) => item.mediaType === mediaType && item.releaseYear)
     .map((item) => item.releaseYear))].sort((a, b) => b - a), [items, mediaType])
 
   useEffect(() => { if (status === 'idle') dispatch(fetchLibrary()) }, [dispatch, status])
-  useEffect(() => { if (catalog.categoriesStatus === 'idle') dispatch(fetchCatalogCategories()) }, [catalog.categoriesStatus, dispatch])
   useEffect(() => {
     if (filters.format && !formatsFor(mediaType).some((option) => option.value === filters.format)) {
       dispatch(setLibraryFilter({ key: 'format', value: '' }))
@@ -135,7 +138,7 @@ export default function LibraryView() {
         <label className="library-search" data-field-label="Buscar"><Search /><input aria-label="Buscar títulos en mi biblioteca" value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Título..." /></label>
         <StyledSelect ariaLabel="Año de la biblioteca" fieldLabel="Año" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Todos' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" fieldLabel="Temporada" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
-        <GenreMultiSelect genres={[...catalog.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
+        <GenreMultiSelect genres={[...categories.genres, 'Yuri']} value={filters.genre ?? []} onChange={updateFilter('genre')} />
         {mediaType === 'MANGA' && <StyledSelect ariaLabel="Origen de publicación de la biblioteca" fieldLabel="Origen" value={filters.country ?? ''} onChange={updateFilter('country')} options={publicationTypes} />}
         <StyledSelect ariaLabel="Formato de la biblioteca" fieldLabel="Formato" value={filters.format ?? ''} onChange={updateFilter('format')} options={formatsFor(mediaType)} />
         <StyledSelect ariaLabel="Estado de emisión de la biblioteca" fieldLabel="Emisión" value={filters.releaseStatus ?? ''} onChange={updateFilter('releaseStatus')} options={[{ value: '', label: 'Todas' }, ...releaseStatuses.map(([value, label]) => ({ value, label }))]} />
@@ -146,10 +149,10 @@ export default function LibraryView() {
       <PageState loading={status === 'loading'} error={error} onRetry={() => dispatch(fetchLibrary())} empty={status === 'succeeded' && !filtered.length}>No hay títulos para mostrar con estos filtros.</PageState>
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="library-sections" key={mediaType} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .28, ease: 'easeOut' }}>
-          <AnimatePresence initial={false} mode="popLayout">
-            {sections.map((section, sectionIndex) => <motion.section className="library-status-section" key={section.status} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .2, ease: 'easeOut', delay: sectionIndex * .035, layout: { type: 'spring', stiffness: 430, damping: 38 } }}>
+          <AnimatePresence initial={false} mode="sync">
+            {sections.map((section, sectionIndex) => <motion.section className="library-status-section" key={section.status} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .2, ease: 'easeOut', delay: sectionIndex * .035 }}>
               <div className="library-section-heading"><h2>{section.title}</h2><span>{section.items.length}</span></div>
-              <HoverMediaGrid className="library-grid" animateItems>{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={(id) => dispatch(incrementProgress(id))} />)}</HoverMediaGrid>
+              <HoverMediaGrid className="library-grid" animateItems>{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={handleIncrement} />)}</HoverMediaGrid>
               {(visibleCounts[section.status] ?? initialSectionSize) < section.items.length && <button className="secondary-button library-show-more" type="button" onClick={() => setPagination((current) => {
                 const counts = current.key === paginationKey ? current.counts : {}
                 return { key: paginationKey, counts: { ...counts, [section.status]: (counts[section.status] ?? initialSectionSize) + initialSectionSize } }

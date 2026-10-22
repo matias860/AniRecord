@@ -3,7 +3,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { Compass, Home, Library, LogIn, LogOut, Sparkles, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
-import { NavLink, useLocation, useNavigate, useOutlet } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, useNavigationType, useOutlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
 import NotificationBell from './NotificationBell.jsx'
 import ChangelogModal, { VersionButton } from './ChangelogModal.jsx'
@@ -14,8 +14,12 @@ import { updatePwaBranding } from '../../lib/pwaBranding.js'
 import { logout } from '../../features/auth/authSlice.js'
 import { activePushSubscription } from '../../lib/pwaInstall.js'
 import { requestLogin } from '../../lib/authNavigation.js'
+import { preloadRoute } from '../../lib/routeModules.js'
+import ProfileLoader from '../common/ProfileLoader.jsx'
 
 const AssistantView = lazy(() => import('../../views/AssistantView.jsx'))
+const scrollPositions = new Map()
+const routeFallback = <div className="page-state full-page route-loading"><ProfileLoader message="Cargando…" /></div>
 
 const links = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
@@ -29,9 +33,12 @@ export default function AppLayout() {
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantLoaded, setAssistantLoaded] = useState(false)
   const location = useLocation()
+  const navigationType = useNavigationType()
   const { pathname } = location
   const navigate = useNavigate()
   const mainRef = useRef(null)
+  const previousPathname = useRef(null)
+  const activeScrollKey = useRef(location.key)
   const outlet = useOutlet()
   const dispatch = useDispatch()
   const profileStatus = useSelector((state) => state.profile.status)
@@ -50,17 +57,61 @@ export default function AppLayout() {
     setAssistantOpen(true)
   }, [authenticated, location, navigate])
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
+  const rememberCurrentScroll = useCallback(() => {
+    scrollPositions.set(location.key, window.scrollY)
+  }, [location.key])
   useEffect(() => {
     if (!location.state?.openAssistant || !authenticated) return
     navigate(pathname, { replace: true, state: null })
     window.setTimeout(openAssistant, 0)
   }, [authenticated, location.state, navigate, openAssistant, pathname])
   useLayoutEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    const savedPosition = scrollPositions.get(location.key)
+    const pathChanged = previousPathname.current !== pathname
+    let restoreFrame = null
+    activeScrollKey.current = location.key
+    if (navigationType === 'POP' || pathChanged) {
+      const top = navigationType === 'POP' && savedPosition != null ? savedPosition : 0
+      window.scrollTo({ top, left: 0, behavior: 'auto' })
+      restoreFrame = window.requestAnimationFrame(() => window.scrollTo({ top, left: 0, behavior: 'auto' }))
+    }
     const names = { '/': 'Inicio', '/biblioteca': 'Biblioteca', '/catalogo': 'Catálogo', '/asistente': 'Asistente', '/perfil': 'Perfil', '/login': 'Iniciar sesión' }
     document.title = `${names[pathname] || 'Anime y manga'} · AniRecord`
-    mainRef.current?.focus({ preventScroll: true })
-  }, [pathname])
+    if (pathChanged && navigationType !== 'POP') mainRef.current?.focus({ preventScroll: true })
+    previousPathname.current = pathname
+    return () => { if (restoreFrame != null) window.cancelAnimationFrame(restoreFrame) }
+  }, [location.key, navigationType, pathname])
+  useEffect(() => {
+    let frame = null
+    const rememberPosition = () => {
+      if (frame != null) return
+      frame = window.requestAnimationFrame(() => {
+        scrollPositions.set(activeScrollKey.current, window.scrollY)
+        if (scrollPositions.size > 50) scrollPositions.delete(scrollPositions.keys().next().value)
+        frame = null
+      })
+    }
+    window.addEventListener('scroll', rememberPosition, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', rememberPosition)
+      if (frame != null) window.cancelAnimationFrame(frame)
+    }
+  }, [])
+  useEffect(() => {
+    const previous = window.history.scrollRestoration
+    window.history.scrollRestoration = 'manual'
+    return () => { window.history.scrollRestoration = previous }
+  }, [])
+  useEffect(() => {
+    if (navigator.connection?.saveData) return undefined
+    const warmRoutes = () => Promise.allSettled([preloadRoute('/biblioteca'), preloadRoute('/catalogo')])
+    if ('requestIdleCallback' in window) {
+      const handle = window.requestIdleCallback(warmRoutes, { timeout: 3500 })
+      return () => window.cancelIdleCallback(handle)
+    }
+    const handle = window.setTimeout(warmRoutes, 1800)
+    return () => window.clearTimeout(handle)
+  }, [])
   const signOut = async () => {
     const subscription = await activePushSubscription()
     if (subscription) await subscription.unsubscribe().catch(() => false)
@@ -89,7 +140,7 @@ export default function AppLayout() {
     return () => Object.keys(variables).forEach((name) => root.style.removeProperty(name))
   }, [accentColor, backgroundColor, surfaceColor])
   return (
-    <div className={`app-shell ${dotsEnabled ? 'dot-background' : ''}`} style={themeStyle}>
+    <div className={`app-shell ${dotsEnabled ? 'dot-background' : ''}`} style={themeStyle} onClickCapture={rememberCurrentScroll}>
       <a className="skip-content" href="#main-content">Saltar al contenido</a>
       <header className="topbar-wrap">
         <div className="topbar">
@@ -97,7 +148,7 @@ export default function AppLayout() {
           <VersionButton onClick={() => setChangelogOpen(true)} />
           <nav className="main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
             {links.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end} onMouseEnter={() => setHovered(to)} className={({ isActive }) => isActive ? 'active' : ''}>
+              <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => preloadRoute(to)} className={({ isActive }) => isActive ? 'active' : ''}>
                 {hovered === to && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
                 <Icon size={17} /><span>{label}</span>
               </NavLink>
@@ -106,7 +157,7 @@ export default function AppLayout() {
               {hovered === '/asistente' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
               <Sparkles size={17} /><span>Asistente</span>
             </button>
-            <NavLink to={authenticated ? '/perfil' : '/login'} aria-label={authenticated ? 'Perfil' : 'Iniciar sesión'} title={authenticated ? 'Perfil' : 'Iniciar sesión'} onMouseEnter={() => setHovered(authenticated ? '/perfil' : '/login')} className={({ isActive }) => `nav-profile${isActive ? ' active' : ''}`}>
+            <NavLink to={authenticated ? '/perfil' : '/login'} aria-label={authenticated ? 'Perfil' : 'Iniciar sesión'} title={authenticated ? 'Perfil' : 'Iniciar sesión'} onMouseEnter={() => { const target = authenticated ? '/perfil' : '/login'; setHovered(target); preloadRoute(target) }} onFocus={() => preloadRoute(authenticated ? '/perfil' : '/login')} className={({ isActive }) => `nav-profile${isActive ? ' active' : ''}`}>
               {hovered === (authenticated ? '/perfil' : '/login') && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
               <span className="nav-avatar">{authenticated && avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : authenticated ? <UserRound size={18} /> : <LogIn size={18} />}</span>
             </NavLink>
@@ -115,7 +166,7 @@ export default function AppLayout() {
           {authenticated && <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>}
         </div>
       </header>
-      <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></main>
+      <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><Suspense fallback={routeFallback}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></Suspense></main>
       <ToastViewport />
       <PwaUpdateToast />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />

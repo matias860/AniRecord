@@ -10,7 +10,7 @@ import StyledSelect from '../components/common/StyledSelect.jsx'
 import MediaTags from '../components/media/MediaTags.jsx'
 import { addToLibrary, fetchLibrary, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
 import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime } from '../lib/media.js'
-import { clearDetail, fetchMediaDetail } from '../features/search/searchSlice.js'
+import { useGetMediaDetailQuery } from '../api/anirecordApi.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
 
@@ -35,23 +35,21 @@ export default function MediaDetailView() {
   const navigate = useNavigate()
   const location = useLocation()
   const authenticated = useSelector((state) => state.auth.authenticated)
-  const { detail, detailStatus, error } = useSelector((state) => state.search)
+  const { data: detail, error: detailError, isLoading, isFetching, refetch } = useGetMediaDetailQuery(anilistId)
   const library = useSelector((state) => state.library)
   const mediaRecommendations = useSelector((state) => state.recommendations.byMedia[Number(anilistId)]?.entries ?? null)
   const saved = authenticated ? library.items.find((item) => item.anilistId === Number(anilistId)) : null
   const [libraryModal, setLibraryModal] = useState(null)
 
   useEffect(() => {
-    dispatch(fetchMediaDetail(anilistId))
     dispatch(fetchMediaRecommendations(anilistId))
-    return () => dispatch(clearDetail())
   }, [anilistId, dispatch])
 
   useEffect(() => {
     if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [authenticated, dispatch, library.status])
 
-  if (detailStatus !== 'succeeded') return <PageState fullPage loading={detailStatus === 'loading' || detailStatus === 'idle'} error={error} onRetry={() => dispatch(fetchMediaDetail(anilistId))} />
+  if (!detail) return <PageState fullPage loading={isLoading || isFetching} error={detailError?.data?.message} onRetry={refetch} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
   const titleLength = [...detail.title].length
   const titleSizeClass = titleLength > 64 ? 'detail-title-extra-long' : titleLength > 38 ? 'detail-title-long' : ''
@@ -141,7 +139,7 @@ function MediaCredits({ credits, mediaType }) {
       {credits.map((credit) => {
         const content = <>{credit.creditType === 'STUDIO'
           ? <span className="media-credit-studio"><Building2 /></span>
-          : credit.image ? <img src={credit.image} alt={credit.name} /> : <span className="media-credit-studio"><UserRound /></span>}
+          : credit.image ? <img src={credit.image} alt={credit.name} loading="lazy" decoding="async" /> : <span className="media-credit-studio"><UserRound /></span>}
           <span><strong>{credit.name}</strong><small>{credit.roles.join(' · ')}</small></span></>
         return credit.creditType === 'PERSON'
           ? <Link className="media-credit-card" key={`${credit.creditType}-${credit.anilistId}`} to={`/profesionales/${credit.anilistId}`}>{content}</Link>
@@ -164,7 +162,7 @@ function RelationCarousel({ relations }) {
   const pages = Math.ceil(relations.length / 5)
   const visible = relations.slice(page * 5, page * 5 + 5)
   return <div className="relation-carousel">
-    <AnimatePresence mode="wait" initial={false}><motion.div className="relation-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((relation) => <Link key={`${relation.anilistId}-${relation.relationType}`} to={`/media/${relation.anilistId}`}><img src={relation.coverImage} alt={`Portada de ${relation.title}`} /><span><small>{relationLabels[relation.relationType] || relation.relationType?.replaceAll('_', ' ')}{relation.format === 'MUSIC' ? ' · Music video' : ''}</small>{relation.title}</span></Link>)}</motion.div></AnimatePresence>
+    <AnimatePresence mode="wait" initial={false}><motion.div className="relation-page" key={page} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.map((relation) => <Link key={`${relation.anilistId}-${relation.relationType}`} to={`/media/${relation.anilistId}`}><img src={relation.coverImage} alt={`Portada de ${relation.title}`} loading="lazy" decoding="async" /><span><small>{relationLabels[relation.relationType] || relation.relationType?.replaceAll('_', ' ')}{relation.format === 'MUSIC' ? ' · Music video' : ''}</small>{relation.title}</span></Link>)}</motion.div></AnimatePresence>
     {pages > 1 && <div className="relation-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Relaciones anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Relaciones siguientes"><ChevronRight /></button></div>}
   </div>
 }
@@ -183,7 +181,7 @@ function CharacterCarousel({ characters }) {
   return <section className="characters-section">
     <div className="characters-heading"><div><span className="eyebrow">Reparto</span><h2>Personajes</h2></div><div className="character-role-switch" role="group" aria-label="Tipo de personaje"><button type="button" className={role === 'MAIN' ? 'active' : ''} aria-pressed={role === 'MAIN'} onClick={() => changeRole('MAIN')}>Principales <span>{roleTotals.MAIN}</span></button><button type="button" className={role === 'SUPPORTING' ? 'active' : ''} aria-pressed={role === 'SUPPORTING'} onClick={() => changeRole('SUPPORTING')}>Secundarios <span>{roleTotals.SUPPORTING}</span></button></div></div>
     <div className="character-carousel">
-    <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={`${role}-${page}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.length ? visible.map((character) => <article key={character.anilistId}><Link className="character-image-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} /></Link><span><Link className="character-name-link" to={`/personajes/${character.anilistId}`}><strong>{character.name}</strong></Link><small>{role === 'MAIN' ? 'Principal' : 'Secundario'}</small>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</span></article>) : <p className="character-empty">No hay personajes en esta categoría.</p>}</motion.div></AnimatePresence>
+    <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={`${role}-${page}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.length ? visible.map((character) => <article key={character.anilistId}><Link className="character-image-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} loading="lazy" decoding="async" /></Link><span><Link className="character-name-link" to={`/personajes/${character.anilistId}`}><strong>{character.name}</strong></Link><small>{role === 'MAIN' ? 'Principal' : 'Secundario'}</small>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</span></article>) : <p className="character-empty">No hay personajes en esta categoría.</p>}</motion.div></AnimatePresence>
     {pages > 1 && <div className="character-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Personajes anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Personajes siguientes"><ChevronRight /></button></div>}
     </div>
   </section>

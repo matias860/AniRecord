@@ -4,15 +4,16 @@ import { useDispatch, useSelector } from 'react-redux'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import AppLayout from './components/layout/AppLayout.jsx'
 import ProfileLoader from './components/common/ProfileLoader.jsx'
-const HomeView = lazy(() => import('./views/HomeView.jsx'))
-const LibraryView = lazy(() => import('./views/LibraryView.jsx'))
-const MediaDetailView = lazy(() => import('./views/MediaDetailView.jsx'))
-const CatalogView = lazy(() => import('./views/CatalogView.jsx'))
-const ProfileView = lazy(() => import('./views/ProfileView.jsx'))
-const LoginView = lazy(() => import('./views/LoginView.jsx'))
-const ImportView = lazy(() => import('./views/ImportView.jsx'))
-const CharacterDetailView = lazy(() => import('./views/CharacterDetailView.jsx'))
-const StaffDetailView = lazy(() => import('./views/StaffDetailView.jsx'))
+import { loadRoute } from './lib/routeModules.js'
+const HomeView = lazy(() => loadRoute('home'))
+const LibraryView = lazy(() => loadRoute('library'))
+const MediaDetailView = lazy(() => loadRoute('mediaDetail'))
+const CatalogView = lazy(() => loadRoute('catalog'))
+const ProfileView = lazy(() => loadRoute('profile'))
+const LoginView = lazy(() => loadRoute('login'))
+const ImportView = lazy(() => loadRoute('import'))
+const CharacterDetailView = lazy(() => loadRoute('characterDetail'))
+const StaffDetailView = lazy(() => loadRoute('staffDetail'))
 import { fetchAuth, sessionExpired, oauthFailed } from './features/auth/authSlice.js'
 import apiClient from './api/apiClient.js'
 import { clearReturnPath, currentReturnPath, getReturnPath, rememberReturnPath } from './lib/authNavigation.js'
@@ -57,7 +58,6 @@ export default function App() {
   const authPending = auth.status === 'idle' || auth.status === 'loading'
   if (auth.authenticated && auth.needsImport) return <Suspense fallback={viewFallback}><ImportView /></Suspense>
   return (
-    <Suspense fallback={viewFallback}>
       <Routes>
         <Route element={<AppLayout />}>
           <Route index element={<HomeView />} />
@@ -74,7 +74,6 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
-    </Suspense>
   )
 }
 

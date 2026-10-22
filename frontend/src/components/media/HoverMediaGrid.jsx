@@ -6,16 +6,15 @@ export default function HoverMediaGrid({ children, className = '', animateItems 
 
   return (
     <div className={`media-grid hover-media-grid ${className}`}>
-      <AnimatePresence initial={false} mode={animateItems ? 'popLayout' : 'sync'}>
+      <AnimatePresence initial={false} mode="sync">
         {items.map((child) => animateItems ? (
           <motion.div
             className="hover-media-item"
             key={child.key}
-            layout="position"
             initial={{ opacity: 0, scale: .96, y: 8 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: .96, y: -6 }}
-            transition={{ duration: .18, ease: 'easeOut', layout: { type: 'spring', stiffness: 430, damping: 38 } }}
+            transition={{ duration: .18, ease: 'easeOut' }}
           >
             <span className="card-hover-glow" aria-hidden="true" />
             <div className="hover-card-content">{child}</div>

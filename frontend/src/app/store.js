@@ -4,7 +4,6 @@ import libraryReducer from '../features/library/librarySlice.js'
 import searchReducer from '../features/search/searchSlice.js'
 import homeReducer from '../features/home/homeSlice.js'
 import profileReducer from '../features/profile/profileSlice.js'
-import catalogReducer from '../features/catalog/catalogSlice.js'
 import historyReducer from '../features/history/historySlice.js'
 import notificationReducer from '../features/notifications/notificationSlice.js'
 import toastReducer from '../features/toast/toastSlice.js'
@@ -14,13 +13,13 @@ import peopleReducer from '../features/people/peopleSlice.js'
 import favoritesReducer from '../features/favorites/favoritesSlice.js'
 import recommendationsReducer from '../features/recommendations/recommendationsSlice.js'
 import topNineReducer from '../features/topNine/topNineSlice.js'
+import { anirecordApi } from '../api/anirecordApi.js'
 
 const appReducer = combineReducers({
   library: libraryReducer,
   search: searchReducer,
   home: homeReducer,
   profile: profileReducer,
-  catalog: catalogReducer,
   history: historyReducer,
   notifications: notificationReducer,
   toast: toastReducer,
@@ -29,6 +28,7 @@ const appReducer = combineReducers({
   favorites: favoritesReducer,
   recommendations: recommendationsReducer,
   topNine: topNineReducer,
+  [anirecordApi.reducerPath]: anirecordApi.reducer,
 })
 
 const rootReducer = (state, action) => appReducer(['auth/logout/fulfilled', 'auth/sessionExpired'].includes(action.type) ? undefined : state, action)
@@ -55,7 +55,7 @@ export const store = configureStore({
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: { ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER] },
-    }).concat(toastMiddleware),
+    }).concat(anirecordApi.middleware, toastMiddleware),
 })
 
 export const persistor = persistStore(store)

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -87,6 +87,7 @@ export default function HomeView() {
   const topNine = useSelector((state) => state.topNine)
   const [recommendationModal, setRecommendationModal] = useState(false)
   const [topNineOpen, setTopNineOpen] = useState(false)
+  const handleIncrement = useCallback((id) => dispatch(incrementProgress(id)), [dispatch])
   const communityReady = useIdleReady()
   const [seasonSectionRef, seasonSectionReady] = useNearViewport()
   const syncPromptKey = `anime-list:last-sync-prompt:${auth.userId ?? 'anonymous'}`
@@ -279,8 +280,8 @@ export default function HomeView() {
 
       <TopNineShowcase key={topNine.prompt?.key ?? 'top-nine-loading'} prompt={topNine.prompt} submissions={topNine.submissions} />
 
-      {auth.authenticated && <><LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} />
-      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={(id) => dispatch(incrementProgress(id))} loading={library.status === 'loading'} error={library.error} /></>}
+      {auth.authenticated && <><LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={handleIncrement} loading={library.status === 'loading'} error={library.error} />
+      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={handleIncrement} loading={library.status === 'loading'} error={library.error} /></>}
     </>
   )
 }

@@ -37,7 +37,7 @@ export default function SeasonMarquee({ entries, loading, error, onRetry, label,
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${label}-${media.anilistId}`} initial={{ opacity: 0, x: 35 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -35 }} transition={{ duration: .32, ease: 'easeOut' }}>
         <Link className={`panorama-slide ${media.bannerImage ? 'has-banner' : 'cover-fallback'}`} to={`/media/${media.anilistId}`}>
           <span className="panorama-blur" style={{ backgroundImage: `url(${media.bannerImage || media.coverImage})` }} />
-          <img src={media.bannerImage || media.coverImage} alt={`Banner de ${media.title}`} />
+          <img src={media.bannerImage || media.coverImage} alt={`Banner de ${media.title}`} loading="lazy" decoding="async" />
           <span className="panorama-shade" />
           <div className="panorama-copy"><small>#{safeActive + 1} · Anime de temporada</small><strong>{media.title}</strong><span><Heart /> {media.favourites?.toLocaleString('es-AR') ?? '—'} favoritos</span></div>
           {featured.length > 1 && <span className="carousel-progress" key={`progress-${media.anilistId}`} />}
