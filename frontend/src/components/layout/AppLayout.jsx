@@ -11,10 +11,10 @@ import ToastViewport from '../common/ToastViewport.jsx'
 import BrandMark from '../common/BrandMark.jsx'
 import PwaUpdateToast from '../common/PwaUpdateToast.jsx'
 import { updatePwaBranding } from '../../lib/pwaBranding.js'
-import { logout } from '../../features/auth/authSlice.js'
-import { activePushSubscription } from '../../lib/pwaInstall.js'
 import { requestLogin } from '../../lib/authNavigation.js'
 import { preloadRoute } from '../../lib/routeModules.js'
+import { routeSectionTitle } from '../../lib/navigation.js'
+import useSignOut from '../../lib/useSignOut.js'
 import ProfileLoader from '../common/ProfileLoader.jsx'
 
 const AssistantView = lazy(() => import('../../views/AssistantView.jsx'))
@@ -48,6 +48,8 @@ export default function AppLayout() {
   const accentColor = useSelector((state) => state.profile.accentColor)
   const dotsEnabled = useSelector((state) => state.profile.dotsEnabled)
   const authenticated = useSelector((state) => state.auth.authenticated)
+  const displayName = useSelector((state) => state.profile.displayName)
+  const signOut = useSignOut()
   const openAssistant = useCallback(() => {
     if (!authenticated) {
       requestLogin(navigate, location)
@@ -75,8 +77,7 @@ export default function AppLayout() {
       window.scrollTo({ top, left: 0, behavior: 'auto' })
       restoreFrame = window.requestAnimationFrame(() => window.scrollTo({ top, left: 0, behavior: 'auto' }))
     }
-    const names = { '/': 'Inicio', '/biblioteca': 'Biblioteca', '/catalogo': 'Catálogo', '/asistente': 'Asistente', '/perfil': 'Perfil', '/login': 'Iniciar sesión' }
-    document.title = `${names[pathname] || 'Anime y manga'} · AniRecord`
+    document.title = `${routeSectionTitle(pathname)} · AniRecord`
     if (pathChanged && navigationType !== 'POP') mainRef.current?.focus({ preventScroll: true })
     previousPathname.current = pathname
     return () => { if (restoreFrame != null) window.cancelAnimationFrame(restoreFrame) }
@@ -112,14 +113,6 @@ export default function AppLayout() {
     const handle = window.setTimeout(warmRoutes, 1800)
     return () => window.clearTimeout(handle)
   }, [])
-  const signOut = async () => {
-    const subscription = await activePushSubscription()
-    if (subscription) await subscription.unsubscribe().catch(() => false)
-    await dispatch(logout(subscription?.endpoint || null))
-    window.localStorage.removeItem('persist:anime-list')
-    window.localStorage.removeItem('persist:anime-list-v2')
-    window.location.replace('/')
-  }
   useEffect(() => { if (authenticated && profileStatus === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profileStatus])
   const themeStyle = {
     '--user-bg': safeDarkColor(backgroundColor),
@@ -144,9 +137,11 @@ export default function AppLayout() {
       <a className="skip-content" href="#main-content">Saltar al contenido</a>
       <header className="topbar-wrap">
         <div className="topbar">
-          <NavLink className="brand" to="/"><span className="brand-mark"><BrandMark /></span><span>Ani<span>Record</span></span></NavLink>
-          <VersionButton onClick={() => setChangelogOpen(true)} />
-          <nav className="main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
+          <NavLink className="brand desktop-brand" to="/"><span className="brand-mark"><BrandMark /></span><span>Ani<span>Record</span></span></NavLink>
+          <VersionButton variant="mark" onClick={() => setChangelogOpen(true)} />
+          <div className="mobile-route-title"><small>AniRecord</small><strong>{routeSectionTitle(pathname)}</strong></div>
+          <div className="desktop-version"><VersionButton onClick={() => setChangelogOpen(true)} /></div>
+          <nav className="main-nav desktop-main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
             {links.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => preloadRoute(to)} className={({ isActive }) => isActive ? 'active' : ''}>
                 {hovered === to && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
@@ -157,15 +152,22 @@ export default function AppLayout() {
               {hovered === '/asistente' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
               <Sparkles size={17} /><span>Asistente</span>
             </button>
-            <NavLink to={authenticated ? '/perfil' : '/login'} aria-label={authenticated ? 'Perfil' : 'Iniciar sesión'} title={authenticated ? 'Perfil' : 'Iniciar sesión'} onMouseEnter={() => { const target = authenticated ? '/perfil' : '/login'; setHovered(target); preloadRoute(target) }} onFocus={() => preloadRoute(authenticated ? '/perfil' : '/login')} className={({ isActive }) => `nav-profile${isActive ? ' active' : ''}`}>
-              {hovered === (authenticated ? '/perfil' : '/login') && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
-              <span className="nav-avatar">{authenticated && avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : authenticated ? <UserRound size={18} /> : <LogIn size={18} />}</span>
-            </NavLink>
-            {authenticated && <NotificationBell hovered={hovered === '/notificaciones'} onMouseEnter={() => setHovered('/notificaciones')} />}
           </nav>
-          {authenticated && <button className="logout-button" onClick={signOut} title="Cerrar sesión" aria-label="Cerrar sesión"><LogOut size={17} /></button>}
+          <div className="topbar-actions">
+            {authenticated && <NotificationBell hovered={hovered === '/notificaciones'} onMouseEnter={() => setHovered('/notificaciones')} />}
+            {authenticated
+              ? <AccountMenu avatarUrl={avatarUrl} displayName={displayName} onOpenChangelog={() => setChangelogOpen(true)} onSignOut={signOut} />
+              : <NavLink className="desktop-login-button" to="/login" onFocus={() => preloadRoute('/login')}><LogIn /><span>Ingresar</span></NavLink>}
+          </div>
         </div>
       </header>
+      <nav className="mobile-bottom-nav" aria-label="Navegación principal móvil">
+        <MobileNavLink to="/" label="Inicio" icon={Home} end />
+        <MobileNavLink to="/biblioteca" label="Biblioteca" icon={Library} />
+        <button type="button" className={`mobile-assistant-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" onClick={openAssistant}><span><Sparkles /></span><small>Asistente</small></button>
+        <MobileNavLink to="/catalogo" label="Catálogo" icon={Compass} />
+        <MobileNavLink to={authenticated ? '/perfil' : '/login'} label={authenticated ? 'Perfil' : 'Ingresar'} icon={authenticated ? UserRound : LogIn} avatarUrl={authenticated ? avatarUrl : null} />
+      </nav>
       <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><Suspense fallback={routeFallback}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></Suspense></main>
       <ToastViewport />
       <PwaUpdateToast />
@@ -173,4 +175,36 @@ export default function AppLayout() {
       {assistantLoaded && <Suspense fallback={null}><AssistantView panel open={assistantOpen} onClose={closeAssistant} /></Suspense>}
     </div>
   )
+}
+
+function MobileNavLink({ to, label, icon: Icon, avatarUrl, end = false }) {
+  return <NavLink to={to} end={end} onPointerEnter={() => preloadRoute(to)} onFocus={() => preloadRoute(to)} className={({ isActive }) => isActive ? 'active' : ''}>
+    <span className={avatarUrl ? 'mobile-nav-avatar' : ''}>{avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : <Icon />}</span><small>{label}</small>
+  </NavLink>
+}
+
+function AccountMenu({ avatarUrl, displayName, onOpenChangelog, onSignOut }) {
+  const [open, setOpen] = useState(false)
+  const root = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    const close = (event) => {
+      if (event.key === 'Escape' || !root.current?.contains(event.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    document.addEventListener('keydown', close)
+    return () => {
+      document.removeEventListener('mousedown', close)
+      document.removeEventListener('keydown', close)
+    }
+  }, [open])
+  return <div className="account-menu" ref={root}>
+    <button className="account-trigger" type="button" onClick={() => setOpen((current) => !current)} aria-label="Abrir menú de cuenta" aria-expanded={open} aria-controls="account-menu-popover"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : <UserRound />}</span></button>
+    {open && <div className="account-popover" id="account-menu-popover" role="menu">
+      <div className="account-summary"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : <UserRound />}</span><span><small>Sesión activa</small><strong>{displayName || 'Mi perfil'}</strong></span></div>
+      <NavLink to="/perfil" role="menuitem" onClick={() => setOpen(false)}><UserRound /> Perfil y configuración</NavLink>
+      <button type="button" role="menuitem" onClick={() => { setOpen(false); onOpenChangelog() }}><Sparkles /> Historial de cambios</button>
+      <button className="account-signout" type="button" role="menuitem" onClick={onSignOut}><LogOut /> Cerrar sesión</button>
+    </div>}
+  </div>
 }

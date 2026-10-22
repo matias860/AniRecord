@@ -4,6 +4,7 @@ import { Check, ChevronDown, ChevronRight, History, ScrollText, X } from 'lucide
 import { AnimatePresence, motion } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { CURRENT_VERSION, RELEASES } from '../../data/releaseNotes.js'
+import BrandMark from '../common/BrandMark.jsx'
 import './ChangelogModal.css'
 
 const STORAGE_KEY = 'anirecord:last-seen-version'
@@ -23,7 +24,7 @@ const versionGroups = RELEASES.reduce((groups, release) => {
 function familyOf(version) {
   return version.split('.').slice(0, 2).join('.')
 }
-export function VersionButton({ onClick }) {
+export function VersionButton({ onClick, variant = 'label' }) {
   const [unseen, setUnseen] = useState(() => window.localStorage.getItem(STORAGE_KEY) !== CURRENT_VERSION)
 
   const open = () => {
@@ -33,9 +34,9 @@ export function VersionButton({ onClick }) {
   }
 
   return (
-    <button className="version-button" type="button" onClick={open} aria-label={`Ver cambios de la versión ${CURRENT_VERSION}`}>
+    <button className={`version-button${variant === 'mark' ? ' version-mark-button' : ''}`} type="button" onClick={open} aria-label={`Ver cambios de la versión ${CURRENT_VERSION}`}>
       {unseen && <i aria-hidden="true" />}
-      <span>Versión</span> {CURRENT_VERSION}
+      {variant === 'mark' ? <span className="brand-mark"><BrandMark /></span> : <><span>Versión</span> {CURRENT_VERSION}</>}
     </button>
   )
 }

@@ -1,7 +1,7 @@
 import { safeDarkColor, safeAccentColor, accentTextColor } from '../lib/themeContrast.js'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, Camera, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
+import { BookOpen, Camera, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, LogOut, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { prepareImageForCrop } from '../lib/profileImage.js'
@@ -12,6 +12,7 @@ import { selectTopRatedAnime, selectTopRatedManga } from '../features/library/li
 import { fetchHistory } from '../features/history/historySlice.js'
 import { deleteProfileAsset, saveProfile, uploadProfileAsset } from '../features/profile/profileSlice.js'
 import { fetchPersonFavorites } from '../features/favorites/favoritesSlice.js'
+import useSignOut from '../lib/useSignOut.js'
 
 const ImageCropModal = lazy(() => import('../components/profile/ImageCropModal.jsx'))
 const AniListExportPanel = lazy(() => import('../components/profile/AniListExportPanel.jsx'))
@@ -23,6 +24,7 @@ const profileDraft = (profile) => Object.fromEntries(draftKeys.map((key) => [key
 
 export default function ProfileView() {
   const dispatch = useDispatch()
+  const signOut = useSignOut()
   const profile = useSelector((state) => state.profile)
   const libraryState = useSelector((state) => state.library)
   const historyState = useSelector((state) => state.history)
@@ -79,6 +81,7 @@ export default function ProfileView() {
           <div className="profile-actions"><span>{dirty ? 'Hay cambios sin guardar' : 'Cambios guardados'}</span><button className="primary-button" disabled={profile.status === 'saving' || !dirty} onClick={() => dispatch(saveProfile(draft))}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>
         </section>
       </div>
+      <section className="profile-mobile-session"><div><span className="eyebrow">Cuenta</span><strong>Sesión de AniRecord</strong><small>Cerrá la sesión de este dispositivo.</small></div><button type="button" onClick={signOut}><LogOut /> Cerrar sesión</button></section>
     </>
   )
 }
