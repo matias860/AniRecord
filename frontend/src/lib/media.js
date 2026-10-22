@@ -3,32 +3,48 @@ export const STATUS_LABELS = {
   COMPLETED: 'Completado', DROPPED: 'Abandonado',
 }
 
-const normalizeAniListText = (value) => (value ?? '')
+const normalizeAniListText = (value, preserveSpoilers = false) => {
+  let text = (value ?? '')
   .replace(/<br\s*\/?\s*>/gi, '\n')
   .replace(/<[^>]*>/g, '')
-  .replace(/~!([\s\S]*?)!~/g, '$1')
   .replace(/(__|\*\*)(.*?)\1/g, '$2')
   .replace(/^\s*[-*]\s+/gm, '• ')
   .replace(/[ \t]+\n/g, '\n')
   .replace(/\n{3,}/g, '\n\n')
   .trim()
+  if (!preserveSpoilers) text = text.replace(/~!([\s\S]*?)!~/g, '$1')
+  return text
+}
 
 export const cleanAniListText = (value) => normalizeAniListText(value)
   .replace(/\[([^\]]+)]\([^\s)]+\)/g, '$1')
 
 export const parseAniListText = (value) => {
-  const text = normalizeAniListText(value)
+  const text = normalizeAniListText(value, true)
+  const spoilerPattern = /~!([\s\S]*?)!~/g
+  const segments = []
+  let cursor = 0
+  for (const match of text.matchAll(spoilerPattern)) {
+    if (match.index > cursor) segments.push(...parseAniListLinks(text.slice(cursor, match.index), false))
+    segments.push(...parseAniListLinks(match[1], true))
+    cursor = match.index + match[0].length
+  }
+  if (cursor < text.length) segments.push(...parseAniListLinks(text.slice(cursor), false))
+  return segments
+}
+
+const parseAniListLinks = (text, spoiler) => {
   const linkPattern = /\[([^\]]+)]\((https?:\/\/[^\s)]+)\)/gi
   const segments = []
   let cursor = 0
   for (const match of text.matchAll(linkPattern)) {
-    if (match.index > cursor) segments.push({ text: text.slice(cursor, match.index) })
+    if (match.index > cursor) segments.push({ text: text.slice(cursor, match.index), spoiler })
     const href = match[2]
     const to = aniListInternalPath(href)
-    segments.push(to ? { text: match[1], to } : { text: match[1], href })
+    segments.push(to ? { text: match[1], to, spoiler } : { text: match[1], href, spoiler })
     cursor = match.index + match[0].length
   }
-  if (cursor < text.length) segments.push({ text: text.slice(cursor) })
+  if (cursor < text.length) segments.push({ text: text.slice(cursor), spoiler })
   return segments
 }
 

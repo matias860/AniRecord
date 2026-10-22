@@ -24,7 +24,7 @@ export default function StaffDetailView() {
   const pageCount = Math.max(1, Math.ceil((person.characters || []).length / 8))
   const currentPage = Math.min(page, pageCount - 1)
   const visibleCharacters = (person.characters || []).slice(currentPage * 8, currentPage * 8 + 8)
-  return <PersonPage person={person} personType="STAFF" favorites={favorites} authenticated={authenticated} eyebrow={professionalLabel(person.occupations)} facts={facts} favoriteEnabled={isVoiceActor}>
+  return <PersonPage key={person.anilistId} person={person} personType="STAFF" favorites={favorites} authenticated={authenticated} eyebrow={professionalLabel(person.occupations)} facts={facts} favoriteEnabled={isVoiceActor}>
     {!!person.characters?.length && <section className="person-section staff-roles"><span className="eyebrow">Interpretaciones</span><h2>Personajes</h2><AnimatePresence mode="wait" initial={false}><motion.div className="staff-role-grid" key={currentPage} initial={{ opacity: 0, x: 22 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -22 }} transition={{ duration: .22, ease: 'easeOut' }}>{visibleCharacters.map((character) => <StaffRoleCard key={character.anilistId} character={character} />)}</motion.div></AnimatePresence>{pageCount > 1 && <div className="staff-role-controls"><button type="button" disabled={currentPage === 0} onClick={() => setPage(currentPage - 1)} aria-label="Ocho personajes anteriores"><ChevronLeft /></button><span>{currentPage + 1} / {pageCount}</span><button type="button" disabled={currentPage === pageCount - 1} onClick={() => setPage(currentPage + 1)} aria-label="Ocho personajes siguientes"><ChevronRight /></button></div>}</section>}
     <MediaConnections items={person.works} expanded />
   </PersonPage>

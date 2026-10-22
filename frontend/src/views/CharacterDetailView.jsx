@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, ChevronLeft, ChevronRight, Heart, Mic2 } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, Eye, EyeOff, Heart, Mic2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -19,7 +19,7 @@ export default function CharacterDetailView() {
   useEffect(() => { dispatch(fetchCharacter(anilistId)) }, [anilistId, dispatch])
   useEffect(() => { if (authenticated) dispatch(fetchPersonFavorites()) }, [authenticated, dispatch])
   if (!person) return <PageState fullPage loading={bucket.loadingId === anilistId || !bucket.error} error={bucket.error} onRetry={() => dispatch(fetchCharacter(anilistId))} />
-  return <PersonPage person={person} personType="CHARACTER" favorites={favorites} authenticated={authenticated} eyebrow="Personaje" facts={[person.gender, person.age && `${person.age} años`, person.birthday && `Nacimiento: ${person.birthday}`, person.bloodType && `Grupo sanguíneo: ${person.bloodType}`]}>
+  return <PersonPage key={person.anilistId} person={person} personType="CHARACTER" favorites={favorites} authenticated={authenticated} eyebrow="Personaje" facts={[person.gender, person.age && `${person.age} años`, person.birthday && `Nacimiento: ${person.birthday}`, person.bloodType && `Grupo sanguíneo: ${person.bloodType}`]}>
     {!!person.voiceActors?.length && <section className="person-section"><span className="eyebrow"><Mic2 /> Actuación de voz</span><h2>Seiyūs</h2><div className="person-card-grid">{person.voiceActors.map((actor) => <Link className="person-card" key={actor.anilistId} to={`/seiyuus/${actor.anilistId}`}><img src={actor.image} alt={actor.name} loading="lazy" decoding="async" /><span><strong>{actor.name}</strong><small>{actor.nativeName || actor.language}</small></span></Link>)}</div></section>}
     <MediaConnections items={person.media} />
   </PersonPage>
@@ -29,6 +29,9 @@ export function PersonPage({ person, personType, favorites, authenticated, eyebr
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
+  const [showSpoilers, setShowSpoilers] = useState(false)
+  const biographySegments = parseAniListText(person.description)
+  const hasSpoilers = biographySegments.some((segment) => segment.spoiler)
   const favorite = favorites.people.some((item) => item.anilistId === person.anilistId && item.personType === personType)
   const goBack = () => navigate(location.key === 'default' ? '/' : -1)
   const toggleFavorite = () => {
@@ -37,11 +40,14 @@ export function PersonPage({ person, personType, favorites, authenticated, eyebr
       ? dispatch(removePersonFavorite({ anilistId: person.anilistId, personType }))
       : dispatch(addPersonFavorite({ anilistId: person.anilistId, personType, name: person.name, nativeName: person.nativeName, imageUrl: person.image }))
   }
-  return <article className="person-detail"><button className="person-back-link" type="button" onClick={goBack}><ArrowLeft /> Volver</button><header className="person-hero"><img src={person.image} alt={person.name} decoding="async" /><div><span className="eyebrow">{eyebrow}</span><h1>{person.name}</h1>{person.nativeName && <p className="person-native">{person.nativeName}</p>}<div className="person-facts">{facts.filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}{favoriteEnabled && person.favourites != null && <span><Heart /> {person.favourites.toLocaleString('es-ES')} favoritos en AniList</span>}</div>{favoriteEnabled && <button className={`person-favorite-button ${favorite ? 'active' : ''}`} disabled={favorites.mutationStatus === 'loading'} onClick={toggleFavorite}><Heart /> {favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>}</div></header>{person.description && <section className="person-biography"><span className="eyebrow">Biografía</span><p>{renderAniListText(person.description)}</p></section>}<div className="person-connections">{children}</div></article>
+  return <article className="person-detail"><button className="person-back-link" type="button" onClick={goBack}><ArrowLeft /> Volver</button><header className="person-hero"><img src={person.image} alt={person.name} decoding="async" /><div><span className="eyebrow">{eyebrow}</span><h1>{person.name}</h1>{person.nativeName && <p className="person-native">{person.nativeName}</p>}<div className="person-facts">{facts.filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}{favoriteEnabled && person.favourites != null && <span><Heart /> {person.favourites.toLocaleString('es-ES')} favoritos en AniList</span>}</div>{favoriteEnabled && <button className={`person-favorite-button ${favorite ? 'active' : ''}`} disabled={favorites.mutationStatus === 'loading'} onClick={toggleFavorite}><Heart /> {favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}</button>}</div></header>{person.description && <section className="person-biography"><div className="person-biography-heading"><span className="eyebrow">Biografía</span>{hasSpoilers && <button className={`person-spoiler-toggle${showSpoilers ? ' active' : ''}`} type="button" aria-pressed={showSpoilers} onClick={() => setShowSpoilers((current) => !current)}>{showSpoilers ? <EyeOff /> : <Eye />}{showSpoilers ? 'Ocultar spoilers' : 'Mostrar spoilers'}</button>}</div><p>{renderAniListText(biographySegments, showSpoilers)}</p></section>}<div className="person-connections">{children}</div></article>
 }
 
-function renderAniListText(value) {
-  return parseAniListText(value).map((segment, index) => {
+function renderAniListText(segments, showSpoilers) {
+  return segments.map((segment, index) => {
+    if (segment.spoiler && !showSpoilers) return !segments[index - 1]?.spoiler
+      ? <span className="person-spoiler-hidden" key={`spoiler-${index}`}>Contenido con spoilers oculto</span>
+      : null
     if (segment.to) return <Link key={`${segment.to}-${index}`} to={segment.to}>{segment.text}</Link>
     if (segment.href) return <a key={`${segment.href}-${index}`} href={segment.href} target="_blank" rel="noreferrer">{segment.text}</a>
     return segment.text
