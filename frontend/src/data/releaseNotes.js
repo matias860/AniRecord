@@ -10,7 +10,7 @@ export const RELEASES = [
       { type: 'Búsqueda', text: 'El buscador global encuentra títulos, personajes y profesionales desde cualquier pantalla con Ctrl o ⌘ + K.' },
       { type: 'Inicio', text: 'Podés ocultar y reordenar el calendario, recomendaciones, temporada, 3×3 y tus listas en curso.' },
       { type: 'Biblioteca', text: 'Los filtros muestran resultados y criterios activos, se conservan al volver y funcionan como panel inferior en celular.' },
-      { type: 'Detalle', text: 'Agregamos accesos a cada sección y acciones fijas en celular para guardar o avanzar el progreso.' },
+      { type: 'Detalle', text: 'Agregamos accesos y secciones plegables en celular, además de acciones fijas para guardar o avanzar el progreso.' },
       { type: 'Claridad', text: 'Las cargas, pantallas vacías, errores y confirmaciones ahora explican mejor qué está ocurriendo y qué podés hacer.' },
       { type: 'Perfil', text: 'El botón para guardar permanece accesible en celular y AniRecord avisa antes de perder cambios sin guardar.' },
     ],

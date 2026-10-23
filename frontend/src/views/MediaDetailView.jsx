@@ -91,7 +91,7 @@ export default function MediaDetailView() {
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
-      {!!detail.relations?.length && <details className="relations detail-collapsible" id="relaciones" open><summary><span><span className="eyebrow">Universo</span><h2>Relaciones</h2></span><ChevronDown className="detail-collapse-icon" /></summary><RelationCarousel key={detail.anilistId} relations={detail.relations} /></details>}
+      {!!detail.relations?.length && <details className="relations detail-collapsible" id="relaciones" open><summary className="detail-section-heading"><span><span className="eyebrow">Universo</span><h2>Relaciones</h2></span><ChevronDown className="detail-collapse-icon" /></summary><RelationCarousel key={detail.anilistId} relations={detail.relations} /></details>}
       {!!detail.characters?.length && <CharacterCarousel key={detail.anilistId} characters={detail.characters} />}
     </div>}
     <div className="detail-mobile-actions">{saved ? <>{canIncrement && <button type="button" className="primary-button" disabled={library.mutationStatus === 'loading'} onClick={() => dispatch(incrementProgress(saved.id))}><Plus /> Marcar {Number(saved.progress || 0) + 1}</button>}<a className="secondary-button" href="#seguimiento"><Pencil /> Editar seguimiento</a></> : <button type="button" className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
@@ -139,7 +139,7 @@ function youtubeEmbedUrl(value) {
 
 function MediaCredits({ credits, mediaType }) {
   return <details className="media-credits detail-collapsible" id="creditos" open>
-    <summary className="media-credits-heading"><span><span className="eyebrow">Créditos</span><h2>{mediaType === 'ANIME' ? 'Equipo creativo' : 'Autoría'}</h2></span><ChevronDown className="detail-collapse-icon" /></summary>
+    <summary className="media-credits-heading detail-section-heading"><span><span className="eyebrow">Créditos</span><h2>{mediaType === 'ANIME' ? 'Equipo creativo' : 'Autoría'}</h2></span><ChevronDown className="detail-collapse-icon" /></summary>
     <div className="media-credits-grid">
       {credits.map((credit) => {
         const content = <>{credit.creditType === 'STUDIO'
@@ -184,7 +184,7 @@ function CharacterCarousel({ characters }) {
   const visible = filtered.slice(page * 5, page * 5 + 5)
   const changeRole = (nextRole) => { setRole(nextRole); setPage(0) }
   return <details className="characters-section detail-collapsible" id="personajes" open>
-    <summary className="characters-heading"><div><span className="eyebrow">Reparto</span><h2>Personajes</h2></div><ChevronDown className="detail-collapse-icon" /></summary>
+    <summary className="characters-heading detail-section-heading"><span><span className="eyebrow">Reparto</span><h2>Personajes</h2></span><ChevronDown className="detail-collapse-icon" /></summary>
     <div className="character-role-switch character-role-switch-below" role="group" aria-label="Tipo de personaje"><button type="button" className={role === 'MAIN' ? 'active' : ''} aria-pressed={role === 'MAIN'} onClick={() => changeRole('MAIN')}>Principales <span>{roleTotals.MAIN}</span></button><button type="button" className={role === 'SUPPORTING' ? 'active' : ''} aria-pressed={role === 'SUPPORTING'} onClick={() => changeRole('SUPPORTING')}>Secundarios <span>{roleTotals.SUPPORTING}</span></button></div>
     <div className="character-carousel">
     <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={`${role}-${page}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.length ? visible.map((character) => <article key={character.anilistId}><Link className="character-image-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} loading="lazy" decoding="async" /></Link><span><Link className="character-name-link" to={`/personajes/${character.anilistId}`}><strong>{character.name}</strong></Link><small>{role === 'MAIN' ? 'Principal' : 'Secundario'}</small>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</span></article>) : <p className="character-empty">No hay personajes en esta categoría.</p>}</motion.div></AnimatePresence>
