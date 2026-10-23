@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown, ArrowRight, ArrowUp, BookOpen, ChevronLeft, ChevronRight, Eye, EyeOff, Grid3X3, Play, Settings2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -105,6 +105,7 @@ export default function HomeView() {
   const [recommendationModal, setRecommendationModal] = useState(false)
   const [topNineOpen, setTopNineOpen] = useState(false)
   const [customizeOpen, setCustomizeOpen] = useState(false)
+  const personalizeRef = useRef(null)
   const homeLayoutKey = `anirecord:home-layout:${auth.userId ?? 'guest'}`
   const [homeLayout, setHomeLayout] = useState(() => ({ key: homeLayoutKey, sections: storedHomeSections(homeLayoutKey) }))
   if (homeLayout.key !== homeLayoutKey) setHomeLayout({ key: homeLayoutKey, sections: storedHomeSections(homeLayoutKey) })
@@ -128,6 +129,22 @@ export default function HomeView() {
   useEffect(() => {
     if (auth.authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [auth.authenticated, dispatch, library.status])
+
+  useEffect(() => {
+    if (!customizeOpen) return undefined
+    const closeWhenOutside = (event) => {
+      if (!personalizeRef.current?.contains(event.target)) setCustomizeOpen(false)
+    }
+    const closeWithEscape = (event) => {
+      if (event.key === 'Escape') setCustomizeOpen(false)
+    }
+    document.addEventListener('click', closeWhenOutside)
+    document.addEventListener('keydown', closeWithEscape)
+    return () => {
+      document.removeEventListener('click', closeWhenOutside)
+      document.removeEventListener('keydown', closeWithEscape)
+    }
+  }, [customizeOpen])
 
   useEffect(() => {
     if (!auth.authenticated || !auth.userId) return
@@ -294,13 +311,12 @@ export default function HomeView() {
         {auth.authenticated ? <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div> : <Link className="primary-button welcome-login-button" to="/login">Iniciar sesión</Link>}
       </section>
 
-      <div className="home-personalize"><button type="button" aria-expanded={customizeOpen} onClick={() => setCustomizeOpen((open) => !open)}><Settings2 /> Personalizar inicio</button><AnimatePresence>{customizeOpen && <motion.div className="home-personalize-panel" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><div><strong>Orden y visibilidad</strong><button type="button" onClick={() => updateHomeSections(defaultHomeSections)}>Restaurar</button></div>{homeSections.map((section, index) => <div key={section.id}><button type="button" onClick={() => toggleHomeSection(section.id)} aria-label={`${section.visible ? 'Ocultar' : 'Mostrar'} ${section.label}`}>{section.visible ? <Eye /> : <EyeOff />}</button><span>{section.label}</span><button type="button" disabled={index === 0} onClick={() => moveHomeSection(index, -1)} aria-label={`Subir ${section.label}`}><ArrowUp /></button><button type="button" disabled={index === homeSections.length - 1} onClick={() => moveHomeSection(index, 1)} aria-label={`Bajar ${section.label}`}><ArrowDown /></button></div>)}</motion.div>}</AnimatePresence></div>
-
       <div className={`home-community-actions${showRecommendationCta ? ' has-weekly' : ''}`}>
-        <AnimatePresence initial={false}>{showRecommendationCta && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 52 }} exit={{ opacity: 0, height: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
-          <span>Recomendar una serie esta semana</span>
+        <AnimatePresence initial={false}>{showRecommendationCta && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 42 }} exit={{ opacity: 0, height: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }} aria-label="Recomendar una serie esta semana">
+          <span className="home-action-label-wide">Recomendar esta semana</span><span className="home-action-label-compact">Recomendar</span>
         </motion.button>}</AnimatePresence>
-        {topNine.prompt && <div className="home-top-nine-action"><button className="home-top-nine-launch" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setTopNineOpen((open) => !open) : requestLogin(navigate, location)}><Grid3X3 /> {topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}</button>{showNewTopNine && <motion.span className="home-top-nine-available" initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}><i aria-hidden="true" /> Nuevo 3×3 disponible</motion.span>}</div>}
+        {topNine.prompt && <div className="home-top-nine-action"><button className="home-top-nine-launch" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setTopNineOpen((open) => !open) : requestLogin(navigate, location)} aria-label={topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}><Grid3X3 /><span className="home-action-label-wide">{topNine.mine ? 'Editar mi 3×3' : 'Armar mi 3×3'}</span><span className="home-action-label-compact">Mi 3×3</span></button>{showNewTopNine && <motion.span className="home-top-nine-available" initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }}><i aria-hidden="true" /> Nuevo 3×3 disponible</motion.span>}</div>}
+        <div className="home-personalize" ref={personalizeRef}><button type="button" aria-expanded={customizeOpen} aria-haspopup="dialog" onClick={() => setCustomizeOpen((open) => !open)}><Settings2 /><span className="home-action-label-wide">Personalizar inicio</span><span className="home-action-label-compact">Personalizar</span></button><AnimatePresence>{customizeOpen && <motion.div className="home-personalize-panel" role="dialog" aria-label="Personalizar inicio" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><div><strong>Orden y visibilidad</strong><button type="button" onClick={() => updateHomeSections(defaultHomeSections)}>Restaurar</button></div>{homeSections.map((section, index) => <div key={section.id}><button type="button" onClick={() => toggleHomeSection(section.id)} aria-label={`${section.visible ? 'Ocultar' : 'Mostrar'} ${section.label}`}>{section.visible ? <Eye /> : <EyeOff />}</button><span>{section.label}</span><button type="button" disabled={index === 0} onClick={() => moveHomeSection(index, -1)} aria-label={`Subir ${section.label}`}><ArrowUp /></button><button type="button" disabled={index === homeSections.length - 1} onClick={() => moveHomeSection(index, 1)} aria-label={`Bajar ${section.label}`}><ArrowDown /></button></div>)}</motion.div>}</AnimatePresence></div>
       </div>
       <AnimatePresence initial={false}>{topNineOpen && auth.authenticated && topNine.prompt && <Suspense fallback={null}><TopNineComposer key={topNine.prompt.key} prompt={topNine.prompt} mine={topNine.mine} onClose={() => setTopNineOpen(false)} /></Suspense>}</AnimatePresence>
 
