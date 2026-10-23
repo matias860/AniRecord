@@ -1,6 +1,20 @@
-export const CURRENT_VERSION = '1.15.0'
+export const CURRENT_VERSION = '1.16.0'
 
 export const RELEASES = [
+  {
+    version: '1.16.0',
+    date: '22 de octubre de 2026',
+    title: 'Búsqueda y personalización',
+    summary: 'Mejoramos la forma de buscar, ordenar el inicio y continuar una serie desde cualquier dispositivo.',
+    changes: [
+      { type: 'Búsqueda', text: 'El buscador global encuentra títulos, personajes y profesionales desde cualquier pantalla con Ctrl o ⌘ + K.' },
+      { type: 'Inicio', text: 'Podés ocultar y reordenar el calendario, recomendaciones, temporada, 3×3 y tus listas en curso.' },
+      { type: 'Biblioteca', text: 'Los filtros muestran resultados y criterios activos, se conservan al volver y funcionan como panel inferior en celular.' },
+      { type: 'Detalle', text: 'Agregamos accesos a cada sección y acciones fijas en celular para guardar o avanzar el progreso.' },
+      { type: 'Claridad', text: 'Las cargas, pantallas vacías, errores y confirmaciones ahora explican mejor qué está ocurriendo y qué podés hacer.' },
+      { type: 'Perfil', text: 'El botón para guardar permanece accesible en celular y AniRecord avisa antes de perder cambios sin guardar.' },
+    ],
+  },
   {
     version: '1.15.0',
     date: '22 de octubre de 2026',

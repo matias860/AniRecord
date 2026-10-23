@@ -19,6 +19,8 @@ import com.animelist.backend.dto.anilist.PersonMediaResponse;
 import com.animelist.backend.dto.anilist.StaffCharacterResponse;
 import com.animelist.backend.dto.anilist.StaffDetailResponse;
 import com.animelist.backend.dto.anilist.VoiceActorResponse;
+import com.animelist.backend.dto.anilist.GlobalSearchItemResponse;
+import com.animelist.backend.dto.anilist.GlobalSearchResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.PersonType;
 import com.animelist.backend.enums.ReleaseSeason;
@@ -118,6 +120,26 @@ public class AniListClient {
                   nextAiringEpisode { episode airingAt timeUntilAiring }
                   tags { name rank description category isMediaSpoiler }
                   volumes
+                }
+              }
+            }
+            """;
+
+    private static final String GLOBAL_SEARCH_QUERY = """
+            query GlobalSearch($search: String!, $perGroup: Int!) {
+              mediaPage: Page(page: 1, perPage: $perGroup) {
+                media(search: $search, sort: SEARCH_MATCH) {
+                  id type format title { romaji english native } coverImage { large }
+                }
+              }
+              characterPage: Page(page: 1, perPage: $perGroup) {
+                characters(search: $search, sort: SEARCH_MATCH) {
+                  id name { full native } image { large }
+                }
+              }
+              staffPage: Page(page: 1, perPage: $perGroup) {
+                staff(search: $search, sort: SEARCH_MATCH) {
+                  id name { full native } image { large } primaryOccupations languageV2
                 }
               }
             }
@@ -509,6 +531,39 @@ public class AniListClient {
                 Boolean.TRUE.equals(pageInfo.get("hasNextPage")),
                 results
         );
+    }
+
+    @Cacheable(value = "globalSearch", key = "#query.toLowerCase() + ':' + #perGroup")
+    public GlobalSearchResponse globalSearch(String query, int perGroup) {
+        Map<String, Object> data = execute(GLOBAL_SEARCH_QUERY, Map.of("search", query, "perGroup", perGroup));
+        List<GlobalSearchItemResponse> media = asList(asMap(data.get("mediaPage")).get("media")).stream()
+                .map(this::asMap)
+                .map(item -> new GlobalSearchItemResponse(
+                        asInteger(item.get("id")),
+                        asString(item.get("type")),
+                        selectTitle(asMap(item.get("title"))),
+                        asString(item.get("format")),
+                        asString(asMap(item.get("coverImage")).get("large"))))
+                .toList();
+        List<GlobalSearchItemResponse> characters = asList(asMap(data.get("characterPage")).get("characters")).stream()
+                .map(this::asMap)
+                .map(item -> {
+                    Map<String, Object> name = asMap(item.get("name"));
+                    return new GlobalSearchItemResponse(asInteger(item.get("id")), "CHARACTER", asString(name.get("full")),
+                            asString(name.get("native")), asString(asMap(item.get("image")).get("large")));
+                })
+                .toList();
+        List<GlobalSearchItemResponse> staff = asList(asMap(data.get("staffPage")).get("staff")).stream()
+                .map(this::asMap)
+                .map(item -> {
+                    Map<String, Object> name = asMap(item.get("name"));
+                    String occupation = asList(item.get("primaryOccupations")).stream().map(String::valueOf).findFirst()
+                            .orElse(asString(item.get("languageV2")));
+                    return new GlobalSearchItemResponse(asInteger(item.get("id")), "STAFF", asString(name.get("full")),
+                            occupation, asString(asMap(item.get("image")).get("large")));
+                })
+                .toList();
+        return new GlobalSearchResponse(media, characters, staff);
     }
 
     @Cacheable("mediaDetails")

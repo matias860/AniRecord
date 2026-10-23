@@ -5,6 +5,7 @@ import com.animelist.backend.dto.anilist.AniListSearchResponse;
 import com.animelist.backend.dto.anilist.CharacterDetailResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.StaffDetailResponse;
+import com.animelist.backend.dto.anilist.GlobalSearchResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
@@ -47,6 +48,14 @@ public class AniListController {
             @RequestParam(defaultValue = "20") @Min(1) @Max(50) int perPage
     ) {
         return aniListClient.search(query.trim(), type, page, perPage);
+    }
+
+    @GetMapping("/global-search")
+    public GlobalSearchResponse globalSearch(
+            @RequestParam @NotBlank @Size(min = 2, max = 100) String query,
+            @RequestParam(defaultValue = "5") @Min(1) @Max(8) int perGroup
+    ) {
+        return aniListClient.globalSearch(query.trim(), perGroup);
     }
 
     @GetMapping("/media/{anilistId}")

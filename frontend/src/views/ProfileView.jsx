@@ -42,6 +42,27 @@ export default function ProfileView() {
   }
   const update = (changes) => setDraft((current) => ({ ...current, ...changes }))
   const dirty = draftKeys.some((key) => draft[key] !== profile[key])
+  useEffect(() => {
+    if (!dirty) return undefined
+    const warnAboutUnsavedChanges = (event) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    const confirmInternalNavigation = (event) => {
+      const link = event.target.closest?.('a[href]')
+      if (!link || link.target === '_blank' || link.href === window.location.href) return
+      if (!window.confirm('Hay cambios de perfil sin guardar. ¿Querés salir de esta pantalla?')) {
+        event.preventDefault()
+        event.stopPropagation()
+      }
+    }
+    window.addEventListener('beforeunload', warnAboutUnsavedChanges)
+    document.addEventListener('click', confirmInternalNavigation, true)
+    return () => {
+      window.removeEventListener('beforeunload', warnAboutUnsavedChanges)
+      document.removeEventListener('click', confirmInternalNavigation, true)
+    }
+  }, [dirty])
   useEffect(() => { if (libraryState.status === 'idle') dispatch(fetchLibrary()) }, [dispatch, libraryState.status])
   useEffect(() => { if (historyState.status === 'idle') dispatch(fetchHistory()) }, [dispatch, historyState.status])
   useEffect(() => { dispatch(fetchPersonFavorites()) }, [dispatch])

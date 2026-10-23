@@ -69,7 +69,7 @@ const replaceEntry = (state, entry) => {
 const librarySlice = createSlice({
   name: 'library',
   initialState: {
-    items: [], status: 'idle', mutationStatus: 'idle', syncStatus: 'idle', syncResult: null, error: null,
+    items: [], status: 'idle', mutationStatus: 'idle', syncStatus: 'idle', syncResult: null, error: null, pendingIncrements: {},
     filters: { mediaType: 'ANIME', trackingStatus: 'ALL', search: '', year: '', season: '', genre: [], country: '', format: '', releaseStatus: '', score: '' },
   },
   reducers: {
@@ -106,6 +106,23 @@ const librarySlice = createSlice({
       .addCase(removeFromLibrary.fulfilled, (state, action) => {
         state.mutationStatus = 'succeeded'
         state.items = state.items.filter((item) => item.id !== action.payload)
+      })
+      .addCase(incrementProgress.pending, (state, action) => {
+        const item = state.items.find((entry) => entry.id === action.meta.arg)
+        if (!item) return
+        state.pendingIncrements[action.meta.requestId] = { id: item.id, progress: item.progress }
+        item.progress = Number(item.progress || 0) + 1
+      })
+      .addCase(incrementProgress.fulfilled, (state, action) => {
+        delete state.pendingIncrements[action.meta.requestId]
+      })
+      .addCase(incrementProgress.rejected, (state, action) => {
+        const pending = state.pendingIncrements[action.meta.requestId]
+        if (pending) {
+          const item = state.items.find((entry) => entry.id === pending.id)
+          if (item) item.progress = pending.progress
+          delete state.pendingIncrements[action.meta.requestId]
+        }
       })
       .addCase(synchronizeAniListLibrary.pending, (state) => {
         state.syncStatus = 'loading'

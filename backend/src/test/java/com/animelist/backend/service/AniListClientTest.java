@@ -144,6 +144,27 @@ class AniListClientTest {
         });
     }
 
+    @Test
+    void globalSearchMapsMediaCharactersAndStaffInOneRequest() throws Exception {
+        String response = """
+                {"data":{
+                  "mediaPage":{"media":[{"id":1,"type":"ANIME","format":"TV","title":{"romaji":"Frieren"},"coverImage":{"large":"media.jpg"}}]},
+                  "characterPage":{"characters":[{"id":2,"name":{"full":"Frieren","native":"フリーレン"},"image":{"large":"character.jpg"}}]},
+                  "staffPage":{"staff":[{"id":3,"name":{"full":"Atsumi Tanezaki"},"image":{"large":"staff.jpg"},"primaryOccupations":["Voice Actor"],"languageV2":"Japanese"}]}
+                }}
+                """;
+        AtomicReference<String> request = new AtomicReference<>();
+        withResponse(response, request, client -> {
+            var result = client.globalSearch("Frieren", 5);
+            assertEquals("Frieren", result.media().get(0).title());
+            assertEquals("CHARACTER", result.characters().get(0).kind());
+            assertEquals("Voice Actor", result.staff().get(0).subtitle());
+            assertTrue(request.get().contains("mediaPage"));
+            assertTrue(request.get().contains("characterPage"));
+            assertTrue(request.get().contains("staffPage"));
+        });
+    }
+
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {
         withResponse(responseBody, new AtomicReference<>(), assertion);
     }

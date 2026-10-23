@@ -1,5 +1,5 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowRight, BookOpen, ChevronLeft, ChevronRight, Grid3X3, Play } from 'lucide-react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowDown, ArrowRight, ArrowUp, BookOpen, ChevronLeft, ChevronRight, Eye, EyeOff, Grid3X3, Play, Settings2 } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
@@ -24,6 +24,22 @@ const appCommit = import.meta.env.VITE_APP_COMMIT || 'development'
 const synchronizationHistory = import.meta.env.VITE_SYNC_HISTORY || [{ commit: appCommit, recommended: false }]
 const WeeklyRecommendationModal = lazy(() => import('../components/home/WeeklyRecommendationModal.jsx'))
 const TopNineComposer = lazy(() => import('../components/home/TopNineComposer.jsx'))
+const defaultHomeSections = [
+  { id: 'calendar', label: 'Calendario', visible: true },
+  { id: 'recommendations', label: 'Recomendaciones semanales', visible: true },
+  { id: 'season', label: 'Temporada actual', visible: true },
+  { id: 'topNine', label: '3×3 de la comunidad', visible: true },
+  { id: 'watching', label: 'Seguir viendo', visible: true },
+  { id: 'reading', label: 'Seguir leyendo', visible: true },
+]
+
+function storedHomeSections(key) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(key) || '[]')
+    const known = new Map(stored.map((item) => [item.id, item]))
+    return [...stored.filter((item) => defaultHomeSections.some((section) => section.id === item.id)), ...defaultHomeSections.filter((section) => !known.has(section.id))]
+  } catch { return defaultHomeSections }
+}
 
 function commitsSince(lastSeenCommit) {
   if (!lastSeenCommit) return synchronizationHistory.slice(0, 1)
@@ -56,7 +72,8 @@ function useIdleReady() {
 }
 
 function useNearViewport(rootMargin = '700px 0px') {
-  const ref = useRef(null)
+  const [node, setNode] = useState(null)
+  const ref = useCallback((element) => setNode(element), [])
   const [ready, setReady] = useState(false)
   useEffect(() => {
     if (ready) return undefined
@@ -70,9 +87,9 @@ function useNearViewport(rootMargin = '700px 0px') {
         observer.disconnect()
       }
     }, { rootMargin })
-    if (ref.current) observer.observe(ref.current)
+    if (node) observer.observe(node)
     return () => observer.disconnect()
-  }, [ready, rootMargin])
+  }, [node, ready, rootMargin])
   return [ref, ready]
 }
 
@@ -87,6 +104,11 @@ export default function HomeView() {
   const topNine = useSelector((state) => state.topNine)
   const [recommendationModal, setRecommendationModal] = useState(false)
   const [topNineOpen, setTopNineOpen] = useState(false)
+  const [customizeOpen, setCustomizeOpen] = useState(false)
+  const homeLayoutKey = `anirecord:home-layout:${auth.userId ?? 'guest'}`
+  const [homeLayout, setHomeLayout] = useState(() => ({ key: homeLayoutKey, sections: storedHomeSections(homeLayoutKey) }))
+  if (homeLayout.key !== homeLayoutKey) setHomeLayout({ key: homeLayoutKey, sections: storedHomeSections(homeLayoutKey) })
+  const homeSections = homeLayout.sections
   const handleIncrement = useCallback((id) => dispatch(incrementProgress(id)), [dispatch])
   const communityReady = useIdleReady()
   const [seasonSectionRef, seasonSectionReady] = useNearViewport()
@@ -240,6 +262,27 @@ export default function HomeView() {
         } : item
       })
   }, [library.items, selectedSeasonEntries, selectedSeasonName, selectedSeasonYear])
+  const updateHomeSections = (next) => {
+    setHomeLayout({ key: homeLayoutKey, sections: next })
+    localStorage.setItem(homeLayoutKey, JSON.stringify(next))
+  }
+  const moveHomeSection = (index, direction) => {
+    const target = index + direction
+    if (target < 0 || target >= homeSections.length) return
+    const next = [...homeSections]
+    ;[next[index], next[target]] = [next[target], next[index]]
+    updateHomeSections(next)
+  }
+  const toggleHomeSection = (id) => updateHomeSections(homeSections.map((section) => section.id === id ? { ...section, visible: !section.visible } : section))
+
+  const sectionContent = {
+    calendar: auth.authenticated && libraryReady ? <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} /> : null,
+    recommendations: <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />,
+    season: <div ref={seasonSectionRef} className="home-deferred-section"><SeasonMarquee entries={selectedSeasonEntries} error={home.seasonErrors[selectedSeasonKey]} onRetry={() => dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear, retry: true }))} loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'} label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} canGoPrevious={home.seasonOffset > 0} canGoNext={home.seasonOffset < 3} onPrevious={() => dispatch(setSeasonOffset(home.seasonOffset - 1))} onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))} /></div>,
+    topNine: <TopNineShowcase key={topNine.prompt?.key ?? 'top-nine-loading'} prompt={topNine.prompt} submissions={topNine.submissions} />,
+    watching: auth.authenticated ? <LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={handleIncrement} loading={library.status === 'loading'} error={library.error} /> : null,
+    reading: auth.authenticated ? <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={handleIncrement} loading={library.status === 'loading'} error={library.error} /> : null,
+  }
 
   return (
     <>
@@ -250,6 +293,8 @@ export default function HomeView() {
         <div><span className="eyebrow">Biblioteca personal</span><h1>¿Qué seguimos hoy?</h1><p>Todo tu anime y manga, ordenado en un solo lugar.</p></div>
         {auth.authenticated ? <div className={`stats ${libraryReady ? '' : 'loading'}`} aria-busy={!libraryReady}><div><strong>{libraryReady ? inProgress : '—'}</strong><span>En curso</span></div><div><strong>{libraryReady ? completed : '—'}</strong><span>Completados</span></div><div><strong>{libraryReady ? library.items.length : '—'}</strong><span>Total</span></div></div> : <Link className="primary-button welcome-login-button" to="/login">Iniciar sesión</Link>}
       </section>
+
+      <div className="home-personalize"><button type="button" aria-expanded={customizeOpen} onClick={() => setCustomizeOpen((open) => !open)}><Settings2 /> Personalizar inicio</button><AnimatePresence>{customizeOpen && <motion.div className="home-personalize-panel" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><div><strong>Orden y visibilidad</strong><button type="button" onClick={() => updateHomeSections(defaultHomeSections)}>Restaurar</button></div>{homeSections.map((section, index) => <div key={section.id}><button type="button" onClick={() => toggleHomeSection(section.id)} aria-label={`${section.visible ? 'Ocultar' : 'Mostrar'} ${section.label}`}>{section.visible ? <Eye /> : <EyeOff />}</button><span>{section.label}</span><button type="button" disabled={index === 0} onClick={() => moveHomeSection(index, -1)} aria-label={`Subir ${section.label}`}><ArrowUp /></button><button type="button" disabled={index === homeSections.length - 1} onClick={() => moveHomeSection(index, 1)} aria-label={`Bajar ${section.label}`}><ArrowDown /></button></div>)}</motion.div>}</AnimatePresence></div>
 
       <div className={`home-community-actions${showRecommendationCta ? ' has-weekly' : ''}`}>
         <AnimatePresence initial={false}>{showRecommendationCta && <motion.button key="recommendation-cta" className="recommendation-cta" type="button" disabled={auth.authenticated && library.status !== 'succeeded'} onClick={() => auth.authenticated ? setRecommendationModal(true) : requestLogin(navigate, location)} initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 52 }} exit={{ opacity: 0, height: 0, scale: .98 }} transition={{ duration: .32, ease: 'easeOut' }}>
@@ -264,24 +309,7 @@ export default function HomeView() {
         <span>AniList deshabilitó su API pública. Conservamos tu biblioteca y mostramos las fechas guardadas localmente.</span>
       </aside>}
       {home.status === 'failed' && !home.unavailable && <PageState error={home.error} />}
-      {auth.authenticated && libraryReady && <WeeklySchedule entries={calendarEntries} airingEntries={airingWithCurrentProgress} liveDataAvailable={home.status === 'succeeded'} seasonOffset={home.seasonOffset} seasonLabel={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`} seasonOptions={scheduleOptions} onSeasonChange={(offset) => dispatch(setSeasonOffset(Number(offset)))} />}
-      <RecommendationMarquee entries={recommendations.items} loading={recommendations.status === 'loading'} />
-      <div ref={seasonSectionRef} className="home-deferred-section"><SeasonMarquee
-        entries={selectedSeasonEntries}
-        error={home.seasonErrors[selectedSeasonKey]}
-        onRetry={() => dispatch(fetchSeason({ season: selectedSeasonName, year: selectedSeasonYear, retry: true }))}
-        loading={!selectedSeasonEntries.length && home.seasonStatus === 'loading'}
-        label={`${seasonLabels[selectedSeasonName]} ${selectedSeasonYear}`}
-        canGoPrevious={home.seasonOffset > 0}
-        canGoNext={home.seasonOffset < 3}
-        onPrevious={() => dispatch(setSeasonOffset(home.seasonOffset - 1))}
-        onNext={() => dispatch(setSeasonOffset(home.seasonOffset + 1))}
-      /></div>
-
-      <TopNineShowcase key={topNine.prompt?.key ?? 'top-nine-loading'} prompt={topNine.prompt} submissions={topNine.submissions} />
-
-      {auth.authenticated && <><LibraryShelf title="Seguir viendo" eyebrow="Tu anime" icon={<Play size={20} fill="currentColor" />} entries={watchingWithPending} total={allWatching.length} page={watchingPage} onPage={(page) => dispatch(setWatchingPage(page))} emptyText="Todavía no tienes anime en curso." mediaType="ANIME" catalogPath="/catalogo/anime" onIncrement={handleIncrement} loading={library.status === 'loading'} error={library.error} />
-      <LibraryShelf title="Seguir leyendo" eyebrow="Tu manga" icon={<BookOpen size={20} />} entries={reading} total={allReading.length} page={readingPage} onPage={(page) => dispatch(setReadingPage(page))} emptyText="Todavía no tienes manga en curso." mediaType="MANGA" catalogPath="/catalogo/manga" onIncrement={handleIncrement} loading={library.status === 'loading'} error={library.error} /></>}
+      <div className="home-custom-sections">{homeSections.filter((section) => section.visible && sectionContent[section.id]).map((section) => <div key={section.id} data-home-section={section.id}>{sectionContent[section.id]}</div>)}</div>
     </>
   )
 }
@@ -290,9 +318,7 @@ function LibraryShelf({ title, eyebrow, icon, entries, total, page, onPage, empt
   const pages = Math.ceil(total / pageSize)
   return <section className="content-section">
     <div className="section-heading"><div><span className="eyebrow">{eyebrow}</span><h2>{icon} {title}</h2></div><div className="shelf-actions">{pages > 1 && <div className="shelf-pagination"><button disabled={page === 0} onClick={() => onPage(page - 1)} aria-label="Ver cinco anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page >= pages - 1} onClick={() => onPage(page + 1)} aria-label="Ver cinco siguientes"><ChevronRight /></button></div>}<Link to={`/biblioteca?tipo=${mediaType.toLowerCase()}`}>Ver todo <ArrowRight size={16} /></Link></div></div>
-    <PageState loading={loading} error={error} empty={!loading && !entries.length}>
-      <p>{emptyText}</p><Link className="primary-button" to={catalogPath}>Explorar</Link>
-    </PageState>
+    <PageState loading={loading} error={error} empty={!loading && !entries.length} title={emptyText} description="Agregá un título a tu biblioteca para tenerlo siempre a mano." actionLabel="Explorar catálogo" actionTo={catalogPath} />
     <AnimatePresence mode="wait" initial={false}>{!!entries.length && <motion.div key={page} initial={{ opacity: 0, x: 22 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -22 }} transition={{ duration: 0.22, ease: 'easeOut' }}><HoverMediaGrid>{entries.map((media) => <MediaCard key={media.id} media={media} onIncrement={onIncrement} />)}</HoverMediaGrid></motion.div>}</AnimatePresence>
   </section>
 }

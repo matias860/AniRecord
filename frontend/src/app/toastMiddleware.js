@@ -7,6 +7,8 @@ const successMessages = {
   'library/synchronizeAniList/fulfilled': 'Biblioteca sincronizada con AniList.',
   'library/add/fulfilled': 'Título agregado a tu biblioteca.',
   'library/remove/fulfilled': 'Título eliminado de tu biblioteca.',
+  'library/update/fulfilled': 'Cambios de seguimiento guardados.',
+  'library/increment/fulfilled': 'Progreso actualizado.',
   'topNine/publish/fulfilled': 'Tu 3×3 ya aparece en el Home.',
 }
 

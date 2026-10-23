@@ -1,6 +1,6 @@
 import { formatsFor } from '../lib/mediaFormats.js'
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
-import { Library, Search, X } from 'lucide-react'
+import { Library, Search, SlidersHorizontal, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { useSearchParams } from 'react-router-dom'
@@ -64,6 +64,7 @@ export default function LibraryView() {
   const selectedFormat = filters.format ?? ''
   const selectedReleaseStatus = filters.releaseStatus ?? ''
   const selectedScore = Number(filters.score) || 0
+  const [filtersOpen, setFiltersOpen] = useState(false)
   const [pagination, setPagination] = useState({ key: '', counts: {} })
   const handleIncrement = useCallback((id) => dispatch(incrementProgress(id)), [dispatch])
   const updateFilter = (key) => (value) => dispatch(setLibraryFilter({ key, value }))
@@ -77,7 +78,12 @@ export default function LibraryView() {
       dispatch(setLibraryFilter({ key: 'format', value: '' }))
     }
   }, [dispatch, filters.format, mediaType])
-  useEffect(() => () => { dispatch(setLibraryFilter({ key: 'search', value: '' })) }, [dispatch])
+  useEffect(() => {
+    if (!filtersOpen) return undefined
+    const close = (event) => { if (event.key === 'Escape') setFiltersOpen(false) }
+    window.addEventListener('keydown', close)
+    return () => window.removeEventListener('keydown', close)
+  }, [filtersOpen])
   useEffect(() => {
     const requestedType = searchParams.get('tipo')?.toUpperCase()
     if (requestedType === 'ANIME' || requestedType === 'MANGA') dispatch(setLibraryMediaType(requestedType))
@@ -125,6 +131,19 @@ export default function LibraryView() {
   const paginationKey = [deferredSearch, mediaType, selectedCountry, selectedFormat, selectedGenres.join('|'),
     selectedReleaseStatus, selectedScore, selectedSeason, selectedYear, trackingStatus].join('::')
   const visibleCounts = pagination.key === paginationKey ? pagination.counts : {}
+  const activeFilters = useMemo(() => {
+    const labels = []
+    if (filters.search) labels.push({ key: 'search', label: `“${filters.search}”` })
+    if (selectedYear) labels.push({ key: 'year', label: selectedYear })
+    if (selectedSeason) labels.push({ key: 'season', label: seasons.find(([value]) => value === selectedSeason)?.[1] || selectedSeason })
+    selectedGenres.forEach((genre) => labels.push({ key: 'genre', value: genre, label: genre }))
+    if (selectedCountry) labels.push({ key: 'country', label: publicationTypes.find((item) => item.value === selectedCountry)?.label || selectedCountry })
+    if (selectedFormat) labels.push({ key: 'format', label: formatsFor(mediaType).find((item) => item.value === selectedFormat)?.label || selectedFormat })
+    if (selectedReleaseStatus) labels.push({ key: 'releaseStatus', label: releaseStatuses.find(([value]) => value === selectedReleaseStatus)?.[1] || selectedReleaseStatus })
+    if (selectedScore) labels.push({ key: 'score', label: `${selectedScore}/10` })
+    return labels
+  }, [filters.search, mediaType, selectedCountry, selectedFormat, selectedGenres, selectedReleaseStatus, selectedScore, selectedSeason, selectedYear])
+  const removeFilter = ({ key, value }) => updateFilter(key)(key === 'genre' ? selectedGenres.filter((genre) => genre !== value) : '')
 
   if ((status === 'idle' || status === 'loading') && !items.length) return <PageState fullPage loading />
 
@@ -132,9 +151,11 @@ export default function LibraryView() {
     <>
       <div className="page-title">
         <div><span className="eyebrow">Colección personal</span><h1><Library /> Mi biblioteca</h1><p>Sigue tu progreso sin perder el hilo.</p></div>
-        <MediaTypeSwitch value={mediaType} onChange={(nextType) => dispatch(setLibraryMediaType(nextType))} ariaLabel="Cambiar tipo de biblioteca" />
+        <div className="library-heading-actions"><MediaTypeSwitch value={mediaType} onChange={(nextType) => dispatch(setLibraryMediaType(nextType))} ariaLabel="Cambiar tipo de biblioteca" /><button className="library-filter-toggle" type="button" aria-expanded={filtersOpen} aria-controls="library-filters" onClick={() => setFiltersOpen((open) => !open)}><SlidersHorizontal /> Filtros{activeFilters.length ? <span>{activeFilters.length}</span> : null}</button></div>
       </div>
-      <motion.div className="library-advanced-filters" key={mediaType} initial={{ opacity: 0, x: mediaType === 'ANIME' ? -14 : 14 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .25, ease: 'easeOut' }}>
+      {filtersOpen && <button className="library-filter-backdrop" type="button" aria-label="Cerrar filtros" onClick={() => setFiltersOpen(false)} />}
+      <motion.div id="library-filters" className={`library-advanced-filters${filtersOpen ? ' open' : ''}`} key={mediaType} initial={{ opacity: 0, x: mediaType === 'ANIME' ? -14 : 14 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .25, ease: 'easeOut' }}>
+        <div className="library-filter-sheet-heading"><div><span className="eyebrow">Biblioteca</span><strong>Filtrar resultados</strong></div><button type="button" onClick={() => setFiltersOpen(false)} aria-label="Cerrar filtros"><X /></button></div>
         <label className="library-search" data-field-label="Buscar"><Search /><input aria-label="Buscar títulos en mi biblioteca" value={filters.search ?? ''} onChange={(event) => updateFilter('search')(event.target.value)} placeholder="Título..." /></label>
         <StyledSelect ariaLabel="Año de la biblioteca" fieldLabel="Año" value={filters.year ?? ''} onChange={updateFilter('year')} options={[{ value: '', label: 'Todos' }, ...availableYears.map((year) => ({ value: String(year), label: String(year) }))]} />
         {mediaType === 'ANIME' && <StyledSelect ariaLabel="Temporada de la biblioteca" fieldLabel="Temporada" value={filters.season ?? ''} onChange={updateFilter('season')} options={[{ value: '', label: 'Todas' }, ...seasons.map(([value, label]) => ({ value, label }))]} />}
@@ -145,8 +166,10 @@ export default function LibraryView() {
         <label className="library-score-range"><span>Puntaje <b>{Number(filters.score) ? filters.score : 'Todos'}</b></span><input type="range" min="0" max="10" step="1" value={Number(filters.score) || 0} onChange={(event) => updateFilter('score')(event.target.value === '0' ? '' : event.target.value)} /></label>
         <button className="clear-filters" type="button" onClick={() => dispatch(resetLibraryFilters())}><X /> Limpiar</button>
       </motion.div>
+      <div className="library-filter-summary"><span><b>{filtered.length}</b> {filtered.length === 1 ? 'título' : 'títulos'}</span>{activeFilters.length > 0 && <div className="active-filter-chips" aria-label="Filtros activos">{activeFilters.map((filter) => <button type="button" key={`${filter.key}-${filter.value || filter.label}`} onClick={() => removeFilter(filter)}>{filter.label}<X /></button>)}<button className="clear-all-filter-chip" type="button" onClick={() => dispatch(resetLibraryFilters())}>Limpiar todo</button></div>}</div>
       <div className="filter-row">{statuses.map(([value, label]) => <button key={value} className={trackingStatus === value ? 'active' : ''} onClick={() => dispatch(setLibraryTrackingStatus(value))}>{label}</button>)}</div>
-      <PageState loading={status === 'loading'} error={error} onRetry={() => dispatch(fetchLibrary())} empty={status === 'succeeded' && !filtered.length}>No hay títulos para mostrar con estos filtros.</PageState>
+      <PageState error={error} onRetry={() => dispatch(fetchLibrary())} empty={status === 'succeeded' && !filtered.length} title={items.length ? 'No encontramos coincidencias' : 'Tu biblioteca todavía está vacía'} description={items.length ? 'Quitá algún filtro para volver a ver tus títulos.' : 'Explorá el catálogo y guardá lo próximo que quieras ver o leer.'} actionLabel={items.length ? 'Limpiar filtros' : 'Explorar catálogo'} onAction={items.length ? () => dispatch(resetLibraryFilters()) : undefined} actionTo={items.length ? undefined : `/catalogo/${mediaType.toLowerCase()}`} />
+      {status === 'loading' && items.length > 0 && <div className="refresh-indicator" role="status"><i /> Actualizando biblioteca…</div>}
       <AnimatePresence mode="wait" initial={false}>
         <motion.div className="library-sections" key={mediaType} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: .28, ease: 'easeOut' }}>
           <AnimatePresence initial={false} mode="sync">

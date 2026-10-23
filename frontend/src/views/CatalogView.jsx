@@ -124,8 +124,9 @@ export default function CatalogView() {
         <button className="clear-filters" type="button" onClick={resetFilters}><X /> Limpiar</button>
       </form>
 
-      <PageState loading={catalogQuery.isFetching} error={catalogError} onRetry={catalogQuery.refetch} />
-      {catalogData && <>{!displayedItems.length ? <PageState empty>No encontramos resultados con esos filtros.</PageState> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{currentPage}</b></span><button disabled={!catalogData.hasNextPage} onClick={() => changePage(currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
+      <PageState error={catalogError} onRetry={catalogQuery.refetch} />
+      {catalogQuery.isFetching && catalogData && <div className="refresh-indicator" role="status"><i /> Actualizando resultados…</div>}
+      {catalogData && <>{!displayedItems.length ? <PageState empty title="No encontramos coincidencias" description="Probá quitando algún filtro o usando un título más corto." actionLabel="Limpiar filtros" onAction={resetFilters} /> : <HoverMediaGrid className="library-grid">{displayedItems.map((media) => <MediaCard key={media.anilistId} media={media} />)}</HoverMediaGrid>}<nav className="pagination" aria-label="Páginas del catálogo"><button disabled={currentPage === 1} onClick={() => changePage(currentPage - 1)}><ChevronLeft /> Anterior</button><span>Página <b>{currentPage}</b></span><button disabled={!catalogData.hasNextPage} onClick={() => changePage(currentPage + 1)}>Siguiente <ChevronRight /></button></nav></>}
       </>}
       </motion.div></AnimatePresence>
     </>

@@ -1,14 +1,14 @@
 import { highResolutionCover } from '../lib/coverImages.js'
 import useModalFocus from '../lib/useModalFocus.js'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Building2, CalendarDays, ChevronLeft, ChevronRight, ListPlus, Play, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ListPlus, Pencil, Play, Plus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import MediaTags from '../components/media/MediaTags.jsx'
-import { addToLibrary, fetchLibrary, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
+import { addToLibrary, fetchLibrary, incrementProgress, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
 import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime } from '../lib/media.js'
 import { useGetMediaDetailQuery } from '../api/anirecordApi.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
@@ -58,6 +58,9 @@ export default function MediaDetailView() {
     label: value === 'IN_PROGRESS' ? (detail.mediaType === 'ANIME' ? 'Viendo' : 'Leyendo')
       : value === 'COMPLETED' ? (detail.mediaType === 'ANIME' ? 'Visto' : 'Leído') : label,
   }))
+  const unreleased = isUnreleasedAnime(detail)
+  const canIncrement = saved && !unreleased && saved.trackingStatus !== 'COMPLETED' && (detail.totalUnits == null || Number(saved.progress || 0) < detail.totalUnits)
+  const addOrLogin = () => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)
 
   return <article className="detail-page">
     <div className="detail-banner" style={{ backgroundImage: `url(${detail.bannerImage || detail.coverImage})` }}><span className="detail-banner-shade" /><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
@@ -70,26 +73,28 @@ export default function MediaDetailView() {
         }
       }} alt={`Portada de ${detail.title}`} />
       <div className={`detail-copy${titleSizeClass ? ' detail-copy-long-title' : ''}`}>
-        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1 className={titleSizeClass}>{detail.title}</h1>{!saved && <button className="primary-button" onClick={() => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)}><ListPlus /> Agregar a la biblioteca</button>}</div>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1 className={titleSizeClass}>{detail.title}</h1>{!saved && <button className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
         <div className="detail-information-strip">
           {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}
           {detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}
           <div className="detail-meta"><span><CalendarDays /> {formatReleaseYears(detail)}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>
         </div>
       </div>
-      {saved && <div className="detail-tracking-row"><SavedTrackingEditor unreleased={isUnreleasedAnime(detail)} saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
+      {saved && <div className="detail-tracking-row" id="seguimiento"><SavedTrackingEditor unreleased={unreleased} saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
+      <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}</nav>
       {(!!detail.genres?.length || !!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
         {(!!detail.genres?.length || !!detail.tags?.length) && <div className="detail-tags"><span className="eyebrow">Géneros y categorías</span><MediaTags key={detail.anilistId} genres={detail.genres} tags={detail.tags} mediaType={detail.mediaType} /></div>}
         {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
       </div>}
-      <div className="detail-description"><span className="eyebrow">Sinopsis</span><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></div>
+      <details className="detail-description detail-collapsible" id="sinopsis" open><summary><span className="eyebrow">Sinopsis</span><ChevronDown className="detail-collapse-icon" /></summary><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></details>
       {detail.musicVideoUrl && <MusicVideoPlayer url={detail.musicVideoUrl} title={detail.title} />}
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
-      {!!detail.relations?.length && <section className="relations"><span className="eyebrow">Universo</span><h2>Relaciones</h2><RelationCarousel key={detail.anilistId} relations={detail.relations} /></section>}
+      {!!detail.relations?.length && <details className="relations detail-collapsible" id="relaciones" open><summary><span><span className="eyebrow">Universo</span><h2>Relaciones</h2></span><ChevronDown className="detail-collapse-icon" /></summary><RelationCarousel key={detail.anilistId} relations={detail.relations} /></details>}
       {!!detail.characters?.length && <CharacterCarousel key={detail.anilistId} characters={detail.characters} />}
     </div>}
+    <div className="detail-mobile-actions">{saved ? <>{canIncrement && <button type="button" className="primary-button" disabled={library.mutationStatus === 'loading'} onClick={() => dispatch(incrementProgress(saved.id))}><Plus /> Marcar {Number(saved.progress || 0) + 1}</button>}<a className="secondary-button" href="#seguimiento"><Pencil /> Editar seguimiento</a></> : <button type="button" className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
 }
@@ -133,8 +138,8 @@ function youtubeEmbedUrl(value) {
 }
 
 function MediaCredits({ credits, mediaType }) {
-  return <section className="media-credits">
-    <div className="media-credits-heading"><span className="eyebrow">Créditos</span><h2>{mediaType === 'ANIME' ? 'Equipo creativo' : 'Autoría'}</h2></div>
+  return <details className="media-credits detail-collapsible" id="creditos" open>
+    <summary className="media-credits-heading"><span><span className="eyebrow">Créditos</span><h2>{mediaType === 'ANIME' ? 'Equipo creativo' : 'Autoría'}</h2></span><ChevronDown className="detail-collapse-icon" /></summary>
     <div className="media-credits-grid">
       {credits.map((credit) => {
         const content = <>{credit.creditType === 'STUDIO'
@@ -146,7 +151,7 @@ function MediaCredits({ credits, mediaType }) {
           : <article className="media-credit-card studio" key={`${credit.creditType}-${credit.anilistId}`}>{content}</article>
       })}
     </div>
-  </section>
+  </details>
 }
 
 function publicationLabel(media) {
@@ -178,13 +183,14 @@ function CharacterCarousel({ characters }) {
   const pages = Math.max(1, Math.ceil(filtered.length / 5))
   const visible = filtered.slice(page * 5, page * 5 + 5)
   const changeRole = (nextRole) => { setRole(nextRole); setPage(0) }
-  return <section className="characters-section">
-    <div className="characters-heading"><div><span className="eyebrow">Reparto</span><h2>Personajes</h2></div><div className="character-role-switch" role="group" aria-label="Tipo de personaje"><button type="button" className={role === 'MAIN' ? 'active' : ''} aria-pressed={role === 'MAIN'} onClick={() => changeRole('MAIN')}>Principales <span>{roleTotals.MAIN}</span></button><button type="button" className={role === 'SUPPORTING' ? 'active' : ''} aria-pressed={role === 'SUPPORTING'} onClick={() => changeRole('SUPPORTING')}>Secundarios <span>{roleTotals.SUPPORTING}</span></button></div></div>
+  return <details className="characters-section detail-collapsible" id="personajes" open>
+    <summary className="characters-heading"><div><span className="eyebrow">Reparto</span><h2>Personajes</h2></div><ChevronDown className="detail-collapse-icon" /></summary>
+    <div className="character-role-switch character-role-switch-below" role="group" aria-label="Tipo de personaje"><button type="button" className={role === 'MAIN' ? 'active' : ''} aria-pressed={role === 'MAIN'} onClick={() => changeRole('MAIN')}>Principales <span>{roleTotals.MAIN}</span></button><button type="button" className={role === 'SUPPORTING' ? 'active' : ''} aria-pressed={role === 'SUPPORTING'} onClick={() => changeRole('SUPPORTING')}>Secundarios <span>{roleTotals.SUPPORTING}</span></button></div>
     <div className="character-carousel">
     <AnimatePresence mode="wait" initial={false}><motion.div className="character-page" key={`${role}-${page}`} initial={{ opacity: 0, x: 18 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -18 }} transition={{ duration: .22, ease: 'easeOut' }}>{visible.length ? visible.map((character) => <article key={character.anilistId}><Link className="character-image-link" to={`/personajes/${character.anilistId}`}><img src={character.image} alt={character.name} loading="lazy" decoding="async" /></Link><span><Link className="character-name-link" to={`/personajes/${character.anilistId}`}><strong>{character.name}</strong></Link><small>{role === 'MAIN' ? 'Principal' : 'Secundario'}</small>{character.voiceActors?.[0] && <Link className="character-voice-link" to={`/seiyuus/${character.voiceActors[0].anilistId}`}>{character.voiceActors[0].name}</Link>}</span></article>) : <p className="character-empty">No hay personajes en esta categoría.</p>}</motion.div></AnimatePresence>
     {pages > 1 && <div className="character-controls"><button disabled={page === 0} onClick={() => setPage((current) => current - 1)} aria-label="Personajes anteriores"><ChevronLeft /></button><span>{page + 1} / {pages}</span><button disabled={page === pages - 1} onClick={() => setPage((current) => current + 1)} aria-label="Personajes siguientes"><ChevronRight /></button></div>}
     </div>
-  </section>
+  </details>
 }
 
 function SavedTrackingEditor({ unreleased, saved, mediaType, unit, total, statusOptions, loading, onRemove }) {
@@ -232,6 +238,7 @@ function LibraryModal({ mode, detail, saved, statusOptions, loading, onClose }) 
   const dialogRef = useModalFocus(true)
   const dispatch = useDispatch()
   const [status, setStatus] = useState('PLANNED')
+  const mobileSheet = window.matchMedia('(max-width: 820px)').matches
   useEffect(() => {
     const closeOnEscape = (event) => { if (event.key === 'Escape') onClose() }
     window.addEventListener('keydown', closeOnEscape)
@@ -245,7 +252,7 @@ function LibraryModal({ mode, detail, saved, statusOptions, loading, onClose }) 
     } catch { /* El toast global presenta el error y permite volver a intentar. */ }
   }
   return <motion.div className="modal-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <motion.section ref={dialogRef} className="library-action-modal" role="dialog" aria-modal="true" aria-labelledby="library-modal-title" initial={{ y: 18, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 12, scale: .98 }}>
+    <motion.section ref={dialogRef} className="library-action-modal" role="dialog" aria-modal="true" aria-labelledby="library-modal-title" initial={{ y: 18, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 12, scale: .98 }} drag={mobileSheet ? 'y' : false} dragConstraints={{ top: 0, bottom: 0 }} dragElastic={{ top: 0, bottom: .65 }} onDragEnd={(_, info) => { if (info.offset.y > 90 || info.velocity.y > 700) onClose() }}>
       <button type="button" className="modal-close" onClick={onClose} aria-label="Cerrar"><X /></button>
       <span className="eyebrow">Mi biblioteca</span><h2 id="library-modal-title">{mode === 'add' ? 'Agregar a la biblioteca' : 'Quitar de la biblioteca'}</h2>
       {mode === 'add' ? <><p>Elige cómo deseas comenzar a seguir <strong>{detail.title}</strong>.</p><label><span>Estado inicial</span><StyledSelect ariaLabel="Estado inicial" value={status} onChange={setStatus} options={statusOptions} /></label></> : <p><strong>{detail.title}</strong> y todo su progreso personal se quitarán de tu biblioteca.</p>}

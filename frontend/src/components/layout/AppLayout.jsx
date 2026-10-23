@@ -1,6 +1,6 @@
 import { safeDarkColor, safeAccentColor, accentTextColor } from '../../lib/themeContrast.js'
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { Compass, Home, Library, LogIn, LogOut, Sparkles, UserRound } from 'lucide-react'
+import { Compass, Home, Library, LogIn, LogOut, Search, Sparkles, UserRound } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, useLocation, useNavigate, useNavigationType, useOutlet } from 'react-router-dom'
@@ -16,6 +16,7 @@ import { preloadRoute } from '../../lib/routeModules.js'
 import { routeSectionTitle } from '../../lib/navigation.js'
 import useSignOut from '../../lib/useSignOut.js'
 import ProfileLoader from '../common/ProfileLoader.jsx'
+import GlobalSearch from './GlobalSearch.jsx'
 
 const AssistantView = lazy(() => import('../../views/AssistantView.jsx'))
 const scrollPositions = new Map()
@@ -32,6 +33,7 @@ export default function AppLayout() {
   const [changelogOpen, setChangelogOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [assistantLoaded, setAssistantLoaded] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
   const location = useLocation()
   const navigationType = useNavigationType()
   const { pathname } = location
@@ -59,6 +61,7 @@ export default function AppLayout() {
     setAssistantOpen(true)
   }, [authenticated, location, navigate])
   const closeAssistant = useCallback(() => setAssistantOpen(false), [])
+  const closeSearch = useCallback(() => setSearchOpen(false), [])
   const rememberCurrentScroll = useCallback(() => {
     scrollPositions.set(location.key, window.scrollY)
   }, [location.key])
@@ -97,6 +100,16 @@ export default function AppLayout() {
       window.removeEventListener('scroll', rememberPosition)
       if (frame != null) window.cancelAnimationFrame(frame)
     }
+  }, [])
+  useEffect(() => {
+    const toggleSearch = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault()
+        setSearchOpen((current) => !current)
+      }
+    }
+    document.addEventListener('keydown', toggleSearch)
+    return () => document.removeEventListener('keydown', toggleSearch)
   }, [])
   useEffect(() => {
     const previous = window.history.scrollRestoration
@@ -158,6 +171,7 @@ export default function AppLayout() {
             </button>
           </nav>
           <div className="topbar-actions">
+            <button className="global-search-trigger" type="button" onClick={() => setSearchOpen(true)} aria-label="Abrir búsqueda global" title="Buscar (Ctrl K)"><Search /></button>
             {authenticated && <NotificationBell hovered={hovered === '/notificaciones'} onMouseEnter={() => setHovered('/notificaciones')} />}
             {authenticated
               ? <AccountMenu avatarUrl={avatarUrl} displayName={displayName} onOpenChangelog={() => setChangelogOpen(true)} onSignOut={signOut} />
@@ -175,6 +189,7 @@ export default function AppLayout() {
       <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><Suspense fallback={routeFallback}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></Suspense></main>
       <ToastViewport />
       <PwaUpdateToast />
+      <GlobalSearch open={searchOpen} onClose={closeSearch} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       {assistantLoaded && <Suspense fallback={null}><AssistantView panel open={assistantOpen} onClose={closeAssistant} /></Suspense>}
     </div>
