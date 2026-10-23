@@ -143,12 +143,16 @@ export default function AppLayout() {
           <div className="desktop-version"><VersionButton onClick={() => setChangelogOpen(true)} /></div>
           <nav className="main-nav desktop-main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
             {links.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => preloadRoute(to)} className={({ isActive }) => isActive ? 'active' : ''}>
-                {hovered === to && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
-                <Icon size={17} /><span>{label}</span>
+              <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => preloadRoute(to)} onClick={() => setHovered(null)} className={({ isActive }) => isActive ? 'active' : ''}>
+                {({ isActive }) => <>
+                  {!assistantOpen && isActive && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
+                  {hovered === to && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
+                  <Icon size={17} /><span>{label}</span>
+                </>}
               </NavLink>
             ))}
-            <button type="button" className={`assistant-nav-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" title="Asistente" onMouseEnter={() => setHovered('/asistente')} onClick={openAssistant}>
+            <button type="button" className={`assistant-nav-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" title="Asistente" onMouseEnter={() => setHovered('/asistente')} onClick={() => { setHovered(null); openAssistant() }}>
+              {assistantOpen && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
               {hovered === '/asistente' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
               <Sparkles size={17} /><span>Asistente</span>
             </button>
