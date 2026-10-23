@@ -16,9 +16,9 @@ class PushDeliveryClaimServiceTest {
         PushDeliveryRepository deliveries = mock(PushDeliveryRepository.class);
         PushDelivery delivery = new PushDelivery();
         delivery.setId(10L);
-        when(deliveries.findClaimableIds(any(), any(Pageable.class))).thenReturn(List.of(10L, 11L));
-        when(deliveries.claim(eq(10L), any(), any())).thenReturn(1);
-        when(deliveries.claim(eq(11L), any(), any())).thenReturn(0);
+        when(deliveries.findClaimableIds(any(), any(), any(Pageable.class))).thenReturn(List.of(10L, 11L));
+        when(deliveries.claim(eq(10L), any(), any(), any())).thenReturn(1);
+        when(deliveries.claim(eq(11L), any(), any(), any())).thenReturn(0);
         when(deliveries.findClaimedWithDetails(List.of(10L))).thenReturn(List.of(delivery));
 
         var claimed = new PushDeliveryClaimService(deliveries).claim(50);

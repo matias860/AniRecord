@@ -37,8 +37,9 @@ class CommunityPushServiceTest {
     private final TopNineSubmissionRepository topNine = mock(TopNineSubmissionRepository.class);
     private final WeeklyRecommendationRepository recommendations = mock(WeeklyRecommendationRepository.class);
     private final WebPushGateway gateway = mock(WebPushGateway.class);
+    private final PushDeliveryService deliveryService = mock(PushDeliveryService.class);
     private final CommunityPushService service = new CommunityPushService(
-            subscriptions, deliveries, notifications, topNine, recommendations, gateway, CLOCK);
+            subscriptions, deliveries, notifications, topNine, recommendations, gateway, deliveryService, CLOCK);
 
     @Test
     void queuesNewTopNineAndWeeklyRecommendationForMobileDevices() {
@@ -69,6 +70,7 @@ class CommunityPushServiceTest {
         assertTrue(savedNotifications.get(0).getSourceKey().endsWith("2026-10-16"));
         assertTrue(savedNotifications.get(1).getSourceKey().endsWith("2026-10-12"));
         verify(deliveries).saveAll(any());
+        verify(deliveryService).deliverNow();
     }
 
     @Test

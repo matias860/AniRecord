@@ -1,6 +1,10 @@
 package com.animelist.backend;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import com.zaxxer.hikari.HikariDataSource;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest(properties = {
@@ -14,9 +18,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 	"app.cookie-secure=false"
 })
 class BackendApplicationTests {
+	@Autowired HikariDataSource dataSource;
 
 	@Test
 	void contextLoads() {
+		assertEquals(0, dataSource.getMinimumIdle());
+		assertEquals(60_000, dataSource.getIdleTimeout());
+		assertEquals(0, dataSource.getKeepaliveTime());
 	}
 
 }

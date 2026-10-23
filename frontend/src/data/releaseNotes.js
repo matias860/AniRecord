@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.16.0'
+export const CURRENT_VERSION = '1.16.1'
 
 export const RELEASES = [
+  {
+    version: '1.16.1',
+    date: '23 de octubre de 2026',
+    title: 'Estabilidad del servicio',
+    summary: 'Preparamos AniRecord para usar la base de datos solo cuando realmente hay trabajo o actividad.',
+    changes: [
+      { type: 'Disponibilidad', text: 'La página explica la pausa temporal del servicio, ofrece un acceso a AniList y recuerda cómo recuperar los cambios cuando vuelva.' },
+      { type: 'Notificaciones', text: 'Los avisos se procesan al crearse y los episodios se programan para su horario real, sin consultar la base cada minuto.' },
+      { type: 'Rendimiento', text: 'Las conexiones inactivas se cierran rápidamente y los procesos de recuperación se agrupan para reducir el consumo mensual.' },
+    ],
+  },
   {
     version: '1.16.0',
     date: '22 de octubre de 2026',

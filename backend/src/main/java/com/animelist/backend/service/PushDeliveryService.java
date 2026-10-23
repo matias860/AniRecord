@@ -13,12 +13,15 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PushDeliveryService {
     private static final Logger LOGGER = LoggerFactory.getLogger(PushDeliveryService.class);
+    private static final int DELIVERY_BATCH_SIZE = 50;
+    private static final int MAX_BATCHES_PER_RUN = 10;
     private final PushDeliveryRepository deliveries;
     private final PushDeliveryClaimService claims;
     private final PushSubscriptionRepository subscriptions;
@@ -36,10 +39,23 @@ public class PushDeliveryService {
         this.json = json;
     }
 
-    @Scheduled(initialDelayString = "${app.web-push.delivery-initial-delay:PT4M}", fixedDelayString = "${app.web-push.delivery-delay:PT1M}")
-    public void deliverPending() {
+    @Async("pushDeliveryExecutor")
+    public void deliverNow() {
+        deliverPending();
+    }
+
+    @Scheduled(initialDelayString = "${app.web-push.delivery-initial-delay:PT4M}", fixedDelayString = "${app.web-push.recovery-delay:PT6H}")
+    public void recoverPending() {
+        deliverPending();
+    }
+
+    void deliverPending() {
         if (!gateway.available()) return;
-        claims.claim(50).forEach(this::attempt);
+        for (int batchNumber = 0; batchNumber < MAX_BATCHES_PER_RUN; batchNumber++) {
+            var batch = claims.claim(DELIVERY_BATCH_SIZE);
+            batch.forEach(this::attempt);
+            if (batch.size() < DELIVERY_BATCH_SIZE) return;
+        }
     }
 
     public void sendTest(String endpoint) {

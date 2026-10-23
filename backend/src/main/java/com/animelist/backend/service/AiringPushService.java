@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -30,10 +31,16 @@ public class AiringPushService {
     private final AniListClient aniList;
     private final TransactionTemplate transactions;
     private final WebPushGateway pushGateway;
+    private final PushDeliveryService deliveryService;
+    private final TaskScheduler taskScheduler;
+    private final Object scheduleMonitor = new Object();
+    private java.util.concurrent.ScheduledFuture<?> nextPublication;
+    private Instant scheduledFor;
 
     public AiringPushService(LibraryEntryRepository library, MediaRepository mediaRepository,
             AppNotificationRepository notifications, PushSubscriptionRepository subscriptions,
-            PushDeliveryRepository deliveries, AniListClient aniList, TransactionTemplate transactions, WebPushGateway pushGateway) {
+            PushDeliveryRepository deliveries, AniListClient aniList, TransactionTemplate transactions,
+            WebPushGateway pushGateway, PushDeliveryService deliveryService, TaskScheduler taskScheduler) {
         this.library = library;
         this.mediaRepository = mediaRepository;
         this.notifications = notifications;
@@ -42,23 +49,55 @@ public class AiringPushService {
         this.aniList = aniList;
         this.transactions = transactions;
         this.pushGateway = pushGateway;
+        this.deliveryService = deliveryService;
+        this.taskScheduler = taskScheduler;
     }
 
     @Scheduled(initialDelayString = "${app.airing-push.refresh-initial-delay:PT3M}", fixedDelayString = "${app.airing-push.refresh-delay:PT6H}")
     public void refreshTrackedSchedules() {
         if (!pushGateway.available()) return;
         refresh(library.findDistinctAiringTrackedMedia(TRACKED, AIRING));
+        scheduleNextPublication();
     }
 
-    @Scheduled(initialDelayString = "${app.airing-push.publish-initial-delay:PT4M}", fixedDelayString = "${app.airing-push.publish-delay:PT1M}")
-    public void publishDueEpisodes() {
+    @Scheduled(initialDelayString = "${app.airing-push.publish-initial-delay:PT4M}", fixedDelayString = "${app.airing-push.recovery-delay:PT6H}")
+    public void recoverDueEpisodes() {
+        publishDueEpisodes();
+    }
+
+    void publishDueEpisodes() {
         if (!pushGateway.available()) return;
-        List<Long> dueIds = mediaRepository.findByNextAiringAtLessThanEqualAndNextAiringEpisodeIsNotNull(Instant.now(), PageRequest.of(0, 100))
-                .stream().filter(media -> !Objects.equals(media.getNextAiringEpisode(), media.getLastNotifiedEpisode()))
-                .map(Media::getId).toList();
-        if (dueIds.isEmpty()) return;
-        dueIds.forEach(id -> transactions.executeWithoutResult(ignored -> publish(id)));
-        refresh(mediaRepository.findAllById(dueIds));
+        try {
+            List<Long> dueIds = mediaRepository.findByNextAiringAtLessThanEqualAndNextAiringEpisodeIsNotNull(Instant.now(), PageRequest.of(0, 100))
+                    .stream().map(Media::getId).toList();
+            if (dueIds.isEmpty()) return;
+            dueIds.forEach(id -> transactions.executeWithoutResult(ignored -> publish(id)));
+            refresh(mediaRepository.findAllById(dueIds));
+            deliveryService.deliverNow();
+        } finally {
+            scheduleNextPublication();
+        }
+    }
+
+    private void scheduleNextPublication() {
+        if (!pushGateway.available()) return;
+        Instant next = mediaRepository.findFirstByNextAiringAtIsNotNullOrderByNextAiringAtAsc()
+                .map(Media::getNextAiringAt).orElse(null);
+        synchronized (scheduleMonitor) {
+            if (Objects.equals(next, scheduledFor) && nextPublication != null && !nextPublication.isDone()) return;
+            if (nextPublication != null) nextPublication.cancel(false);
+            nextPublication = null;
+            scheduledFor = next;
+            if (next == null) return;
+            Instant runAt = next.isAfter(Instant.now()) ? next : Instant.now().plusSeconds(1);
+            nextPublication = taskScheduler.schedule(() -> {
+                synchronized (scheduleMonitor) {
+                    nextPublication = null;
+                    scheduledFor = null;
+                }
+                publishDueEpisodes();
+            }, runAt);
+        }
     }
 
     private void refresh(List<Media> tracked) {

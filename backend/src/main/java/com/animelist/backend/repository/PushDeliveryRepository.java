@@ -17,12 +17,14 @@ public interface PushDeliveryRepository extends JpaRepository<PushDelivery, Long
     @Query("""
         select delivery.id from PushDelivery delivery
         where delivery.attempts < 3 and (
-            delivery.status in ('PENDING', 'FAILED') or
+            delivery.status = 'PENDING' or
+            (delivery.status = 'FAILED' and (delivery.lastAttemptAt is null or delivery.lastAttemptAt < :retryBefore)) or
             (delivery.status = 'PROCESSING' and (delivery.lastAttemptAt is null or delivery.lastAttemptAt < :staleBefore))
         )
         order by delivery.createdAt
         """)
-    List<Long> findClaimableIds(@Param("staleBefore") java.time.Instant staleBefore, Pageable pageable);
+    List<Long> findClaimableIds(@Param("retryBefore") java.time.Instant retryBefore,
+            @Param("staleBefore") java.time.Instant staleBefore, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
@@ -30,11 +32,13 @@ public interface PushDeliveryRepository extends JpaRepository<PushDelivery, Long
         set delivery.status = 'PROCESSING', delivery.lastAttemptAt = :claimedAt,
             delivery.attempts = delivery.attempts + 1
         where delivery.id = :id and delivery.attempts < 3 and (
-            delivery.status in ('PENDING', 'FAILED') or
+            delivery.status = 'PENDING' or
+            (delivery.status = 'FAILED' and (delivery.lastAttemptAt is null or delivery.lastAttemptAt < :retryBefore)) or
             (delivery.status = 'PROCESSING' and (delivery.lastAttemptAt is null or delivery.lastAttemptAt < :staleBefore))
         )
         """)
     int claim(@Param("id") Long id, @Param("claimedAt") java.time.Instant claimedAt,
+            @Param("retryBefore") java.time.Instant retryBefore,
             @Param("staleBefore") java.time.Instant staleBefore);
 
     @EntityGraph(attributePaths = {"subscription", "notification"})

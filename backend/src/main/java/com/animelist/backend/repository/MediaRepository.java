@@ -16,6 +16,7 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
     Optional<Media> findByAnilistId(Integer anilistId);
     List<Media> findAllByAnilistIdIn(Collection<Integer> anilistIds);
     List<Media> findByNextAiringAtLessThanEqualAndNextAiringEpisodeIsNotNull(Instant instant, Pageable pageable);
+    Optional<Media> findFirstByNextAiringAtIsNotNullOrderByNextAiringAtAsc();
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select media from Media media where media.id = :id")
     Optional<Media> findForUpdateById(@Param("id") Long id);

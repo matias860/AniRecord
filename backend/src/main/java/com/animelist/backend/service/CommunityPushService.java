@@ -35,30 +35,34 @@ public class CommunityPushService {
     private final TopNineSubmissionRepository topNineSubmissions;
     private final WeeklyRecommendationRepository recommendations;
     private final WebPushGateway gateway;
+    private final PushDeliveryService deliveryService;
     private final Clock clock;
 
     @Autowired
     public CommunityPushService(PushSubscriptionRepository subscriptions, PushDeliveryRepository deliveries,
             AppNotificationRepository notifications, TopNineSubmissionRepository topNineSubmissions,
-            WeeklyRecommendationRepository recommendations, WebPushGateway gateway) {
+            WeeklyRecommendationRepository recommendations, WebPushGateway gateway,
+            PushDeliveryService deliveryService) {
         this(subscriptions, deliveries, notifications, topNineSubmissions, recommendations,
-                gateway, Clock.system(ARGENTINA));
+                gateway, deliveryService, Clock.system(ARGENTINA));
     }
 
     CommunityPushService(PushSubscriptionRepository subscriptions, PushDeliveryRepository deliveries,
             AppNotificationRepository notifications, TopNineSubmissionRepository topNineSubmissions,
-            WeeklyRecommendationRepository recommendations, WebPushGateway gateway, Clock clock) {
+            WeeklyRecommendationRepository recommendations, WebPushGateway gateway,
+            PushDeliveryService deliveryService, Clock clock) {
         this.subscriptions = subscriptions;
         this.deliveries = deliveries;
         this.notifications = notifications;
         this.topNineSubmissions = topNineSubmissions;
         this.recommendations = recommendations;
         this.gateway = gateway;
+        this.deliveryService = deliveryService;
         this.clock = clock;
     }
 
     @Scheduled(initialDelayString = "${app.community-push.initial-delay:PT5M}",
-            fixedDelayString = "${app.community-push.delay:PT30M}")
+            fixedDelayString = "${app.community-push.delay:PT6H}")
     public void publishAvailablePrompts() {
         if (!gateway.available()) return;
         Map<Long, List<PushSubscription>> mobileByUser = subscriptions.findByEnabledTrue().stream()
@@ -83,11 +87,11 @@ public class CommunityPushService {
                     NotificationType.WEEKLY_RECOMMENDATION_AVAILABLE, "WEEKLY_RECOMMENDATION_AVAILABLE:" + weekStart,
                     "Nueva recomendación semanal", "Ya podés elegir una serie para recomendar esta semana."));
         }
-        queue(mobileByUser, notices);
+        if (queue(mobileByUser, notices)) deliveryService.deliverNow();
     }
 
-    private void queue(Map<Long, List<PushSubscription>> subscriptionsByUser, List<PromptNotice> notices) {
-        if (notices.isEmpty()) return;
+    private boolean queue(Map<Long, List<PushSubscription>> subscriptionsByUser, List<PromptNotice> notices) {
+        if (notices.isEmpty()) return false;
         List<Long> userIds = notices.stream().map(PromptNotice::userId).distinct().toList();
         List<String> sourceKeys = notices.stream().map(PromptNotice::sourceKey).distinct().toList();
         Map<String, AppNotification> notificationsByKey = notifications
@@ -132,6 +136,7 @@ public class CommunityPushService {
             }
         }
         if (!newDeliveries.isEmpty()) deliveries.saveAll(newDeliveries);
+        return !newDeliveries.isEmpty();
     }
 
     private String noticeKey(Long userId, String sourceKey) { return userId + ":" + sourceKey; }

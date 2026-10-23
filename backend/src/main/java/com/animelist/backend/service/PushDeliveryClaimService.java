@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class PushDeliveryClaimService {
     private static final Duration ABANDONED_AFTER = Duration.ofMinutes(10);
+    private static final Duration RETRY_AFTER = Duration.ofMinutes(15);
     private final PushDeliveryRepository deliveries;
 
     public PushDeliveryClaimService(PushDeliveryRepository deliveries) {
@@ -22,8 +23,9 @@ public class PushDeliveryClaimService {
     public List<PushDelivery> claim(int limit) {
         Instant claimedAt = Instant.now();
         Instant staleBefore = claimedAt.minus(ABANDONED_AFTER);
-        List<Long> claimedIds = deliveries.findClaimableIds(staleBefore, PageRequest.of(0, limit)).stream()
-                .filter(id -> deliveries.claim(id, claimedAt, staleBefore) == 1)
+        Instant retryBefore = claimedAt.minus(RETRY_AFTER);
+        List<Long> claimedIds = deliveries.findClaimableIds(retryBefore, staleBefore, PageRequest.of(0, limit)).stream()
+                .filter(id -> deliveries.claim(id, claimedAt, retryBefore, staleBefore) == 1)
                 .toList();
         return claimedIds.isEmpty() ? List.of() : deliveries.findClaimedWithDetails(claimedIds);
     }

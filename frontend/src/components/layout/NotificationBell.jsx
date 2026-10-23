@@ -4,24 +4,27 @@ import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { fetchNotifications, fetchUnreadCount, markAllNotificationsRead, markNotificationRead, syncNotifications } from '../../features/notifications/notificationSlice.js'
-import { notificationSyncInterval } from '../../lib/notificationSync.js'
 
 const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2, TOP_NINE_AVAILABLE: Grid3X3, WEEKLY_RECOMMENDATION_AVAILABLE: Sparkles }
 export default function NotificationBell({ hovered, onMouseEnter }) {
   const [open, setOpen] = useState(false); const root = useRef(null); const dispatch = useDispatch()
+  const lastUnreadCheck = useRef(0)
   const { items, unreadCount: unread, status, error } = useSelector((state) => state.notifications)
   useEffect(() => {
-    let timer = null
-    const stop = () => { if (timer) window.clearInterval(timer); timer = null }
     const update = () => {
-      stop()
       if (document.visibilityState !== 'visible') return
+      const now = Date.now()
+      if (now - lastUnreadCheck.current < 60_000) return
+      lastUnreadCheck.current = now
       dispatch(fetchUnreadCount())
-      timer = window.setInterval(() => dispatch(fetchUnreadCount()), notificationSyncInterval)
     }
     document.addEventListener('visibilitychange', update)
+    window.addEventListener('online', update)
     update()
-    return () => { stop(); document.removeEventListener('visibilitychange', update) }
+    return () => {
+      document.removeEventListener('visibilitychange', update)
+      window.removeEventListener('online', update)
+    }
   }, [dispatch])
   useEffect(() => { const close = (event) => { if (!root.current?.contains(event.target)) setOpen(false) }; document.addEventListener('mousedown', close); return () => document.removeEventListener('mousedown', close) }, [])
   const select = (item) => { if (!item.read) dispatch(markNotificationRead(item.id)); setOpen(false) }

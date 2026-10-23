@@ -39,7 +39,7 @@ class PushDeliveryServiceTest {
         when(gateway.available()).thenReturn(true);
         when(subscriptions.findById(11L)).thenReturn(Optional.empty());
 
-        service.deliverPending();
+        service.recoverPending();
 
         assertEquals("SKIPPED", delivery.getStatus());
         assertEquals("Suscripción inactiva", delivery.getLastError());
@@ -76,7 +76,7 @@ class PushDeliveryServiceTest {
         when(json.writeValueAsString(any())).thenReturn("{}");
         when(gateway.send(subscription, "{}")).thenReturn(201);
 
-        service.deliverPending();
+        service.recoverPending();
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
