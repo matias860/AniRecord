@@ -17,6 +17,7 @@ import { routeSectionTitle } from '../../lib/navigation.js'
 import useSignOut from '../../lib/useSignOut.js'
 import ProfileLoader from '../common/ProfileLoader.jsx'
 import GlobalSearch from './GlobalSearch.jsx'
+import ServicePauseModal from './ServicePauseModal.jsx'
 
 const AssistantView = lazy(() => import('../../views/AssistantView.jsx'))
 const scrollPositions = new Map()
@@ -189,6 +190,7 @@ export default function AppLayout() {
       <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><Suspense fallback={routeFallback}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></Suspense></main>
       <ToastViewport />
       <PwaUpdateToast />
+      <ServicePauseModal />
       <GlobalSearch open={searchOpen} onClose={closeSearch} />
       <ChangelogModal open={changelogOpen} onClose={() => setChangelogOpen(false)} />
       {assistantLoaded && <Suspense fallback={null}><AssistantView panel open={assistantOpen} onClose={closeAssistant} /></Suspense>}
