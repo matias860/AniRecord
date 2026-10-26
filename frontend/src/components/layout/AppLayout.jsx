@@ -116,16 +116,6 @@ export default function AppLayout() {
     window.history.scrollRestoration = 'manual'
     return () => { window.history.scrollRestoration = previous }
   }, [])
-  useEffect(() => {
-    if (navigator.connection?.saveData) return undefined
-    const warmRoutes = () => Promise.allSettled([preloadRoute('/biblioteca'), preloadRoute('/catalogo')])
-    if ('requestIdleCallback' in window) {
-      const handle = window.requestIdleCallback(warmRoutes, { timeout: 3500 })
-      return () => window.cancelIdleCallback(handle)
-    }
-    const handle = window.setTimeout(warmRoutes, 1800)
-    return () => window.clearTimeout(handle)
-  }, [])
   useEffect(() => { if (authenticated && profileStatus === 'idle') dispatch(fetchProfile()) }, [authenticated, dispatch, profileStatus])
   const themeStyle = {
     '--user-bg': safeDarkColor(backgroundColor),

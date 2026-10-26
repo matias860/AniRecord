@@ -33,7 +33,6 @@ export const anirecordApi = createApi({
   reducerPath: 'anirecordApi',
   baseQuery: () => ({ error: { status: 'UNUSED', data: { message: 'Consulta no configurada.' } } }),
   keepUnusedDataFor: 10 * 60,
-  refetchOnReconnect: true,
   endpoints: (builder) => ({
     getMediaDetail: builder.query({
       queryFn: (anilistId, api) => aniListRequest({ url: `/anilist/media/${anilistId}` }, api),

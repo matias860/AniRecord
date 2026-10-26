@@ -50,6 +50,11 @@ const parseAniListLinks = (text, spoiler) => {
 
 export const isUnreleasedAnime = (media) => media.mediaType === 'ANIME' && media.releaseStatus === 'NOT_YET_RELEASED'
 
+export const normalizeMediaId = (value) => {
+  const id = Number(value)
+  return Number.isInteger(id) && id > 0 ? id : null
+}
+
 export const formatReleaseYears = (media) => {
   const start = media.releaseYear || media.releaseStartDate?.slice(0, 4)
   const end = media.releaseEndYear || media.releaseEndDate?.slice(0, 4)

@@ -9,7 +9,7 @@ import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import MediaTags from '../components/media/MediaTags.jsx'
 import { addToLibrary, fetchLibrary, incrementProgress, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
-import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime } from '../lib/media.js'
+import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime, normalizeMediaId } from '../lib/media.js'
 import { useGetMediaDetailQuery } from '../api/anirecordApi.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
@@ -31,25 +31,26 @@ const relationLabels = {
 
 export default function MediaDetailView() {
   const { anilistId } = useParams()
+  const mediaId = normalizeMediaId(anilistId)
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const location = useLocation()
   const authenticated = useSelector((state) => state.auth.authenticated)
-  const { data: detail, error: detailError, isLoading, isFetching, refetch } = useGetMediaDetailQuery(anilistId)
+  const { data: detail, error: detailError, isLoading, isFetching, refetch } = useGetMediaDetailQuery(mediaId ?? 0, { skip: mediaId == null })
   const library = useSelector((state) => state.library)
-  const mediaRecommendations = useSelector((state) => state.recommendations.byMedia[Number(anilistId)]?.entries ?? null)
-  const saved = authenticated ? library.items.find((item) => item.anilistId === Number(anilistId)) : null
+  const mediaRecommendations = useSelector((state) => mediaId == null ? null : state.recommendations.byMedia[mediaId]?.entries ?? null)
+  const saved = authenticated && mediaId != null ? library.items.find((item) => item.anilistId === mediaId) : null
   const [libraryModal, setLibraryModal] = useState(null)
 
   useEffect(() => {
-    dispatch(fetchMediaRecommendations(anilistId))
-  }, [anilistId, dispatch])
+    if (mediaId != null) dispatch(fetchMediaRecommendations(mediaId))
+  }, [dispatch, mediaId])
 
   useEffect(() => {
     if (authenticated && library.status === 'idle') dispatch(fetchLibrary())
   }, [authenticated, dispatch, library.status])
 
-  if (!detail) return <PageState fullPage loading={isLoading || isFetching} error={detailError?.data?.message} onRetry={refetch} />
+  if (!detail) return <PageState fullPage loading={isLoading || isFetching} error={mediaId == null ? 'El identificador de la obra no es válido.' : detailError?.data?.message} onRetry={mediaId == null ? undefined : refetch} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
   const titleLength = [...detail.title].length
   const titleSizeClass = titleLength > 64 ? 'detail-title-extra-long' : titleLength > 38 ? 'detail-title-long' : ''

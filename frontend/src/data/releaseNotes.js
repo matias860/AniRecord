@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.16.1'
+export const CURRENT_VERSION = '1.16.2'
 
 export const RELEASES = [
+  {
+    version: '1.16.2',
+    date: '26 de octubre de 2026',
+    title: 'Navegación más eficiente',
+    summary: 'Conservamos la fluidez de las precargas evitando solicitudes que no llegan a convertirse en una navegación.',
+    changes: [
+      { type: 'Detalles', text: 'La precarga y la pantalla de una obra ahora comparten exactamente la misma entrada de caché.' },
+      { type: 'Consumo', text: 'Recorrer portadas o quedarse en el inicio ya no genera consultas ni descargas especulativas innecesarias.' },
+      { type: 'Conexión', text: 'Volver a estar en línea no refresca varias consultas silenciosamente; los errores conservan sus reintentos visibles.' },
+    ],
+  },
   {
     version: '1.16.1',
     date: '23 de octubre de 2026',
