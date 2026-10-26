@@ -150,14 +150,14 @@ export default function AppLayout() {
     <div className={`app-shell ${dotsEnabled ? 'dot-background' : ''}`} style={themeStyle} onClickCapture={rememberCurrentScroll}>
       <a className="skip-content" href="#main-content">Saltar al contenido</a>
       <header className="topbar-wrap">
-        <div className="topbar">
+        <div className="topbar" onMouseLeave={() => setHovered(null)} onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setHovered(null) }}>
           <NavLink className="brand desktop-brand" to="/"><span className="brand-mark"><BrandMark /></span><span>Ani<span>Record</span></span></NavLink>
           <VersionButton variant="mark" onClick={() => setChangelogOpen(true)} />
           <div className="mobile-route-title"><small>AniRecord</small><strong>{routeSectionTitle(pathname)}</strong></div>
           <div className="desktop-version"><VersionButton onClick={() => setChangelogOpen(true)} /></div>
-          <nav className="main-nav desktop-main-nav" aria-label="Navegación principal" onMouseLeave={() => setHovered(null)}>
+          <nav className="main-nav desktop-main-nav" aria-label="Navegación principal">
             {links.map(({ to, label, icon: Icon, end }) => (
-              <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => preloadRoute(to)} onClick={() => setHovered(null)} className={({ isActive }) => isActive ? 'active' : ''}>
+              <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => { setHovered(to); preloadRoute(to) }} onClick={() => setHovered(null)} className={({ isActive }) => isActive ? 'active' : ''}>
                 {({ isActive }) => <>
                   {!assistantOpen && isActive && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
                   {hovered === to && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
@@ -165,17 +165,20 @@ export default function AppLayout() {
                 </>}
               </NavLink>
             ))}
-            <button type="button" className={`assistant-nav-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" title="Asistente" onMouseEnter={() => setHovered('/asistente')} onClick={() => { setHovered(null); openAssistant() }}>
+            <button type="button" className={`assistant-nav-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" title="Asistente" onMouseEnter={() => setHovered('/asistente')} onFocus={() => setHovered('/asistente')} onClick={() => { setHovered(null); openAssistant() }}>
               {assistantOpen && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
               {hovered === '/asistente' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
               <Sparkles size={17} /><span>Asistente</span>
             </button>
           </nav>
           <div className="topbar-actions">
-            <button className="global-search-trigger" type="button" onClick={() => setSearchOpen(true)} aria-label="Abrir búsqueda global" title="Buscar (Ctrl K)"><Search /></button>
+            <button className="global-search-trigger" type="button" onMouseEnter={() => setHovered('/buscar')} onFocus={() => setHovered('/buscar')} onClick={() => { setHovered(null); setSearchOpen(true) }} aria-label="Abrir búsqueda global" title="Buscar (Ctrl K)">
+              {hovered === '/buscar' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
+              <Search />
+            </button>
             {authenticated && <NotificationBell hovered={hovered === '/notificaciones'} onMouseEnter={() => setHovered('/notificaciones')} />}
             {authenticated
-              ? <AccountMenu avatarUrl={avatarUrl} displayName={displayName} onOpenChangelog={() => setChangelogOpen(true)} onSignOut={signOut} />
+              ? <AccountMenu avatarUrl={avatarUrl} displayName={displayName} active={pathname.startsWith('/perfil')} hovered={hovered === '/perfil'} onMouseEnter={() => setHovered('/perfil')} onOpenChangelog={() => setChangelogOpen(true)} onSignOut={signOut} />
               : <NavLink className="desktop-login-button" to="/login" onFocus={() => preloadRoute('/login')}><LogIn /><span>Ingresar</span></NavLink>}
           </div>
         </div>
@@ -204,7 +207,7 @@ function MobileNavLink({ to, label, icon: Icon, avatarUrl, end = false }) {
   </NavLink>
 }
 
-function AccountMenu({ avatarUrl, displayName, onOpenChangelog, onSignOut }) {
+function AccountMenu({ avatarUrl, displayName, active, hovered, onMouseEnter, onOpenChangelog, onSignOut }) {
   const [open, setOpen] = useState(false)
   const root = useRef(null)
   useEffect(() => {
@@ -219,8 +222,10 @@ function AccountMenu({ avatarUrl, displayName, onOpenChangelog, onSignOut }) {
       document.removeEventListener('keydown', close)
     }
   }, [open])
-  return <div className="account-menu" ref={root}>
-    <button className="account-trigger" type="button" onClick={() => setOpen((current) => !current)} aria-label="Abrir menú de cuenta" aria-expanded={open} aria-controls="account-menu-popover"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : <UserRound />}</span></button>
+  return <div className={`account-menu${active ? ' active' : ''}`} ref={root} onMouseEnter={onMouseEnter}>
+    {active && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
+    {hovered && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
+    <button className="account-trigger" type="button" onFocus={onMouseEnter} onClick={() => setOpen((current) => !current)} aria-label="Abrir menú de cuenta" aria-expanded={open} aria-controls="account-menu-popover"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : <UserRound />}</span></button>
     {open && <div className="account-popover" id="account-menu-popover" role="menu">
       <div className="account-summary"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : <UserRound />}</span><span><small>Sesión activa</small><strong>{displayName || 'Mi perfil'}</strong></span></div>
       <NavLink to="/perfil" role="menuitem" onClick={() => setOpen(false)}><UserRound /> Perfil y configuración</NavLink>
