@@ -175,7 +175,7 @@ export default function LibraryView() {
           <AnimatePresence initial={false} mode="sync">
             {sections.map((section, sectionIndex) => <motion.section className="library-status-section" key={section.status} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: .2, ease: 'easeOut', delay: sectionIndex * .035 }}>
               <div className="library-section-heading"><h2>{section.title}</h2><span>{section.items.length}</span></div>
-              <HoverMediaGrid className="library-grid" animateItems>{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={handleIncrement} />)}</HoverMediaGrid>
+              <HoverMediaGrid className="library-grid">{section.items.slice(0, visibleCounts[section.status] ?? initialSectionSize).map((media) => <MediaCard key={media.id} media={media} onIncrement={handleIncrement} />)}</HoverMediaGrid>
               {(visibleCounts[section.status] ?? initialSectionSize) < section.items.length && <button className="secondary-button library-show-more" type="button" onClick={() => setPagination((current) => {
                 const counts = current.key === paginationKey ? current.counts : {}
                 return { key: paginationKey, counts: { ...counts, [section.status]: (counts[section.status] ?? initialSectionSize) + initialSectionSize } }

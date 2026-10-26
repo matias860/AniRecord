@@ -18,7 +18,7 @@ createRoot(document.getElementById('root')).render(
     <Provider store={store}>
       <PersistGate loading={null} persistor={persistor}>
         <BrowserRouter>
-          <MotionConfig reducedMotion="user">
+          <MotionConfig reducedMotion="user" transition={{ duration: .18, ease: 'easeOut' }}>
             <App />
           </MotionConfig>
         </BrowserRouter>

@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom'
 import { CURRENT_VERSION, RELEASES } from '../../data/releaseNotes.js'
 import BrandMark from '../common/BrandMark.jsx'
 import './ChangelogModal.css'
+import { backdropMotion, fadeUp, modalMotion } from '../../lib/motionVariants.js'
 
 const STORAGE_KEY = 'anirecord:last-seen-version'
 const currentFamily = familyOf(CURRENT_VERSION)
@@ -67,8 +68,8 @@ export default function ChangelogModal({ open, onClose }) {
   return createPortal(
     <AnimatePresence>
       {open && (
-        <motion.div className="changelog-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-          <motion.section ref={dialogRef} className="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title" initial={{ opacity: 0, y: 18, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .22, ease: 'easeOut' }}>
+        <motion.div {...backdropMotion} className="changelog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+          <motion.section {...modalMotion} ref={dialogRef} className="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
             <header className="changelog-header">
               <span className="changelog-icon"><ScrollText aria-hidden="true" /></span>
               <div>
@@ -93,7 +94,7 @@ export default function ChangelogModal({ open, onClose }) {
               </nav>
 
               <article className="release-detail" key={selectedGroup.version}>
-                <motion.div initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: .18 }}>
+                <motion.div {...fadeUp}>
                   <div className="release-meta"><span>Versión {selectedGroup.version}</span><time>{selectedRelease.date}</time></div>
                   <h3>{selectedRelease.title}</h3>
                   <p>{selectedRelease.summary}</p>

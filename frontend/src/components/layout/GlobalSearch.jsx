@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import apiClient from '../../api/apiClient.js'
 import useModalFocus from '../../lib/useModalFocus.js'
+import { backdropMotion, modalMotion } from '../../lib/motionVariants.js'
 
 const RECENT_KEY = 'anirecord:recent-searches'
 const emptyResults = { media: [], characters: [], staff: [] }
@@ -67,8 +68,8 @@ export default function GlobalSearch({ open, onClose }) {
   ]
   const effectiveStatus = query.trim().length < 2 ? 'idle' : status
   const total = groups.reduce((sum, [, items]) => sum + items.length, 0)
-  return <AnimatePresence>{open && <motion.div className="global-search-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-    <motion.section ref={dialogRef} className="global-search-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title" initial={{ opacity: 0, y: -18, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -12, scale: .985 }} transition={{ duration: .18 }}>
+  return <AnimatePresence>{open && <motion.div {...backdropMotion} className="global-search-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+    <motion.section {...modalMotion} ref={dialogRef} className="global-search-panel" role="dialog" aria-modal="true" aria-labelledby="global-search-title">
       <div className="global-search-heading"><div><span className="eyebrow">Búsqueda global</span><h2 id="global-search-title">Encontrá cualquier cosa</h2></div><button type="button" onClick={onClose} aria-label="Cerrar búsqueda"><X /></button></div>
       <label className="global-search-input"><Search /><input ref={inputRef} value={query} onChange={changeQuery} placeholder="Anime, manga, personaje o seiyū…" autoComplete="off" /><kbd>Esc</kbd></label>
       {query.trim().length < 2 && <div className="global-search-recents"><strong>Búsquedas recientes</strong>{recents.length ? recents.map((recent) => <button type="button" key={recent} onClick={() => setQuery(recent)}><Clock3 />{recent}</button>) : <p>Tus búsquedas recientes aparecerán acá.</p>}</div>}

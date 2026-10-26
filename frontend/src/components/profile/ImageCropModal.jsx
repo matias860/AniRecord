@@ -4,6 +4,7 @@ import Cropper from 'react-easy-crop'
 import { Check, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { createPortal } from 'react-dom'
+import { backdropMotion, modalMotion } from '../../lib/motionVariants.js'
 
 export default function ImageCropModal({ file, type, onCancel, onConfirm }) {
   const dialogRef = useModalFocus(true)
@@ -27,8 +28,8 @@ export default function ImageCropModal({ file, type, onCancel, onConfirm }) {
     finally { setBusy(false) }
   }
 
-  return createPortal(<motion.div className="image-crop-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel() }}>
-    <motion.section ref={dialogRef} className="image-crop-modal" role="dialog" aria-modal="true" aria-labelledby="crop-title" initial={{ y: 18, scale: .97 }} animate={{ y: 0, scale: 1 }}>
+  return createPortal(<motion.div {...backdropMotion} className="image-crop-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onCancel() }}>
+    <motion.section {...modalMotion} ref={dialogRef} className="image-crop-modal" role="dialog" aria-modal="true" aria-labelledby="crop-title">
       <button className="modal-close" type="button" onClick={onCancel} aria-label="Cerrar editor"><X /></button>
       <span className="eyebrow">Ajustar imagen</span><h2 id="crop-title">Recortar {isAvatar ? 'avatar' : 'banner'}</h2>
       <p>Arrastra la imagen y usa el zoom hasta que se vea como quieres.</p>

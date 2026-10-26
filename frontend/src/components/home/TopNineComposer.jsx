@@ -5,6 +5,7 @@ import { Check, Image as ImageIcon, Plus, RotateCcw, Search, Send, X } from 'luc
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { publishTopNine } from '../../features/topNine/topNineSlice.js'
+import { backdropMotion, modalMotion } from '../../lib/motionVariants.js'
 import './TopNine.css'
 
 const EMPTY = Array(9).fill(null)
@@ -152,10 +153,10 @@ export default function TopNineComposer({ prompt, mine, onClose }) {
     } catch { /* El toast global presenta el error. */ }
   }
 
-  return createPortal(<motion.div className="top-nine-modal-backdrop" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onPointerDown={(event) => {
+  return createPortal(<motion.div {...backdropMotion} className="top-nine-modal-backdrop" onPointerDown={(event) => {
     if (event.target === event.currentTarget && !publishing && activeSlot === null) onClose()
   }}>
-  <motion.section ref={dialogRef} className="top-nine-composer" role="dialog" aria-modal="true" aria-labelledby="top-nine-composer-title" initial={{ opacity: 0, y: 18, scale: .97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 12, scale: .98 }} transition={{ duration: .25, ease: 'easeOut' }}>
+  <motion.section {...modalMotion} ref={dialogRef} className="top-nine-composer" role="dialog" aria-modal="true" aria-labelledby="top-nine-composer-title">
     <button className="top-nine-close" type="button" onClick={onClose} disabled={publishing} aria-label="Cerrar el 3×3"><X /></button>
     <header>
       <span className="eyebrow">Consigna quincenal</span>

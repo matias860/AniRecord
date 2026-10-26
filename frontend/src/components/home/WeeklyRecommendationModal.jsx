@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { createWeeklyRecommendation } from '../../features/recommendations/recommendationsSlice.js'
 import MediaTypeSwitch from '../common/MediaTypeSwitch.jsx'
+import { backdropMotion, modalMotion } from '../../lib/motionVariants.js'
 
 const COVER_FALLBACK = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="240" height="360"%3E%3Crect width="100%25" height="100%25" fill="%2310182b"/%3E%3Cpath d="M60 70h120v190H60zM120 70v190" fill="none" stroke="%23a78bfa" stroke-width="12"/%3E%3C/svg%3E'
 const onCoverError = (event) => { if (event.currentTarget.src !== COVER_FALLBACK) event.currentTarget.src = COVER_FALLBACK }
@@ -46,8 +47,8 @@ export default function WeeklyRecommendationModal({ onClose }) {
     } catch { /* El middleware global presenta el error. */ }
   }
 
-  return <motion.div className="recommendation-modal-backdrop" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget && !loading) onClose() }}>
-    <motion.section ref={dialogRef} className="recommendation-modal" role="dialog" aria-modal="true" aria-labelledby="recommendation-modal-title" initial={{ y: 22, scale: .97 }} animate={{ y: 0, scale: 1 }} exit={{ y: 14, scale: .98 }}>
+  return <motion.div {...backdropMotion} className="recommendation-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !loading) onClose() }}>
+    <motion.section {...modalMotion} ref={dialogRef} className="recommendation-modal" role="dialog" aria-modal="true" aria-labelledby="recommendation-modal-title">
       <button className="modal-close" type="button" onClick={onClose} disabled={loading} aria-label="Cerrar"><X /></button>
       <AnimatePresence mode="wait" initial={false}>
         {success ? <motion.div className="recommendation-success" key="success" initial={{ opacity: 0, scale: .94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}><span><Check /></span><h2>Serie recomendada</h2><p><strong>{selected.title}</strong> ya aparece entre las recomendaciones de esta semana.</p></motion.div>

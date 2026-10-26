@@ -1,7 +1,7 @@
 import { safeDarkColor, safeAccentColor, accentTextColor } from '../../lib/themeContrast.js'
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Compass, Home, Library, LogIn, LogOut, Search, Sparkles, UserRound } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { NavLink, useLocation, useNavigate, useNavigationType, useOutlet } from 'react-router-dom'
 import { fetchProfile } from '../../features/profile/profileSlice.js'
@@ -17,6 +17,7 @@ import { routeSectionTitle } from '../../lib/navigation.js'
 import useSignOut from '../../lib/useSignOut.js'
 import ProfileLoader from '../common/ProfileLoader.jsx'
 import GlobalSearch from './GlobalSearch.jsx'
+import { popoverMotion } from '../../lib/motionVariants.js'
 
 const AssistantView = lazy(() => import('../../views/AssistantView.jsx'))
 const scrollPositions = new Map()
@@ -214,11 +215,11 @@ function AccountMenu({ avatarUrl, displayName, active, hovered, onMouseEnter, on
     {active && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
     {hovered && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
     <button className="account-trigger" type="button" onFocus={onMouseEnter} onClick={() => setOpen((current) => !current)} aria-label="Abrir menú de cuenta" aria-expanded={open} aria-controls="account-menu-popover"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" decoding="async" /> : <UserRound />}</span></button>
-    {open && <div className="account-popover" id="account-menu-popover" role="menu">
+    <AnimatePresence>{open && <motion.div {...popoverMotion} className="account-popover" id="account-menu-popover" role="menu">
       <div className="account-summary"><span className="nav-avatar">{avatarUrl ? <img src={avatarUrl} alt="" /> : <UserRound />}</span><span><small>Sesión activa</small><strong>{displayName || 'Mi perfil'}</strong></span></div>
       <NavLink to="/perfil" role="menuitem" onClick={() => setOpen(false)}><UserRound /> Perfil y configuración</NavLink>
       <button type="button" role="menuitem" onClick={() => { setOpen(false); onOpenChangelog() }}><Sparkles /> Historial de cambios</button>
       <button className="account-signout" type="button" role="menuitem" onClick={onSignOut}><LogOut /> Cerrar sesión</button>
-    </div>}
+    </motion.div>}</AnimatePresence>
   </div>
 }

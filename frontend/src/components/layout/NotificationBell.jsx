@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { fetchNotifications, fetchUnreadCount, markAllNotificationsRead, markNotificationRead, syncNotifications } from '../../features/notifications/notificationSlice.js'
+import { popoverMotion } from '../../lib/motionVariants.js'
 
 const icons = { FIRST_EPISODE: Play, AIRING_EPISODE: Play, RELATED_MEDIA_ADDITION: GitBranch, MEDIA_DATA_CHANGE: RefreshCw, MEDIA_MERGE: Info, MEDIA_DELETION: Trash2, TOP_NINE_AVAILABLE: Grid3X3, WEEKLY_RECOMMENDATION_AVAILABLE: Sparkles }
 export default function NotificationBell({ hovered, onMouseEnter }) {
@@ -42,7 +43,7 @@ export default function NotificationBell({ hovered, onMouseEnter }) {
     if (fetchNotifications.fulfilled.match(result)) synchronize()
   }
   return <div className="notification-root" ref={root} onMouseEnter={onMouseEnter}>{hovered && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}<button className="notification-button" onFocus={onMouseEnter} onClick={toggle} aria-label={unread > 0 ? `Notificaciones sin leer: ${unread}` : 'Notificaciones'} aria-expanded={open} aria-controls="notification-popover"><Bell />{unread > 0 && <span className="notification-unread-dot" aria-hidden="true" />}</button>
-    <AnimatePresence>{open && <motion.div id="notification-popover" role="dialog" aria-label="Notificaciones" className="notification-popover" initial={{ opacity: 0, y: -8, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: .98 }}>
+    <AnimatePresence>{open && <motion.div {...popoverMotion} id="notification-popover" role="dialog" aria-label="Notificaciones" className="notification-popover">
       <header><div><span className="eyebrow">Novedades</span><h3>Notificaciones</h3></div>{unread > 0 && <button onClick={() => dispatch(markAllNotificationsRead())}><CheckCheck /> Leer todas</button>}</header>
       <div className="notification-list">{status === 'loading' && !items.length ? <p>Cargando novedades…</p> : error && !items.length ? <div className="notification-error"><p>{error}</p><button onClick={retry}>Reintentar</button></div> : items.length ? items.slice(0, 10).map((item) => <NotificationItem item={item} onSelect={() => select(item)} key={item.id} />) : <p>No hay novedades todavía.</p>}</div>
     </motion.div>}</AnimatePresence></div>

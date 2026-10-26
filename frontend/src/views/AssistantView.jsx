@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import apiClient from '../api/apiClient.js'
 import './AssistantView.css'
+import { backdropMotion, modalMotion } from '../lib/motionVariants.js'
 
 const EXAMPLES = [
   'Un romance terminado y corto',
@@ -94,8 +95,8 @@ export default function AssistantView({ panel = false, open = true, onClose = ()
   if (!panel) return experience
   return createPortal(
     <AnimatePresence>
-      {open && <motion.div className="assistant-popover-layer" role="presentation" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-        <motion.aside className="assistant-popover" role="dialog" aria-modal="true" aria-label="Asistente de recomendaciones" initial={{ opacity: 0, y: -14, scale: .98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -10, scale: .985 }} transition={{ duration: .2, ease: 'easeOut' }}>
+      {open && <motion.div {...backdropMotion} className="assistant-popover-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
+        <motion.aside {...modalMotion} className="assistant-popover" role="dialog" aria-modal="true" aria-label="Asistente de recomendaciones">
           {experience}
         </motion.aside>
       </motion.div>}
