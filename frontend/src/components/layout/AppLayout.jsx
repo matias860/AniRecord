@@ -149,17 +149,12 @@ export default function AppLayout() {
             {links.map(({ to, label, icon: Icon, end }) => (
               <NavLink key={to} to={to} end={end} onMouseEnter={() => { setHovered(to); preloadRoute(to) }} onFocus={() => { setHovered(to); preloadRoute(to) }} onClick={() => setHovered(null)} className={({ isActive }) => isActive ? 'active' : ''}>
                 {({ isActive }) => <>
-                  {!assistantOpen && isActive && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
+                  {isActive && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
                   {hovered === to && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
                   <Icon size={17} /><span>{label}</span>
                 </>}
               </NavLink>
             ))}
-            <button type="button" className={`assistant-nav-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" title="Asistente" onMouseEnter={() => setHovered('/asistente')} onFocus={() => setHovered('/asistente')} onClick={() => { setHovered(null); openAssistant() }}>
-              {assistantOpen && <motion.span className="nav-active" layoutId="navbar-active" transition={{ type: 'spring', stiffness: 360, damping: 30, mass: .7 }} />}
-              {hovered === '/asistente' && <motion.span className="nav-hover" layoutId="navbar-hover" transition={{ type: 'spring', stiffness: 420, damping: 35 }} />}
-              <Sparkles size={17} /><span>Asistente</span>
-            </button>
           </nav>
           <div className="topbar-actions">
             <button className="global-search-trigger" type="button" onMouseEnter={() => setHovered('/buscar')} onFocus={() => setHovered('/buscar')} onClick={() => { setHovered(null); setSearchOpen(true) }} aria-label="Abrir búsqueda global" title="Buscar (Ctrl K)">
@@ -176,10 +171,25 @@ export default function AppLayout() {
       <nav className="mobile-bottom-nav" aria-label="Navegación principal móvil">
         <MobileNavLink to="/" label="Inicio" icon={Home} end />
         <MobileNavLink to="/biblioteca" label="Biblioteca" icon={Library} />
-        <button type="button" className={`mobile-assistant-button${assistantOpen ? ' active' : ''}`} aria-label="Abrir asistente" aria-expanded={assistantOpen} aria-controls="global-assistant-panel" onClick={openAssistant}><span><Sparkles /></span><small>Asistente</small></button>
         <MobileNavLink to="/catalogo" label="Catálogo" icon={Compass} />
         <MobileNavLink to={authenticated ? '/perfil' : '/login'} label={authenticated ? 'Perfil' : 'Ingresar'} icon={authenticated ? UserRound : LogIn} avatarUrl={authenticated ? avatarUrl : null} />
       </nav>
+      <motion.button
+        className={`floating-assistant-button${assistantOpen ? ' active' : ''}`}
+        type="button"
+        initial={{ opacity: 0, scale: .82, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        whileHover={{ scale: 1.06, y: -4 }}
+        whileTap={{ scale: .94 }}
+        transition={{ type: 'spring', stiffness: 390, damping: 25, mass: .7 }}
+        aria-label={assistantOpen ? 'Cerrar asistente' : 'Abrir asistente'}
+        aria-expanded={assistantOpen}
+        aria-controls="global-assistant-panel"
+        onClick={assistantOpen ? closeAssistant : openAssistant}
+      >
+        <motion.span animate={{ rotate: assistantOpen ? 12 : 0, scale: assistantOpen ? 1.08 : 1 }} transition={{ duration: .18 }}><Sparkles /></motion.span>
+        <small>Asistente</small>
+      </motion.button>
       <main id="main-content" ref={mainRef} tabIndex={-1} className="page"><Suspense fallback={routeFallback}><motion.div className="route-page" key={pathname} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .14, ease: 'easeOut' }}>{outlet}</motion.div></Suspense></main>
       <ToastViewport />
       <PwaUpdateToast />
