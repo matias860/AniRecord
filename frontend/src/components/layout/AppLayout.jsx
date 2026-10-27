@@ -171,6 +171,7 @@ export default function AppLayout() {
       <nav className="mobile-bottom-nav" aria-label="Navegación principal móvil">
         <MobileNavLink to="/" label="Inicio" icon={Home} end />
         <MobileNavLink to="/biblioteca" label="Biblioteca" icon={Library} />
+        <button type="button" className={`mobile-assistant-button${assistantOpen ? ' active' : ''}`} aria-label={assistantOpen ? 'Cerrar asistente' : 'Abrir asistente'} aria-expanded={assistantOpen} aria-controls="global-assistant-panel" onClick={assistantOpen ? closeAssistant : openAssistant}><span><Sparkles /></span><small>Asistente</small></button>
         <MobileNavLink to="/catalogo" label="Catálogo" icon={Compass} />
         <MobileNavLink to={authenticated ? '/perfil' : '/login'} label={authenticated ? 'Perfil' : 'Ingresar'} icon={authenticated ? UserRound : LogIn} avatarUrl={authenticated ? avatarUrl : null} />
       </nav>

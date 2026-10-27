@@ -1019,18 +1019,17 @@ a.media-credit-card:hover{transform:translateY(-4px);border-color:color-mix(in s
   .mobile-route-title strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--font-display);font-size:13px;letter-spacing:-.2px}
   .topbar-actions{margin-left:auto}
   .topbar-actions .notification-root{margin:0}
-  .mobile-bottom-nav{position:fixed;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));z-index:40;width:min(520px,calc(100% - 16px));min-height:66px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));align-items:center;gap:2px;padding:6px;border:1px solid color-mix(in srgb,var(--accent) 24%,rgba(255,255,255,.1));border-radius:21px;background:color-mix(in srgb,var(--user-surface,#171b29) 97%,#07090f);box-shadow:0 16px 55px rgba(0,0,0,.5),0 0 24px color-mix(in srgb,var(--accent) 8%,transparent);transform:translateX(-50%);backdrop-filter:blur(20px)}
-  .mobile-bottom-nav>a{min-width:0;height:52px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:0 3px;border:0;border-radius:14px;color:var(--muted);background:transparent}
-  .mobile-bottom-nav>a>span{width:30px;height:28px;display:grid;place-items:center;border-radius:10px;transition:color .18s,background .18s,transform .18s}
+  .mobile-bottom-nav{position:fixed;left:50%;bottom:max(8px,env(safe-area-inset-bottom,0px));z-index:40;width:min(520px,calc(100% - 16px));min-height:66px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;gap:2px;padding:6px;border:1px solid color-mix(in srgb,var(--accent) 24%,rgba(255,255,255,.1));border-radius:21px;background:color-mix(in srgb,var(--user-surface,#171b29) 97%,#07090f);box-shadow:0 16px 55px rgba(0,0,0,.5),0 0 24px color-mix(in srgb,var(--accent) 8%,transparent);transform:translateX(-50%);backdrop-filter:blur(20px)}
+  .mobile-bottom-nav>a,.mobile-bottom-nav>button{min-width:0;height:52px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:3px;padding:0 3px;border:0;border-radius:14px;color:var(--muted);background:transparent}
+  .mobile-bottom-nav>a>span,.mobile-bottom-nav>button>span{width:30px;height:28px;display:grid;place-items:center;border-radius:10px;transition:color .18s,background .18s,transform .18s,box-shadow .18s}
   .mobile-bottom-nav svg{width:19px;height:19px}
   .mobile-bottom-nav small{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7px;font-weight:750}
-  .mobile-bottom-nav>a.active{color:#fff}
+  .mobile-bottom-nav>a.active,.mobile-bottom-nav>button.active{color:#fff}
   .mobile-bottom-nav>a.active>span{color:var(--accent);background:color-mix(in srgb,var(--accent) 13%,transparent)}
-  .floating-assistant-button{width:52px;height:52px;right:max(14px,env(safe-area-inset-right,0px));bottom:calc(88px + env(safe-area-inset-bottom,0px));z-index:41;border-radius:17px}
-  .floating-assistant-button::before{inset:-5px;border-radius:21px}
-  .floating-assistant-button svg{width:22px;height:22px}
-  .floating-assistant-button small{display:none}
-  .app-shell:has(.pwa-update-toast) .floating-assistant-button{bottom:calc(174px + env(safe-area-inset-bottom,0px))}
+  .mobile-assistant-button>span{width:42px!important;height:42px!important;margin-top:-21px;border:1px solid color-mix(in srgb,var(--accent) 65%,#fff 8%);border-radius:14px!important;color:var(--accent-text,#fff);background:linear-gradient(145deg,color-mix(in srgb,var(--accent) 94%,#fff),color-mix(in srgb,var(--accent) 73%,#000));box-shadow:0 10px 25px color-mix(in srgb,var(--accent) 32%,transparent)}
+  .mobile-assistant-button.active>span{transform:translateY(-2px) scale(1.04);box-shadow:0 12px 30px color-mix(in srgb,var(--accent) 45%,transparent)}
+  .mobile-assistant-button small{margin-top:-1px;color:color-mix(in srgb,var(--accent) 72%,#fff)}
+  .floating-assistant-button{display:none}
   .mobile-nav-avatar{overflow:hidden;border:2px solid color-mix(in srgb,var(--accent) 40%,rgba(255,255,255,.14));border-radius:50%!important}
   .mobile-nav-avatar img{width:100%;height:100%;object-fit:cover}
   .page{padding-bottom:calc(116px + env(safe-area-inset-bottom,0px))}

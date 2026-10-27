@@ -8,7 +8,7 @@ export const RELEASES = [
     summary: 'Unificamos los movimientos breves de la interfaz y evitamos animaciones costosas en el contenido grande.',
     changes: [
       { type: 'Interfaz', text: 'Menús, búsqueda, modales y avisos ahora aparecen y se cierran con transiciones rápidas y coherentes.' },
-      { type: 'Navegación', text: 'El asistente ahora tiene un acceso flotante adaptable y deja más espacio libre en las barras de navegación.' },
+      { type: 'Navegación', text: 'El asistente tiene un acceso flotante en computadora y conserva su posición central en la barra del celular.' },
       { type: 'Rendimiento', text: 'Las bibliotecas extensas ya no animan todas sus tarjetas y el carrusel dejó de usar desenfoque animado.' },
       { type: 'Accesibilidad', text: 'Las animaciones mantienen una duración breve y respetan la preferencia de movimiento reducido del dispositivo.' },
     ],
