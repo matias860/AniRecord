@@ -9,7 +9,7 @@ function worker(fetch) {
   let fallbacks = 0
   const source = readFileSync(new URL('../sw.js', import.meta.url), 'utf8').replace(/^import .*$/gm, '')
   const context = {
-    fetch, self: { __WB_MANIFEST: [], addEventListener() {} },
+    fetch, self: { __WB_MANIFEST: [], location: { origin: 'https://anirecord.com.ar' }, addEventListener() {} },
     clientsClaim() {}, cleanupOutdatedCaches() {},
     precacheAndRoute() { precached = true; routes.push('precache') },
     createHandlerBoundToURL() {
@@ -36,4 +36,12 @@ test('offline navigation still opens the cached app shell', async () => {
   const sw = worker(async () => { throw new TypeError('offline') })
   assert.equal(await sw.routes[0].handler({ request: 'navigation' }), 'offline shell')
   assert.equal(sw.fallbacks(), 1)
+})
+
+test('runtime caches never intercept external streaming destinations', () => {
+  const sw = worker(async () => ({ status: 200 }))
+  const external = { request: { destination: 'image' }, url: new URL('https://www.crunchyroll.com/series/example') }
+  const runtimeMatchers = sw.routes.filter((route) => typeof route === 'function')
+  assert.equal(runtimeMatchers.length, 3)
+  for (const matcher of runtimeMatchers) assert.equal(matcher(external), false)
 })

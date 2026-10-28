@@ -14,6 +14,7 @@ import { useGetMediaDetailQuery } from '../api/anirecordApi.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
 import { backdropMotion, modalMotion } from '../lib/motionVariants.js'
+import { resolveStreamingDestination } from '../lib/streamingNavigation.js'
 
 const statusLabels = {
   PLANNED: 'Planeando', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
@@ -86,7 +87,7 @@ export default function MediaDetailView() {
       <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}</nav>
       {(!!detail.genres?.length || !!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
         {(!!detail.genres?.length || !!detail.tags?.length) && <div className="detail-tags"><span className="eyebrow">Géneros y categorías</span><MediaTags key={detail.anilistId} genres={detail.genres} tags={detail.tags} mediaType={detail.mediaType} /></div>}
-        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} />}
+        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} title={detail.title} romajiTitle={detail.romajiTitle} />}
       </div>}
       <details className="detail-description detail-collapsible" id="sinopsis" open><summary><span className="eyebrow">Sinopsis</span><ChevronDown className="detail-collapse-icon" /></summary><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></details>
       {detail.musicVideoUrl && <MusicVideoPlayer url={detail.musicVideoUrl} title={detail.title} />}
@@ -101,19 +102,21 @@ export default function MediaDetailView() {
   </article>
 }
 
-function StreamingLinks({ links }) {
+function StreamingLinks({ links, title, romajiTitle }) {
   return <section className="streaming-links">
     <span className="eyebrow">Dónde ver</span>
     <div className="streaming-links-grid">{links.map((link) => {
       const details = [link.site || 'Ver online', link.notes, link.language].filter(Boolean).join(' · ')
+      const destination = resolveStreamingDestination({ link, title, romajiTitle })
       return <a
         className="streaming-link-logo"
-        href={link.url}
+        href={destination.href}
         key={`${link.site}-${link.url}`}
-        target="_blank"
+        target={destination.target}
         rel="noopener noreferrer"
-        aria-label={`Ver en ${details}`}
+        aria-label={`Abrir ${title} en ${link.site || 'un servicio de streaming'}`}
         data-label={details}
+        data-destination={destination.kind}
         style={{ '--streaming-color': link.color || 'var(--accent)' }}
       >
         {link.icon ? <img src={link.icon} alt="" /> : <Play />}

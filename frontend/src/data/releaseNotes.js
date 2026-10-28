@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.16.3'
+export const CURRENT_VERSION = '1.16.4'
 
 export const RELEASES = [
+  {
+    version: '1.16.4',
+    date: '28 de octubre de 2026',
+    title: 'Enlaces de streaming desde la app',
+    summary: 'Los accesos para ver una obra ya no terminan en una pantalla vacía al usarlos desde la PWA.',
+    changes: [
+      { type: 'Streaming', text: 'En Android, los servicios compatibles intentan abrir su aplicación instalada y, si no está disponible, buscan la obra en Google.' },
+      { type: 'Compatibilidad', text: 'En iPhone y computadora se conservan los enlaces web oficiales; los proveedores desconocidos siempre ofrecen una búsqueda útil.' },
+      { type: 'Seguridad', text: 'AniRecord sólo abre aplicaciones verificadas y rechaza dominios inesperados sin consultar el backend.' },
+    ],
+  },
   {
     version: '1.16.3',
     date: '26 de octubre de 2026',
