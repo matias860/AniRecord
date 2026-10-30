@@ -150,7 +150,7 @@ class RecommendationAssistantServiceTest {
     void yuriRequestKeepsStatusLengthAndDramaExclusion() {
         AniListMediaResponse matching = new AniListMediaResponse(7, MediaType.ANIME, "TV", "JP", "Yuri largo", "Yuri largo",
                 "cover", null, null, List.of(), null, 24, null, null, ReleaseStatus.RELEASING, null, 2026, 100, null,
-                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Yuri", 90, null, null)), 2026);
+                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Yuri", 90, null, null)), 2026, null);
         when(library.findSummaries(42L, null, null)).thenReturn(List.of());
         when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), anyList(), eq(List.of("Yuri")),
                 eq(ReleaseStatus.RELEASING), any(), any(), eq("POPULARITY")))
@@ -192,7 +192,7 @@ class RecommendationAssistantServiceTest {
         AniListMediaResponse anime = media(10, "Anime romántico");
         AniListMediaResponse manga = new AniListMediaResponse(11, MediaType.MANGA, "MANGA", "JP", "Manga romántico", "Manga romántico",
                 "cover", null, null, List.of(), null, 10, null, null, ReleaseStatus.FINISHED, null, 2024, 200, null,
-                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024);
+                List.of(), List.of(), List.of(), List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024, null);
         when(library.findSummaries(42L, null, null)).thenReturn(List.of());
         when(aniList.browseForAssistant(isNull(), anyInt(), any(), any(), any(), eq(List.of("Romance")), anyList(),
                 any(), any(), any(), any())).thenReturn(new AniListSearchResponse(1, false, List.of(anime, manga)));
@@ -287,11 +287,11 @@ class RecommendationAssistantServiceTest {
         AniListMediaResponse japaneseFinished = new AniListMediaResponse(32, MediaType.MANGA, "MANGA", "JP",
                 "Japanese", "Japanese", "cover", null, null, List.of(), null, 20, null, null,
                 ReleaseStatus.FINISHED, null, 2024, 10, null, List.of(), List.of(), List.of(),
-                List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024);
+                List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024, null);
         AniListMediaResponse koreanReleasing = new AniListMediaResponse(33, MediaType.MANGA, "MANGA", "KR",
                 "Korean", "Korean", "cover", null, null, List.of(), null, 20, null, null,
                 ReleaseStatus.RELEASING, null, 2024, 10, null, List.of(), List.of(), List.of(),
-                List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), null);
+                List.of("Romance"), List.of(new MediaTagResponse("Heterosexual", 90, null, null)), null, null);
         when(library.findSummaries(42L, MediaType.MANGA, null)).thenReturn(List.of());
         when(aniList.browseForAssistant(eq(MediaType.MANGA), anyInt(), any(), any(), any(), eq(List.of("Romance")),
                 anyList(), isNull(), isNull(), isNull(), any())).thenReturn(
@@ -376,20 +376,20 @@ class RecommendationAssistantServiceTest {
         return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title, "cover", null, null,
                 List.of(), null, 12, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
                 List.of(), List.of(), List.of(), List.of("Romance"),
-                List.of(new MediaTagResponse("Heterosexual", 90, null, null), new MediaTagResponse("School", 70, null, null)), 2024);
+                List.of(new MediaTagResponse("Heterosexual", 90, null, null), new MediaTagResponse("School", 70, null, null)), 2024, null);
     }
 
     private AniListMediaResponse candidate(int id, String title, List<String> genres, List<MediaTagResponse> tags) {
         return new AniListMediaResponse(id, MediaType.MANGA, "MANGA", "JP", title, title, "cover", null, null,
                 List.of(), null, 40, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
-                List.of(), List.of(), List.of(), genres, tags, 2024);
+                List.of(), List.of(), List.of(), genres, tags, 2024, null);
     }
 
     private AniListMediaResponse printedCandidate(int id, String title, String format, String country) {
         return new AniListMediaResponse(id, MediaType.MANGA, format, country, title, title, "cover", null, null,
                 List.of(), null, 40, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
                 List.of(), List.of(), List.of(), List.of("Romance"),
-                List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024);
+                List.of(new MediaTagResponse("Heterosexual", 90, null, null)), 2024, null);
     }
 
     private AniListMediaResponse withRelations(AniListMediaResponse media, List<MediaRelationResponse> relations) {
@@ -397,14 +397,14 @@ class RecommendationAssistantServiceTest {
                 media.title(), media.romajiTitle(), media.coverImage(), media.bannerImage(), media.musicVideoUrl(),
                 media.streamingLinks(), media.synopsis(), media.totalUnits(), media.releaseStartDate(), media.releaseEndDate(),
                 media.releaseStatus(), media.releaseSeason(), media.releaseYear(), media.favourites(), media.nextAiringEpisode(),
-                media.credits(), relations, media.characters(), media.genres(), media.tags(), media.releaseEndYear());
+                media.credits(), relations, media.characters(), media.genres(), media.tags(), media.releaseEndYear(), media.insights());
     }
 
     private AniListMediaResponse animeCandidate(int id, String title, List<String> genres,
             List<MediaTagResponse> tags, List<MediaRelationResponse> relations) {
         return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title, "cover", null, null,
                 List.of(), null, 12, null, null, ReleaseStatus.FINISHED, null, 2024, 100, null,
-                List.of(), relations, List.of(), genres, tags, 2024);
+                List.of(), relations, List.of(), genres, tags, 2024, null);
     }
 
     private MediaRelationResponse relation(int id, String type, String title) {

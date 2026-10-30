@@ -87,6 +87,59 @@ class AniListClientTest {
     }
 
     @Test
+    void mediaDetailMapsUsefulInsightsAndAnOfficialTrailer() throws Exception {
+        String response = """
+                {"data":{"Media":{
+                  "id":20,"type":"ANIME","format":"TV","countryOfOrigin":"JP",
+                  "title":{"romaji":"Example"},"coverImage":{"extraLarge":"cover.jpg"},
+                  "trailer":{"id":"abc_123-XYZ","site":"youtube"},"duration":24,
+                  "averageScore":84,"meanScore":81,"popularity":123456,
+                  "rankings":[{"rank":4,"type":"RATED","allTime":false,"context":"highest rated","year":2026,"season":"FALL"}],
+                  "startDate":{},"endDate":{},"genres":[],"tags":[],"externalLinks":[],
+                  "staff":{"edges":[]},"studios":{"edges":[]},"relations":{"edges":[]},
+                  "mainCharacters":{"edges":[]},"supportingCharacters":{"edges":[]}
+                }}}
+                """;
+        AtomicReference<String> request = new AtomicReference<>();
+
+        withResponse(response, request, client -> {
+            var insights = client.getMedia(20).insights();
+            assertEquals("https://www.youtube.com/watch?v=abc_123-XYZ", insights.trailerUrl());
+            assertEquals(24, insights.durationMinutes());
+            assertEquals(84, insights.averageScore());
+            assertEquals(81, insights.meanScore());
+            assertEquals(123456, insights.popularity());
+            assertEquals(4, insights.rankings().get(0).rank());
+            assertTrue(request.get().contains("rankings { rank type allTime context year season }"));
+        });
+    }
+
+    @Test
+    void mangaDetailKeepsOnlyEnabledLegalReadingLinks() throws Exception {
+        String response = """
+                {"data":{"Media":{
+                  "id":30,"type":"MANGA","format":"MANGA","countryOfOrigin":"JP",
+                  "title":{"romaji":"Example manga"},"coverImage":{},
+                  "externalLinks":[
+                    {"site":"MANGA Plus","url":"https://mangaplus.shueisha.co.jp/example","type":"STREAMING","color":"#ff5500","isDisabled":false},
+                    {"site":"Old reader","url":"https://example.com/old","type":"STREAMING","isDisabled":true},
+                    {"site":"Official site","url":"https://example.com","type":"INFO","isDisabled":false}
+                  ],
+                  "startDate":{},"endDate":{},"genres":[],"tags":[],
+                  "staff":{"edges":[]},"studios":{"edges":[]},"relations":{"edges":[]},
+                  "mainCharacters":{"edges":[]},"supportingCharacters":{"edges":[]}
+                }}}
+                """;
+
+        withResponse(response, client -> {
+            var links = client.getMedia(30).streamingLinks();
+            assertEquals(1, links.size());
+            assertEquals("MANGA Plus", links.get(0).site());
+            assertEquals("#ff5500", links.get(0).color());
+        });
+    }
+
+    @Test
     void assistantCanBrowseAnimeAndMangaInOneRequestWhenTypeIsUnspecified() throws Exception {
         String response = """
                 {"data":{

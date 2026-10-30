@@ -146,7 +146,7 @@ class AniListImportServiceTest {
     private static AniListLibraryItem item(int id) {
         AniListMediaResponse media = new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", "Anime " + id,
                 "Anime " + id, "cover", null, null, List.of(), null, 12, null, null, null, null,
-                2026, null, null, List.of(), List.of(), List.of(), List.of(), List.of(), null);
+                2026, null, null, List.of(), List.of(), List.of(), List.of(), List.of(), null, null);
         return new AniListLibraryItem(media, id % 12, null, 0, TrackingStatus.IN_PROGRESS, null, null);
     }
 

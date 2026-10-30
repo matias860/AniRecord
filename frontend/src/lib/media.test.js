@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanAniListText, normalizeMediaId, parseAniListText } from './media.js'
+import { cleanAniListText, formatRuntime, normalizeMediaId, parseAniListText, watchTimeSummary } from './media.js'
 
 test('normalizes route and API media identifiers to the same numeric cache key', () => {
   assert.equal(normalizeMediaId('123'), 123)
@@ -24,4 +24,26 @@ test('preserves character biography spoiler boundaries and links', () => {
 
 test('plain text cleaning keeps its previous behavior for spoiler markup', () => {
   assert.equal(cleanAniListText('Antes ~!secreto!~ después'), 'Antes secreto después')
+})
+
+test('formats useful episode, total and remaining watch times', () => {
+  const media = { mediaType: 'ANIME', mediaFormat: 'TV', totalUnits: 12, insights: { durationMinutes: 24 } }
+  assert.equal(formatRuntime(288), '4 h 48 min')
+  assert.deepEqual(watchTimeSummary(media, 7), {
+    perUnit: '24 min',
+    duration: null,
+    total: '4 h 48 min',
+    remaining: '2 h',
+  })
+})
+
+test('treats a movie duration as one complete runtime', () => {
+  const movie = { mediaType: 'ANIME', mediaFormat: 'MOVIE', totalUnits: 1, insights: { durationMinutes: 103 } }
+  assert.deepEqual(watchTimeSummary(movie), {
+    perUnit: null,
+    duration: '1 h 43 min',
+    total: null,
+    remaining: null,
+  })
+  assert.equal(watchTimeSummary({ mediaType: 'MANGA', insights: { durationMinutes: 20 } }), null)
 })

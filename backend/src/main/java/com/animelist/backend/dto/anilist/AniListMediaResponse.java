@@ -31,6 +31,7 @@ public record AniListMediaResponse(
         List<MediaCharacterResponse> characters,
         List<String> genres,
         List<MediaTagResponse> tags,
-        Integer releaseEndYear
+        Integer releaseEndYear,
+        MediaInsightsResponse insights
 ) {
 }

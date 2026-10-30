@@ -1,7 +1,7 @@
 import { highResolutionCover } from '../lib/coverImages.js'
 import useModalFocus from '../lib/useModalFocus.js'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, ListPlus, Pencil, Play, Plus, Repeat2, Save, Star, Trash2, UserRound, X } from 'lucide-react'
+import { ArrowLeft, BookOpen, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, ListPlus, Pencil, Play, Plus, Repeat2, Save, Star, Trash2, Trophy, UserRound, UsersRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -9,7 +9,7 @@ import PageState from '../components/common/PageState.jsx'
 import StyledSelect from '../components/common/StyledSelect.jsx'
 import MediaTags from '../components/media/MediaTags.jsx'
 import { addToLibrary, fetchLibrary, incrementProgress, removeFromLibrary, updateLibraryEntry } from '../features/library/librarySlice.js'
-import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime, normalizeMediaId } from '../lib/media.js'
+import { cleanSynopsis, formatReleaseYears, isUnreleasedAnime, normalizeMediaId, watchTimeSummary } from '../lib/media.js'
 import { useGetMediaDetailQuery } from '../api/anirecordApi.js'
 import { fetchMediaRecommendations } from '../features/recommendations/recommendationsSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
@@ -64,6 +64,8 @@ export default function MediaDetailView() {
   const unreleased = isUnreleasedAnime(detail)
   const canIncrement = saved && !unreleased && saved.trackingStatus !== 'COMPLETED' && (detail.totalUnits == null || Number(saved.progress || 0) < detail.totalUnits)
   const addOrLogin = () => authenticated ? setLibraryModal('add') : requestLogin(navigate, location)
+  const watchTime = watchTimeSummary(detail, saved?.progress)
+  const hasInsights = !!(watchTime || detail.insights?.averageScore || detail.insights?.popularity || detail.insights?.rankings?.length)
 
   return <article className="detail-page">
     <div className="detail-banner" style={{ backgroundImage: `url(${detail.bannerImage || detail.coverImage})` }}><span className="detail-banner-shade" /><Link className="back-link" to={-1}><ArrowLeft /> Volver</Link></div>
@@ -80,17 +82,21 @@ export default function MediaDetailView() {
         <div className="detail-information-strip">
           {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}
           {detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}
-          <div className="detail-meta"><span><CalendarDays /> {formatReleaseYears(detail)}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>
+          <div className="detail-meta"><span><CalendarDays /> {formatReleaseYears(detail)}</span><span><ListPlus /> {detail.totalUnits ?? '?'} {unit}</span>{watchTime?.perUnit && <span><Clock3 /> {watchTime.perUnit} por episodio</span>}{watchTime?.duration && <span><Clock3 /> {watchTime.duration}</span>}{saved && <><span className="detail-status-chip">{statusOptions.find((item) => item.value === saved.trackingStatus)?.label}</span><span className="detail-score-chip"><Star /> {saved.personalScore != null ? `${saved.personalScore}/10` : 'Sin puntaje'}</span></>}</div>
         </div>
       </div>
       {saved && <div className="detail-tracking-row" id="seguimiento"><SavedTrackingEditor unreleased={unreleased} saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
-      <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}</nav>
+      <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{hasInsights && <a href="#datos">Datos</a>}{detail.insights?.trailerUrl && <a href="#trailer">Tráiler</a>}{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}</nav>
       {(!!detail.genres?.length || !!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
         {(!!detail.genres?.length || !!detail.tags?.length) && <div className="detail-tags"><span className="eyebrow">Géneros y categorías</span><MediaTags key={detail.anilistId} genres={detail.genres} tags={detail.tags} mediaType={detail.mediaType} /></div>}
-        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} title={detail.title} romajiTitle={detail.romajiTitle} />}
+        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} title={detail.title} romajiTitle={detail.romajiTitle} mediaType={detail.mediaType} />}
       </div>}
-      <details className="detail-description detail-collapsible" id="sinopsis" open><summary><span className="eyebrow">Sinopsis</span><ChevronDown className="detail-collapse-icon" /></summary><p>{cleanSynopsis(detail.synopsis) || 'Esta serie no tiene descripción.'}</p></details>
-      {detail.musicVideoUrl && <MusicVideoPlayer url={detail.musicVideoUrl} title={detail.title} />}
+      <div className={`detail-editorial${hasInsights ? ' with-insights' : ''}`}>
+        <details className="detail-description detail-collapsible" id="sinopsis" open><summary><span className="eyebrow">Sinopsis</span><ChevronDown className="detail-collapse-icon" /></summary><p>{cleanSynopsis(detail.synopsis) || 'Esta obra no tiene descripción.'}</p></details>
+        {hasInsights && <MediaInsights insights={detail.insights} watchTime={watchTime} saved={saved} />}
+      </div>
+      {detail.insights?.trailerUrl && <OfficialVideoPlayer url={detail.insights.trailerUrl} site={detail.insights.trailerSite} title={detail.title} />}
+      {detail.musicVideoUrl && <OfficialVideoPlayer url={detail.musicVideoUrl} site="YouTube" title={detail.title} musicVideo />}
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
@@ -102,44 +108,79 @@ export default function MediaDetailView() {
   </article>
 }
 
-function StreamingLinks({ links, title, romajiTitle }) {
-  return <section className="streaming-links">
-    <span className="eyebrow">Dónde ver</span>
+function StreamingLinks({ links, title, romajiTitle, mediaType }) {
+  const reading = mediaType === 'MANGA'
+  return <section className={`streaming-links${reading ? ' reading-links' : ''}`}>
+    <span className="eyebrow">{reading ? 'Dónde leer' : 'Dónde ver'}</span>
     <div className="streaming-links-grid">{links.map((link) => {
-      const details = [link.site || 'Ver online', link.notes, link.language].filter(Boolean).join(' · ')
-      const destination = resolveStreamingDestination({ link, title, romajiTitle })
+      const details = [link.site || (reading ? 'Leer online' : 'Ver online'), link.notes, link.language].filter(Boolean).join(' · ')
+      const destination = reading
+        ? { href: link.url, target: '_blank', kind: 'official-reading-link' }
+        : resolveStreamingDestination({ link, title, romajiTitle })
       return <a
         className="streaming-link-logo"
         href={destination.href}
         key={`${link.site}-${link.url}`}
         target={destination.target}
         rel="noopener noreferrer"
-        aria-label={`Abrir ${title} en ${link.site || 'un servicio de streaming'}`}
+        aria-label={`${reading ? 'Leer' : 'Abrir'} ${title} en ${link.site || (reading ? 'un servicio de lectura' : 'un servicio de streaming')}`}
         data-label={details}
         data-destination={destination.kind}
         style={{ '--streaming-color': link.color || 'var(--accent)' }}
       >
-        {link.icon ? <img src={link.icon} alt="" /> : <Play />}
+        {link.icon ? <img src={link.icon} alt="" /> : reading ? <BookOpen /> : <Play />}
       </a>
     })}</div>
   </section>
 }
 
-function MusicVideoPlayer({ url, title }) {
-  const embedUrl = youtubeEmbedUrl(url)
+function OfficialVideoPlayer({ url, site, title, musicVideo = false }) {
+  const embedUrl = videoEmbedUrl(url, site)
   if (!embedUrl) return null
-  return <section className="music-video-player"><div><span className="eyebrow">Video oficial</span><h2>Music video</h2></div><div className="music-video-frame"><iframe src={embedUrl} title={`Video musical de ${title}`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div></section>
+  return <section className="music-video-player" id={musicVideo ? undefined : 'trailer'}><div><span className="eyebrow">Video oficial</span><h2>{musicVideo ? 'Music video' : 'Tráiler'}</h2></div><div className="music-video-frame"><iframe src={embedUrl} title={`${musicVideo ? 'Video musical' : 'Tráiler'} de ${title}`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen /></div></section>
 }
 
-function youtubeEmbedUrl(value) {
+function videoEmbedUrl(value, site) {
   try {
     const url = new URL(value)
     const host = url.hostname.replace(/^www\./, '')
+    if (site?.toLowerCase() === 'dailymotion' || host === 'dailymotion.com' || host === 'dai.ly') {
+      const id = host === 'dai.ly' ? url.pathname.split('/').filter(Boolean)[0] : url.pathname.match(/^\/(?:video|embed\/video)\/([^/?]+)/)?.[1]
+      return id && /^[\w-]{4,}$/.test(id) ? `https://www.dailymotion.com/embed/video/${id}` : null
+    }
     const id = host === 'youtu.be' ? url.pathname.split('/').filter(Boolean)[0]
       : ['youtube.com', 'm.youtube.com'].includes(host) ? url.searchParams.get('v') || url.pathname.match(/^\/(?:embed|shorts)\/([^/?]+)/)?.[1]
         : null
     return id && /^[\w-]{6,}$/.test(id) ? `https://www.youtube-nocookie.com/embed/${id}` : null
   } catch { return null }
+}
+
+function MediaInsights({ insights = {}, watchTime, saved }) {
+  const rankings = (insights.rankings || []).filter((ranking) => ranking.rank > 0).slice(0, 3)
+  const popularity = insights.popularity ? new Intl.NumberFormat('es-AR', { notation: 'compact', maximumFractionDigits: 1 }).format(insights.popularity) : null
+  return <section className="detail-insights" id="datos" aria-labelledby="detail-insights-title">
+    <div className="detail-insights-heading"><span className="eyebrow">Información útil</span><h2 id="detail-insights-title">Recepción y tiempo</h2></div>
+    <div className="detail-insight-metrics">
+      {insights.averageScore && <div><Star /><span><strong>{insights.averageScore}%</strong><small>Puntaje de la comunidad</small></span></div>}
+      {popularity && <div><UsersRound /><span><strong>{popularity}</strong><small>Usuarios en AniList</small></span></div>}
+      {watchTime?.total && <div><Clock3 /><span><strong>{watchTime.total}</strong><small>Duración total aproximada</small></span></div>}
+      {saved && watchTime?.remaining && <div><Play /><span><strong>{watchTime.remaining}</strong><small>{watchTime.remaining === '0 min' ? 'Ya completaste la obra' : 'Tiempo aproximado por ver'}</small></span></div>}
+      {watchTime?.duration && <div><Clock3 /><span><strong>{watchTime.duration}</strong><small>Duración de la película</small></span></div>}
+    </div>
+    {!!rankings.length && <div className="detail-rankings"><span><Trophy /> Rankings de AniList</span>{rankings.map((ranking) => <p key={`${ranking.type}-${ranking.rank}-${ranking.context}`}><strong>#{ranking.rank}</strong> {rankingLabel(ranking)}</p>)}</div>}
+  </section>
+}
+
+function rankingLabel(ranking) {
+  const kind = ranking.type === 'POPULAR' ? 'más popular' : 'mejor valorado'
+  if (ranking.allTime) return `${kind} de todos los tiempos`
+  if (ranking.season && ranking.year) return `${kind} de ${seasonLabel(ranking.season)} de ${ranking.year}`
+  if (ranking.year) return `${kind} de ${ranking.year}`
+  return ranking.context || kind
+}
+
+function seasonLabel(season) {
+  return { WINTER: 'invierno', SPRING: 'primavera', SUMMER: 'verano', FALL: 'otoño' }[season] || season.toLowerCase()
 }
 
 function MediaCredits({ credits, mediaType }) {

@@ -115,6 +115,6 @@ class LibraryImportWriterTest {
     private static AniListMediaResponse media(int id, String title) {
         return new AniListMediaResponse(id, MediaType.ANIME, "TV", "JP", title, title,
                 "cover", null, null, List.of(), null, 12, null, null, null, null,
-                2026, null, null, List.of(), List.of(), List.of(), List.of(), List.of(), null);
+                2026, null, null, List.of(), List.of(), List.of(), List.of(), List.of(), null, null);
     }
 }

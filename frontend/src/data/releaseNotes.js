@@ -1,6 +1,18 @@
-export const CURRENT_VERSION = '1.16.4'
+export const CURRENT_VERSION = '1.17.0'
 
 export const RELEASES = [
+  {
+    version: '1.17.0',
+    date: '30 de octubre de 2026',
+    title: 'Detalles que ayudan a elegir',
+    summary: 'La ficha de cada obra reúne mejor su duración, recepción y disponibilidad oficial sin perder claridad.',
+    changes: [
+      { type: 'Lectura', text: 'Manga, manhwa, manhua y novelas ligeras muestran enlaces legales para leer cuando AniList los ofrece.' },
+      { type: 'Información', text: 'Anime y películas incorporan duración por episodio, tiempo total aproximado, popularidad, puntaje comunitario y rankings con contexto.' },
+      { type: 'Video', text: 'Los tráilers oficiales de YouTube y Dailymotion se pueden reproducir desde el detalle sin abandonar AniRecord.' },
+      { type: 'Diseño', text: 'Sinopsis, recepción y tiempo forman un bloque editorial ordenado y adaptable a computadora y celular.' },
+    ],
+  },
   {
     version: '1.16.4',
     date: '28 de octubre de 2026',

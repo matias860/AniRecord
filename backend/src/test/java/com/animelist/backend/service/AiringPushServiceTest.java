@@ -26,7 +26,7 @@ class AiringPushServiceTest {
         MediaRepository media = mock(MediaRepository.class);
         WebPushGateway gateway = mock(WebPushGateway.class);
         TaskScheduler scheduler = mock(TaskScheduler.class);
-        Instant airingAt = Instant.parse("2026-10-24T12:30:00Z");
+        Instant airingAt = Instant.now().plusSeconds(3600);
         Media next = new Media();
         next.setNextAiringAt(airingAt);
         when(gateway.available()).thenReturn(true);

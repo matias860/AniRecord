@@ -12,6 +12,8 @@ import com.animelist.backend.dto.anilist.MediaCharacterResponse;
 import com.animelist.backend.dto.anilist.MediaCreditResponse;
 import com.animelist.backend.dto.anilist.MediaTagResponse;
 import com.animelist.backend.dto.anilist.MediaStreamingLinkResponse;
+import com.animelist.backend.dto.anilist.MediaInsightsResponse;
+import com.animelist.backend.dto.anilist.MediaRankingResponse;
 import com.animelist.backend.dto.anilist.CharacterDetailResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.CatalogTagResponse;
@@ -157,6 +159,11 @@ public class AniListClient {
                 bannerImage
                 externalLinks { site url type language color icon notes isDisabled }
                 trailer { id site }
+                duration
+                averageScore
+                meanScore
+                popularity
+                rankings { rank type allTime context year season }
                 description
                 genres
                 episodes
@@ -1106,7 +1113,7 @@ public class AniListClient {
                 cover,
                 asString(media.get("bannerImage")),
                 resolveMusicVideoUrl(mediaFormat, media.get("externalLinks"), media.get("trailer")),
-                mapStreamingLinks(mediaType, media.get("externalLinks")),
+                mapStreamingLinks(media.get("externalLinks")),
                 asString(media.get("description")),
                 totalUnits,
                 mapDate(media.get("startDate")),
@@ -1122,8 +1129,42 @@ public class AniListClient {
                 mapCharacters(media.get("characters")),
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
                 mapTags(media.get("tags"), includeAllTags ? Integer.MAX_VALUE : 5, includeSpoilerTags),
-                asInteger(asMap(media.get("endDate")).get("year"))
+                asInteger(asMap(media.get("endDate")).get("year")),
+                mapInsights(mediaFormat, media)
         );
+    }
+
+    private MediaInsightsResponse mapInsights(String mediaFormat, Map<String, Object> media) {
+        Map<String, Object> trailer = asMap(media.get("trailer"));
+        String trailerSite = asString(trailer.get("site"));
+        String trailerUrl = "MUSIC".equals(mediaFormat) ? null : resolveTrailerUrl(trailerSite, asString(trailer.get("id")));
+        Integer duration = asInteger(media.get("duration"));
+        Integer averageScore = asInteger(media.get("averageScore"));
+        Integer meanScore = asInteger(media.get("meanScore"));
+        Integer popularity = asInteger(media.get("popularity"));
+        List<MediaRankingResponse> rankings = asList(media.get("rankings")).stream()
+                .map(this::asMap)
+                .map(ranking -> new MediaRankingResponse(
+                        asInteger(ranking.get("rank")),
+                        asString(ranking.get("type")),
+                        Boolean.TRUE.equals(ranking.get("allTime")),
+                        asString(ranking.get("context")),
+                        asInteger(ranking.get("year")),
+                        asString(ranking.get("season"))))
+                .filter(ranking -> ranking.rank() != null && ranking.rank() > 0 && ranking.type() != null)
+                .distinct()
+                .toList();
+        if (trailerUrl == null && duration == null && averageScore == null && meanScore == null
+                && popularity == null && rankings.isEmpty()) return null;
+        return new MediaInsightsResponse(trailerUrl, trailerUrl == null ? null : trailerSite, duration,
+                averageScore, meanScore, popularity, rankings);
+    }
+
+    private String resolveTrailerUrl(String site, String id) {
+        if (site == null || id == null || !id.matches("[A-Za-z0-9_-]+")) return null;
+        if ("youtube".equalsIgnoreCase(site)) return "https://www.youtube.com/watch?v=" + id;
+        if ("dailymotion".equalsIgnoreCase(site)) return "https://www.dailymotion.com/video/" + id;
+        return null;
     }
 
     private String resolveMusicVideoUrl(String mediaFormat, Object externalLinksValue, Object trailerValue) {
@@ -1145,8 +1186,7 @@ public class AniListClient {
                 : null;
     }
 
-    private List<MediaStreamingLinkResponse> mapStreamingLinks(MediaType mediaType, Object externalLinksValue) {
-        if (mediaType != MediaType.ANIME) return List.of();
+    private List<MediaStreamingLinkResponse> mapStreamingLinks(Object externalLinksValue) {
         return asList(externalLinksValue).stream()
                 .map(this::asMap)
                 .filter(link -> !Boolean.TRUE.equals(link.get("isDisabled")))

@@ -84,6 +84,32 @@ export const cleanSynopsis = (value = '') => cleanAniListText(value).replace(/\s
 export const getProgressPercent = (progress, total) =>
   total ? Math.min(100, Math.round((progress / total) * 100)) : 0
 
+export const formatRuntime = (minutes) => {
+  const value = Number(minutes)
+  if (!Number.isFinite(value) || value <= 0) return null
+  const rounded = Math.round(value)
+  const hours = Math.floor(rounded / 60)
+  const remainingMinutes = rounded % 60
+  if (!hours) return `${remainingMinutes} min`
+  return remainingMinutes ? `${hours} h ${remainingMinutes} min` : `${hours} h`
+}
+
+export const watchTimeSummary = (media, progress = 0) => {
+  const duration = Number(media?.insights?.durationMinutes)
+  if (media?.mediaType !== 'ANIME' || !Number.isFinite(duration) || duration <= 0) return null
+  const totalUnits = Number(media.totalUnits)
+  const isMovie = media.mediaFormat === 'MOVIE'
+  const totalMinutes = Number.isFinite(totalUnits) && totalUnits > 0 ? duration * totalUnits : null
+  const safeProgress = Math.max(0, Number(progress) || 0)
+  const remainingMinutes = totalMinutes == null ? null : Math.max(0, totalMinutes - Math.min(safeProgress, totalUnits) * duration)
+  return {
+    perUnit: isMovie ? null : formatRuntime(duration),
+    duration: isMovie ? formatRuntime(totalMinutes || duration) : null,
+    total: !isMovie && totalMinutes != null ? formatRuntime(totalMinutes) : null,
+    remaining: !isMovie && remainingMinutes != null ? formatRuntime(remainingMinutes) : null,
+  }
+}
+
 export const formatCountdown = (seconds) => {
   if (seconds == null || seconds < 0) return 'Próximamente'
   const days = Math.floor(seconds / 86400)
