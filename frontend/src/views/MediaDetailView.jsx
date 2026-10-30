@@ -86,7 +86,7 @@ export default function MediaDetailView() {
         </div>
       </div>
       {saved && <div className="detail-tracking-row" id="seguimiento"><SavedTrackingEditor unreleased={unreleased} saved={saved} mediaType={detail.mediaType} unit={unit} total={detail.totalUnits} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onRemove={() => setLibraryModal('remove')} /></div>}
-      <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{hasInsights && <a href="#datos">Datos</a>}{detail.insights?.trailerUrl && <a href="#trailer">Tráiler</a>}{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}</nav>
+      <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{hasInsights && <a href="#datos">Datos</a>}{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}{detail.insights?.trailerUrl && <a href="#trailer">Tráiler</a>}</nav>
       {(!!detail.genres?.length || !!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
         {(!!detail.genres?.length || !!detail.tags?.length) && <div className="detail-tags"><span className="eyebrow">Géneros y categorías</span><MediaTags key={detail.anilistId} genres={detail.genres} tags={detail.tags} mediaType={detail.mediaType} /></div>}
         {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} title={detail.title} romajiTitle={detail.romajiTitle} mediaType={detail.mediaType} />}
@@ -95,14 +95,14 @@ export default function MediaDetailView() {
         <details className="detail-description detail-collapsible" id="sinopsis" open><summary><span className="eyebrow">Sinopsis</span><ChevronDown className="detail-collapse-icon" /></summary><p>{cleanSynopsis(detail.synopsis) || 'Esta obra no tiene descripción.'}</p></details>
         {hasInsights && <MediaInsights insights={detail.insights} watchTime={watchTime} saved={saved} />}
       </div>
-      {detail.insights?.trailerUrl && <OfficialVideoPlayer url={detail.insights.trailerUrl} site={detail.insights.trailerSite} title={detail.title} />}
-      {detail.musicVideoUrl && <OfficialVideoPlayer url={detail.musicVideoUrl} site="YouTube" title={detail.title} musicVideo />}
       {!!detail.credits?.length && <MediaCredits credits={detail.credits} mediaType={detail.mediaType} />}
     </div>
     {(!!detail.relations?.length || !!detail.characters?.length) && <div className={`detail-extras${!detail.relations?.length || !detail.characters?.length ? ' single-section' : ''}`}>
       {!!detail.relations?.length && <details className="relations detail-collapsible" id="relaciones" open><summary className="detail-section-heading"><span><span className="eyebrow">Universo</span><h2>Relaciones</h2></span><ChevronDown className="detail-collapse-icon" /></summary><RelationCarousel key={detail.anilistId} relations={detail.relations} /></details>}
       {!!detail.characters?.length && <CharacterCarousel key={detail.anilistId} characters={detail.characters} />}
     </div>}
+    {detail.musicVideoUrl && <OfficialVideoPlayer url={detail.musicVideoUrl} site="YouTube" title={detail.title} musicVideo />}
+    {detail.insights?.trailerUrl && <OfficialVideoPlayer url={detail.insights.trailerUrl} site={detail.insights.trailerSite} title={detail.title} />}
     <div className="detail-mobile-actions">{saved ? <>{canIncrement && <button type="button" className="primary-button" disabled={library.mutationStatus === 'loading'} onClick={() => dispatch(incrementProgress(saved.id))}><Plus /> Marcar {Number(saved.progress || 0) + 1}</button>}<a className="secondary-button" href="#seguimiento"><Pencil /> Editar seguimiento</a></> : <button type="button" className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>
@@ -158,13 +158,14 @@ function videoEmbedUrl(value, site) {
 function MediaInsights({ insights = {}, watchTime, saved }) {
   const rankings = (insights.rankings || []).filter((ranking) => ranking.rank > 0).slice(0, 3)
   const popularity = insights.popularity ? new Intl.NumberFormat('es-AR', { notation: 'compact', maximumFractionDigits: 1 }).format(insights.popularity) : null
+  const notStarted = saved?.trackingStatus === 'PLANNED' && Number(saved.progress || 0) === 0
   return <section className="detail-insights" id="datos" aria-labelledby="detail-insights-title">
     <div className="detail-insights-heading"><span className="eyebrow">Información útil</span><h2 id="detail-insights-title">Recepción y tiempo</h2></div>
     <div className="detail-insight-metrics">
       {insights.averageScore && <div><Star /><span><strong>{insights.averageScore}%</strong><small>Puntaje de la comunidad</small></span></div>}
-      {popularity && <div><UsersRound /><span><strong>{popularity}</strong><small>Usuarios en AniList</small></span></div>}
+      {popularity && <div><UsersRound /><span><strong>{popularity}</strong><small>Usuarios que la tienen en su lista de AniList</small></span></div>}
       {watchTime?.total && <div><Clock3 /><span><strong>{watchTime.total}</strong><small>Duración total aproximada</small></span></div>}
-      {saved && watchTime?.remaining && <div><Play /><span><strong>{watchTime.remaining}</strong><small>{watchTime.remaining === '0 min' ? 'Ya completaste la obra' : 'Tiempo aproximado por ver'}</small></span></div>}
+      {saved && watchTime?.remaining && <div><Play /><span><strong>{notStarted ? 'No se inició' : watchTime.remaining}</strong><small>{notStarted ? 'Todavía está en Por ver' : watchTime.remaining === '0 min' ? 'Ya completaste la obra' : 'Tiempo aproximado por ver'}</small></span></div>}
       {watchTime?.duration && <div><Clock3 /><span><strong>{watchTime.duration}</strong><small>Duración de la película</small></span></div>}
     </div>
     {!!rankings.length && <div className="detail-rankings"><span><Trophy /> Rankings de AniList</span>{rankings.map((ranking) => <p key={`${ranking.type}-${ranking.rank}-${ranking.context}`}><strong>#{ranking.rank}</strong> {rankingLabel(ranking)}</p>)}</div>}

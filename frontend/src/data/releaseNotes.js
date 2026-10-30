@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.17.0'
+export const CURRENT_VERSION = '1.17.1'
 
 export const RELEASES = [
+  {
+    version: '1.17.1',
+    date: '30 de octubre de 2026',
+    title: 'Detalles más claros y compactos',
+    summary: 'Ajustamos la jerarquía de la ficha para aprovechar mejor el espacio y explicar cada dato sin ambigüedades.',
+    changes: [
+      { type: 'Información', text: 'La recepción usa métricas más legibles y aclara que la popularidad cuenta usuarios que guardaron la obra en su lista de AniList.' },
+      { type: 'Seguimiento', text: 'Las series todavía pendientes muestran “No se inició” en lugar de repetir su duración completa como tiempo restante.' },
+      { type: 'Diseño', text: 'La navegación entre secciones queda reservada para celular, Personajes ocupa menos espacio y el tráiler cierra la ficha.' },
+    ],
+  },
   {
     version: '1.17.0',
     date: '30 de octubre de 2026',
