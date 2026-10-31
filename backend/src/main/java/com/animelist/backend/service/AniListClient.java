@@ -251,8 +251,8 @@ public class AniListClient {
                       genres
                       startDate { year }
                       episodes chapters volumes status season seasonYear
-                      tags { name rank description category isMediaSpoiler }
-                      relations { edges { relationType(version: 2) node { id } } }
+                      tags { name rank isMediaSpoiler }
+                      relations { edges { node { id } } }
                     }
                   }
                 }
