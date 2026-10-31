@@ -361,6 +361,9 @@ public class LibraryService {
         target.setCountryOfOrigin(source.countryOfOrigin());
         target.setTitle(source.title());
         target.setRomajiTitle(source.romajiTitle());
+        target.setEnglishTitle(source.englishTitle());
+        target.setNativeTitle(source.nativeTitle());
+        target.setAdultContent(Boolean.TRUE.equals(source.adultContent()));
         target.setCoverImage(source.coverImage());
         target.setBannerImage(source.bannerImage());
         target.setSynopsis(source.synopsis());
@@ -403,7 +406,10 @@ public class LibraryService {
                 entry.getStartedAt(),
                 entry.getCompletedAt(),
                 entry.getCreatedAt(),
-                entry.getUpdatedAt()
+                entry.getUpdatedAt(),
+                media.getEnglishTitle(),
+                media.getNativeTitle(),
+                media.getAdultContent()
         );
     }
 }

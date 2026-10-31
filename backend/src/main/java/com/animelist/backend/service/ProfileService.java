@@ -36,6 +36,8 @@ public class ProfileService {
         user.setSurfaceColor(ThemeContrast.safeDarkColor(request.surfaceColor()));
         user.setAccentColor(ThemeContrast.safeAccentColor(request.accentColor()));
         user.setDotsEnabled(request.dotsEnabled());
+        if (request.adultContentMode() != null) user.setAdultContentMode(request.adultContentMode());
+        if (request.titleLanguage() != null) user.setTitleLanguage(request.titleLanguage());
         return toResponse(repository.save(user));
     }
 
@@ -46,6 +48,7 @@ public class ProfileService {
         String banner = customBanner == null ? user.getBannerUrl() : customBanner;
         return new ProfileResponse(user.getDisplayName(), user.getBio(), avatar, banner,
                 user.getBackgroundColor(), user.getSurfaceColor(), user.getAccentColor(), user.getDotsEnabled(),
+                user.getAdultContentMode().name(), user.getTitleLanguage().name(),
                 user.getAccountType().name(),
                 user.getAccountType() == AccountType.ANILIST ? user.getAvatarUrl() : null,
                 user.getAccountType() == AccountType.ANILIST ? user.getBannerUrl() : null,

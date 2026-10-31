@@ -50,6 +50,15 @@ public class Media {
     @Column(name = "romaji_title")
     private String romajiTitle;
 
+    @Column(name = "english_title")
+    private String englishTitle;
+
+    @Column(name = "native_title")
+    private String nativeTitle;
+
+    @Column(name = "adult_content", nullable = false)
+    private Boolean adultContent = false;
+
     @Column(name = "cover_image", length = 1000)
     private String coverImage;
 

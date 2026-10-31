@@ -218,6 +218,29 @@ class AniListClientTest {
         });
     }
 
+    @Test
+    void similarMediaExcludesFranchiseRelationsAndAdultResults() throws Exception {
+        String response = """
+                {"data":{"Media":{
+                  "id":1,"type":"ANIME","title":{"romaji":"Baki"},"genres":["Action","Sports"],
+                  "tags":[{"name":"Martial Arts","rank":95,"isMediaSpoiler":false}],
+                  "relations":{"edges":[{"node":{"id":2}}]},
+                  "recommendations":{"nodes":[
+                    {"rating":120,"mediaRecommendation":{"id":2,"type":"ANIME","format":"TV","isAdult":false,"title":{"romaji":"Baki Season 2"},"coverImage":{},"genres":["Action"],"tags":[],"relations":{"edges":[]}}},
+                    {"rating":100,"mediaRecommendation":{"id":3,"type":"ANIME","format":"TV","isAdult":true,"title":{"romaji":"Adult fighter"},"coverImage":{},"genres":["Action"],"tags":[],"relations":{"edges":[]}}},
+                    {"rating":80,"mediaRecommendation":{"id":4,"type":"ANIME","format":"TV","isAdult":false,"title":{"romaji":"Kengan Ashura","english":"Kengan Ashura","native":"ケンガンアシュラ"},"coverImage":{"large":"kengan.jpg"},"genres":["Action","Sports"],"startDate":{"year":2019},"episodes":12,"status":"FINISHED","tags":[{"name":"Martial Arts","rank":90,"description":"Fighting","category":"Theme","isMediaSpoiler":false}],"relations":{"edges":[]}}}
+                  ]}
+                }}}
+                """;
+
+        withResponse(response, client -> {
+            var results = client.getSimilarMedia(1, false);
+            assertEquals(1, results.size());
+            assertEquals("Kengan Ashura", results.get(0).media().title());
+            assertTrue(results.get(0).reason().contains("Martial Arts"));
+        });
+    }
+
     private static void withResponse(String responseBody, ThrowingConsumer<AniListClient> assertion) throws Exception {
         withResponse(responseBody, new AtomicReference<>(), assertion);
     }

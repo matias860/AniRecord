@@ -3,9 +3,9 @@ import apiClient from '../../api/apiClient.js'
 
 export const searchMedia = createAsyncThunk(
   'search/query',
-  async ({ query, type = 'ANIME', page = 1 }, { signal }) => {
+  async ({ query, type = 'ANIME', page = 1, includeAdult = false }, { signal }) => {
     const { data } = await apiClient.get('/anilist/search', {
-      params: { query, type, page, perPage: 20 },
+      params: { query, type, page, perPage: 20, includeAdult },
       signal,
     })
     return { ...data, query, type }

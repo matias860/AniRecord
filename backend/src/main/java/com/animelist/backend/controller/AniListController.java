@@ -6,6 +6,7 @@ import com.animelist.backend.dto.anilist.CharacterDetailResponse;
 import com.animelist.backend.dto.anilist.CatalogCategoriesResponse;
 import com.animelist.backend.dto.anilist.StaffDetailResponse;
 import com.animelist.backend.dto.anilist.GlobalSearchResponse;
+import com.animelist.backend.dto.anilist.SimilarMediaResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.ReleaseSeason;
 import com.animelist.backend.enums.ReleaseStatus;
@@ -45,22 +46,39 @@ public class AniListController {
             @RequestParam @NotBlank @Size(min = 1, max = 100) String query,
             @RequestParam MediaType type,
             @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int perPage
+            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int perPage,
+            @RequestParam(defaultValue = "false") boolean includeAdult
     ) {
-        return aniListClient.search(query.trim(), type, page, perPage);
+        AniListSearchResponse response = aniListClient.search(query.trim(), type, page, perPage);
+        if (includeAdult) return response;
+        return new AniListSearchResponse(response.currentPage(), response.hasNextPage(),
+                response.results().stream().filter(item -> !Boolean.TRUE.equals(item.adultContent())).toList());
     }
 
     @GetMapping("/global-search")
     public GlobalSearchResponse globalSearch(
             @RequestParam @NotBlank @Size(min = 2, max = 100) String query,
-            @RequestParam(defaultValue = "5") @Min(1) @Max(8) int perGroup
+            @RequestParam(defaultValue = "5") @Min(1) @Max(8) int perGroup,
+            @RequestParam(defaultValue = "false") boolean includeAdult
     ) {
-        return aniListClient.globalSearch(query.trim(), perGroup);
+        GlobalSearchResponse response = aniListClient.globalSearch(query.trim(), perGroup);
+        if (includeAdult) return response;
+        return new GlobalSearchResponse(
+                response.media().stream().filter(item -> !Boolean.TRUE.equals(item.adultContent())).toList(),
+                response.characters(), response.staff());
     }
 
     @GetMapping("/media/{anilistId}")
     public AniListMediaResponse detail(@PathVariable Integer anilistId) {
         return aniListClient.getMedia(anilistId);
+    }
+
+    @GetMapping("/media/{anilistId}/similar")
+    public List<SimilarMediaResponse> similar(
+            @PathVariable Integer anilistId,
+            @RequestParam(defaultValue = "false") boolean includeAdult
+    ) {
+        return aniListClient.getSimilarMedia(anilistId, includeAdult);
     }
 
     @GetMapping("/catalog")
@@ -79,9 +97,10 @@ public class AniListController {
             @RequestParam(required = false)
             @jakarta.validation.constraints.Pattern(regexp = "TV|TV_SHORT|MOVIE|SPECIAL|OVA|ONA|MUSIC|MANGA|NOVEL|ONE_SHOT") String format,
             @RequestParam(defaultValue = "POPULARITY")
-            @jakarta.validation.constraints.Pattern(regexp = "POPULARITY|SCORE|TRENDING|NEWEST") String sort
+            @jakarta.validation.constraints.Pattern(regexp = "POPULARITY|SCORE|TRENDING|NEWEST") String sort,
+            @RequestParam(defaultValue = "false") boolean includeAdult
     ) {
-        return aniListClient.browse(type, page, perPage, search, year, season, genre, tag, status, country, format, sort);
+        return aniListClient.browse(type, page, perPage, search, year, season, genre, tag, status, country, format, sort, includeAdult);
     }
 
     @GetMapping("/characters/{anilistId}")

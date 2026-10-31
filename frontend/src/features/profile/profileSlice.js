@@ -1,13 +1,17 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit'
 import apiClient from '../../api/apiClient.js'
+import { loadContentPreferences, storeContentPreferences } from '../../lib/contentPreferences.js'
+
+const localPreferences = loadContentPreferences()
 
 const defaults = {
   displayName: 'Mi perfil', bio: 'Coleccionando historias, un episodio a la vez.',
   avatarUrl: '', bannerUrl: '', backgroundColor: '#0a0c14', surfaceColor: '#171b29',
   accentColor: '#a88bff', dotsEnabled: true,
+  adultContentMode: localPreferences.adultContentMode, titleLanguage: localPreferences.titleLanguage,
   accountType: null, anilistAvatarUrl: '', anilistBannerUrl: '', customAvatar: false, customBanner: false,
 }
-const editableKeys = ['displayName', 'bio', 'avatarUrl', 'bannerUrl', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled']
+const editableKeys = ['displayName', 'bio', 'avatarUrl', 'bannerUrl', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled', 'adultContentMode', 'titleLanguage']
 
 export const fetchProfile = createAsyncThunk('profile/fetch', async (_, { signal }) => {
   const { data } = await apiClient.get('/profile', { signal })
@@ -35,7 +39,7 @@ const profileSlice = createSlice({
   name: 'profile',
   initialState: { ...defaults, status: 'idle', error: null, saved: false, assetStatus: 'idle' },
   reducers: {
-    updateProfile: (state, action) => { Object.assign(state, action.payload); state.saved = false },
+    updateProfile: (state, action) => { Object.assign(state, action.payload); storeContentPreferences(state); state.saved = false },
     resetTheme: (state) => {
       state.backgroundColor = defaults.backgroundColor
       state.surfaceColor = defaults.surfaceColor
@@ -46,10 +50,10 @@ const profileSlice = createSlice({
   },
   extraReducers: (builder) => builder
     .addCase(fetchProfile.pending, (state) => { state.status = 'loading' })
-    .addCase(fetchProfile.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.error = null; state.saved = true })
+    .addCase(fetchProfile.fulfilled, (state, action) => { Object.assign(state, action.payload); storeContentPreferences(state); state.status = 'succeeded'; state.error = null; state.saved = true })
     .addCase(fetchProfile.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
     .addCase(saveProfile.pending, (state) => { state.status = 'saving'; state.error = null })
-    .addCase(saveProfile.fulfilled, (state, action) => { Object.assign(state, action.payload); state.status = 'succeeded'; state.saved = true })
+    .addCase(saveProfile.fulfilled, (state, action) => { Object.assign(state, action.payload); storeContentPreferences(state); state.status = 'succeeded'; state.saved = true })
     .addCase(saveProfile.rejected, (state, action) => { state.status = 'failed'; state.error = action.error.message })
     .addCase(uploadProfileAsset.pending, (state) => { state.assetStatus = 'uploading'; state.error = null })
     .addCase(uploadProfileAsset.fulfilled, (state, action) => { Object.assign(state, action.payload); state.assetStatus = 'idle'; state.saved = true })

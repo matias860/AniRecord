@@ -1,6 +1,17 @@
-export const CURRENT_VERSION = '1.17.1'
+export const CURRENT_VERSION = '1.18.0'
 
 export const RELEASES = [
+  {
+    version: '1.18.0',
+    date: '30 de octubre de 2026',
+    title: 'Descubrimiento a tu medida',
+    summary: 'AniRecord ahora adapta títulos y contenido a tus preferencias, y ayuda a encontrar obras realmente relacionadas sin repetir la misma historia.',
+    changes: [
+      { type: 'Preferencias', text: 'Podés elegir títulos automáticos, en inglés, romaji u originales desde tu perfil, con una alternativa segura cuando falta una traducción.' },
+      { type: 'Privacidad', text: 'El contenido adulto se puede ocultar, difuminar o mostrar; las obras ya guardadas permanecen accesibles en la biblioteca.' },
+      { type: 'Descubrimiento', text: 'Los detalles incorporan obras similares priorizadas por afinidad y votos, sin continuaciones, adaptaciones ni títulos ya completados.' },
+    ],
+  },
   {
     version: '1.17.1',
     date: '30 de octubre de 2026',

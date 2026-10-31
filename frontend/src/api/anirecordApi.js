@@ -37,6 +37,12 @@ export const anirecordApi = createApi({
     getMediaDetail: builder.query({
       queryFn: (anilistId, api) => aniListRequest({ url: `/anilist/media/${anilistId}` }, api),
     }),
+    getSimilarMedia: builder.query({
+      queryFn: ({ anilistId, includeAdult = false }, api) => aniListRequest({
+        url: `/anilist/media/${anilistId}/similar`,
+        params: { includeAdult },
+      }, api),
+    }),
     getCatalog: builder.query({
       queryFn: ({ type, page = 1, filters = {} }, api) => aniListRequest({
         url: '/anilist/catalog',
@@ -55,5 +61,6 @@ export const {
   useGetCatalogQuery,
   useGetCatalogCategoriesQuery,
   useGetMediaDetailQuery,
+  useGetSimilarMediaQuery,
   usePrefetch,
 } = anirecordApi

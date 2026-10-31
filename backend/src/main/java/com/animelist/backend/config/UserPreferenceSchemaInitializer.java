@@ -49,6 +49,11 @@ public class UserPreferenceSchemaInitializer implements ApplicationRunner {
         jdbc.execute("ALTER TABLE person_favorite ADD COLUMN IF NOT EXISTS anilist_favorite_order INTEGER");
         jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS assistant_ai_usage_date DATE");
         jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS assistant_ai_usage_count INTEGER NOT NULL DEFAULT 0");
+        jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS adult_content_mode VARCHAR(8) NOT NULL DEFAULT 'HIDE'");
+        jdbc.execute("ALTER TABLE app_user ADD COLUMN IF NOT EXISTS title_language VARCHAR(8) NOT NULL DEFAULT 'AUTO'");
+        jdbc.execute("ALTER TABLE media ADD COLUMN IF NOT EXISTS english_title VARCHAR(255)");
+        jdbc.execute("ALTER TABLE media ADD COLUMN IF NOT EXISTS native_title VARCHAR(255)");
+        jdbc.execute("ALTER TABLE media ADD COLUMN IF NOT EXISTS adult_content BOOLEAN NOT NULL DEFAULT FALSE");
         LOGGER.info("Preferencia compartida del aviso de sincronización verificada correctamente");
     }
 }

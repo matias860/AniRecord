@@ -1,6 +1,6 @@
 import { highResolutionCover } from '../lib/coverImages.js'
 import useModalFocus from '../lib/useModalFocus.js'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { ArrowLeft, BookOpen, Building2, CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3, ListPlus, Pencil, Play, Plus, Repeat2, Save, Star, Trash2, Trophy, UserRound, UsersRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useDispatch, useSelector } from 'react-redux'
@@ -15,6 +15,9 @@ import { fetchMediaRecommendations } from '../features/recommendations/recommend
 import { requestLogin } from '../lib/authNavigation.js'
 import { backdropMotion, modalMotion } from '../lib/motionVariants.js'
 import { resolveStreamingDestination } from '../lib/streamingNavigation.js'
+import { preferredTitle } from '../lib/contentPreferences.js'
+
+const SimilarMediaSection = lazy(() => import('../components/media/SimilarMediaSection.jsx'))
 
 const statusLabels = {
   PLANNED: 'Planeando', IN_PROGRESS: 'En curso', PAUSED: 'En pausa',
@@ -38,11 +41,13 @@ export default function MediaDetailView() {
   const navigate = useNavigate()
   const location = useLocation()
   const authenticated = useSelector((state) => state.auth.authenticated)
+  const { adultContentMode, titleLanguage } = useSelector((state) => state.profile)
   const { data: detail, error: detailError, isLoading, isFetching, refetch } = useGetMediaDetailQuery(mediaId ?? 0, { skip: mediaId == null })
   const library = useSelector((state) => state.library)
   const mediaRecommendations = useSelector((state) => mediaId == null ? null : state.recommendations.byMedia[mediaId]?.entries ?? null)
   const saved = authenticated && mediaId != null ? library.items.find((item) => item.anilistId === mediaId) : null
   const [libraryModal, setLibraryModal] = useState(null)
+  const [adultRevealed, setAdultRevealed] = useState(false)
 
   useEffect(() => {
     if (mediaId != null) dispatch(fetchMediaRecommendations(mediaId))
@@ -53,8 +58,12 @@ export default function MediaDetailView() {
   }, [authenticated, dispatch, library.status])
 
   if (!detail) return <PageState fullPage loading={isLoading || isFetching} error={mediaId == null ? 'El identificador de la obra no es válido.' : detailError?.data?.message} onRetry={mediaId == null ? undefined : refetch} />
+  const displayTitle = preferredTitle(detail, titleLanguage)
+  const adultRestricted = detail.adultContent && !adultRevealed && (adultContentMode === 'BLUR'
+    || (adultContentMode === 'HIDE' && (!authenticated || (library.status === 'succeeded' && !saved))))
+  if (adultRestricted) return <PageState fullPage empty title="Contenido adulto protegido" description="Tu preferencia actual evita mostrar esta obra automáticamente. Podés verla una vez sin cambiar la configuración general." actionLabel="Mostrar esta obra" onAction={() => setAdultRevealed(true)} />
   const unit = detail.mediaType === 'ANIME' ? 'episodios' : detail.mediaFormat === 'NOVEL' ? 'tomos' : 'capítulos'
-  const titleLength = [...detail.title].length
+  const titleLength = [...displayTitle].length
   const titleSizeClass = titleLength > 64 ? 'detail-title-extra-long' : titleLength > 38 ? 'detail-title-long' : ''
   const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
     value,
@@ -76,9 +85,9 @@ export default function MediaDetailView() {
           image.dataset.originalFallback = 'true'
           image.src = detail.coverImage
         }
-      }} alt={`Portada de ${detail.title}`} />
+      }} alt={`Portada de ${displayTitle}`} />
       <div className={`detail-copy${titleSizeClass ? ' detail-copy-long-title' : ''}`}>
-        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1 className={titleSizeClass}>{detail.title}</h1>{!saved && <button className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
+        <div className="detail-primary"><span className="eyebrow">{publicationLabel(detail)} · {releaseStatusLabels[detail.releaseStatus] || detail.releaseStatus?.replaceAll('_', ' ')}</span><h1 className={titleSizeClass}>{displayTitle}</h1>{!saved && <button className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
         <div className="detail-information-strip">
           {!!mediaRecommendations?.length && <div className="detail-recommended-by"><span>Recomendado por:</span>{mediaRecommendations.slice(0, 4).map((recommendation) => <span className="detail-recommender" key={recommendation.id}>{recommendation.recommenderAvatar ? <img src={recommendation.recommenderAvatar} alt="" /> : <i><UserRound /></i>}<b>{recommendation.recommenderName}</b></span>)}</div>}
           {detail.romajiTitle && detail.romajiTitle !== detail.title && <p className="detail-romaji">{detail.romajiTitle}</p>}
@@ -89,7 +98,7 @@ export default function MediaDetailView() {
       <nav className="detail-section-nav" aria-label="Secciones del detalle">{saved && <a href="#seguimiento">Seguimiento</a>}<a href="#sinopsis">Sinopsis</a>{hasInsights && <a href="#datos">Datos</a>}{detail.credits?.length > 0 && <a href="#creditos">Créditos</a>}{detail.relations?.length > 0 && <a href="#relaciones">Relaciones</a>}{detail.characters?.length > 0 && <a href="#personajes">Personajes</a>}{detail.insights?.trailerUrl && <a href="#trailer">Tráiler</a>}</nav>
       {(!!detail.genres?.length || !!detail.tags?.length || !!detail.streamingLinks?.length) && <div className="detail-discovery-row">
         {(!!detail.genres?.length || !!detail.tags?.length) && <div className="detail-tags"><span className="eyebrow">Géneros y categorías</span><MediaTags key={detail.anilistId} genres={detail.genres} tags={detail.tags} mediaType={detail.mediaType} /></div>}
-        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} title={detail.title} romajiTitle={detail.romajiTitle} mediaType={detail.mediaType} />}
+        {!!detail.streamingLinks?.length && <StreamingLinks links={detail.streamingLinks} title={displayTitle} romajiTitle={detail.romajiTitle} mediaType={detail.mediaType} />}
       </div>}
       <div className={`detail-editorial${hasInsights ? ' with-insights' : ''}`}>
         <details className="detail-description detail-collapsible" id="sinopsis" open><summary><span className="eyebrow">Sinopsis</span><ChevronDown className="detail-collapse-icon" /></summary><p>{cleanSynopsis(detail.synopsis) || 'Esta obra no tiene descripción.'}</p></details>
@@ -101,8 +110,9 @@ export default function MediaDetailView() {
       {!!detail.relations?.length && <details className="relations detail-collapsible" id="relaciones" open><summary className="detail-section-heading"><span><span className="eyebrow">Universo</span><h2>Relaciones</h2></span><ChevronDown className="detail-collapse-icon" /></summary><RelationCarousel key={detail.anilistId} relations={detail.relations} /></details>}
       {!!detail.characters?.length && <CharacterCarousel key={detail.anilistId} characters={detail.characters} />}
     </div>}
-    {detail.musicVideoUrl && <OfficialVideoPlayer url={detail.musicVideoUrl} site="YouTube" title={detail.title} musicVideo />}
-    {detail.insights?.trailerUrl && <OfficialVideoPlayer url={detail.insights.trailerUrl} site={detail.insights.trailerSite} title={detail.title} />}
+    <Suspense fallback={null}><SimilarMediaSection anilistId={mediaId} /></Suspense>
+    {detail.musicVideoUrl && <OfficialVideoPlayer url={detail.musicVideoUrl} site="YouTube" title={displayTitle} musicVideo />}
+    {detail.insights?.trailerUrl && <OfficialVideoPlayer url={detail.insights.trailerUrl} site={detail.insights.trailerSite} title={displayTitle} />}
     <div className="detail-mobile-actions">{saved ? <>{canIncrement && <button type="button" className="primary-button" disabled={library.mutationStatus === 'loading'} onClick={() => dispatch(incrementProgress(saved.id))}><Plus /> Marcar {Number(saved.progress || 0) + 1}</button>}<a className="secondary-button" href="#seguimiento"><Pencil /> Editar seguimiento</a></> : <button type="button" className="primary-button" onClick={addOrLogin}><ListPlus /> Agregar a la biblioteca</button>}</div>
     <AnimatePresence>{libraryModal && <LibraryModal mode={libraryModal} detail={detail} saved={saved} statusOptions={statusOptions} loading={library.mutationStatus === 'loading'} onClose={() => setLibraryModal(null)} />}</AnimatePresence>
   </article>

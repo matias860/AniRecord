@@ -28,6 +28,7 @@ export default function CatalogView() {
   const libraryItems = useSelector((state) => state.library.items)
   const libraryStatus = useSelector((state) => state.library.status)
   const authenticated = useSelector((state) => state.auth.authenticated)
+  const adultContentMode = useSelector((state) => state.profile.adultContentMode)
   const [filtersOpen, setFiltersOpen] = useState(true)
   const type = mediaType?.toLowerCase() === 'anime' ? 'ANIME' : mediaType?.toLowerCase() === 'manga' ? 'MANGA' : null
   const rawSearchParams = searchParams.toString()
@@ -38,7 +39,7 @@ export default function CatalogView() {
   const applicableFilters = useMemo(() => type === 'MANGA'
     ? { ...filters, search: requestSearch, season: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }
     : { ...filters, search: requestSearch, country: '', format: formatsFor(type).some((option) => option.value === filters.format) ? filters.format : '' }, [filters, requestSearch, type])
-  const requestFilters = useMemo(() => catalogRequestFilters(applicableFilters), [applicableFilters])
+  const requestFilters = useMemo(() => ({ ...catalogRequestFilters(applicableFilters), includeAdult: adultContentMode !== 'HIDE' }), [adultContentMode, applicableFilters])
   const catalogQuery = useGetCatalogQuery({ type, page: currentPage, filters: requestFilters }, { skip: !type })
   const categoriesQuery = useGetCatalogCategoriesQuery(undefined, { skip: !type })
   const catalogData = catalogQuery.currentData ?? (catalogQuery.data?.results?.every((item) => item.mediaType === type) ? catalogQuery.data : null)
@@ -77,7 +78,7 @@ export default function CatalogView() {
     const query = filters.search.trim().toLocaleLowerCase('es')
     if (!query) return catalogItems
     const localMatches = (authenticated ? libraryItems : []).filter((item) => item.mediaType === type
-      && [item.title, item.romajiTitle].some((title) => title?.toLocaleLowerCase('es').includes(query))
+      && [item.title, item.romajiTitle, item.englishTitle, item.nativeTitle].some((title) => title?.toLocaleLowerCase('es').includes(query))
       && (!filters.year || String(item.releaseYear) === filters.year)
       && (type !== 'ANIME' || !filters.season || item.releaseSeason === filters.season)
       && (!filters.status || item.releaseStatus === filters.status)

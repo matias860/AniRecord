@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import com.animelist.backend.enums.AdultContentMode;
+import com.animelist.backend.enums.TitleLanguage;
 
 public record UpdateProfileRequest(
         @NotBlank @Size(max = 40) String displayName,
@@ -13,6 +15,8 @@ public record UpdateProfileRequest(
         @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String backgroundColor,
         @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String surfaceColor,
         @NotBlank @Pattern(regexp = "^#[0-9a-fA-F]{6}$") String accentColor,
-        @NotNull Boolean dotsEnabled
+        @NotNull Boolean dotsEnabled,
+        AdultContentMode adultContentMode,
+        TitleLanguage titleLanguage
 ) {
 }

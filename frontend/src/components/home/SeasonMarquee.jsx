@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import ProfileLoader from '../common/ProfileLoader.jsx'
+import { preferredTitle } from '../../lib/contentPreferences.js'
 
 export default function SeasonMarquee({ entries, loading, error, onRetry, label, canGoPrevious, canGoNext, onPrevious, onNext }) {
+  const titleLanguage = useSelector((state) => state.profile.titleLanguage)
   const featured = entries.slice(0, 3)
   const labelParts = label.match(/^(.*)\s(\d{4})$/)
   const seasonName = labelParts?.[1] ?? label
@@ -18,6 +21,7 @@ export default function SeasonMarquee({ entries, loading, error, onRetry, label,
   const move = (direction) => setActive((current) => (current + direction + featured.length) % featured.length)
   const safeActive = featured.length ? active % featured.length : 0
   const media = featured[safeActive]
+  const displayTitle = preferredTitle(media, titleLanguage)
 
   useEffect(() => {
     if (featured.length < 2) return undefined
@@ -37,13 +41,13 @@ export default function SeasonMarquee({ entries, loading, error, onRetry, label,
       <AnimatePresence mode="wait" initial={false}><motion.div key={`${label}-${media.anilistId}`} initial={{ opacity: 0, x: 35 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -35 }} transition={{ duration: .32, ease: 'easeOut' }}>
         <Link className={`panorama-slide ${media.bannerImage ? 'has-banner' : 'cover-fallback'}`} to={`/media/${media.anilistId}`}>
           <span className="panorama-blur" style={{ backgroundImage: `url(${media.bannerImage || media.coverImage})` }} />
-          <img src={media.bannerImage || media.coverImage} alt={`Banner de ${media.title}`} loading="lazy" decoding="async" />
+          <img src={media.bannerImage || media.coverImage} alt={`Banner de ${displayTitle}`} loading="lazy" decoding="async" />
           <span className="panorama-shade" />
-          <div className="panorama-copy"><small>#{safeActive + 1} · Anime de temporada</small><strong>{media.title}</strong><span><Heart /> {media.favourites?.toLocaleString('es-AR') ?? '—'} favoritos</span></div>
+          <div className="panorama-copy"><small>#{safeActive + 1} · Anime de temporada</small><strong>{displayTitle}</strong><span><Heart /> {media.favourites?.toLocaleString('es-AR') ?? '—'} favoritos</span></div>
           {featured.length > 1 && <span className="carousel-progress" key={`progress-${media.anilistId}`} />}
         </Link>
       </motion.div></AnimatePresence>
-      {featured.length > 1 && <div className="featured-controls"><button onClick={() => move(-1)} aria-label="Destacado anterior"><ChevronLeft /></button>{featured.map((item, index) => <button className={index === safeActive ? 'active' : ''} onClick={() => setActive(index)} aria-label={`Ver ${item.title}`} key={item.anilistId} />)}<button onClick={() => move(1)} aria-label="Destacado siguiente"><ChevronRight /></button></div>}
+      {featured.length > 1 && <div className="featured-controls"><button onClick={() => move(-1)} aria-label="Destacado anterior"><ChevronLeft /></button>{featured.map((item, index) => <button className={index === safeActive ? 'active' : ''} onClick={() => setActive(index)} aria-label={`Ver ${preferredTitle(item, titleLanguage)}`} key={item.anilistId} />)}<button onClick={() => move(1)} aria-label="Destacado siguiente"><ChevronRight /></button></div>}
     </motion.div>}</AnimatePresence>
   </section>
 }

@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Clock3, Search, UserRound, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import apiClient from '../../api/apiClient.js'
 import useModalFocus from '../../lib/useModalFocus.js'
 import { backdropMotion, modalMotion } from '../../lib/motionVariants.js'
+import { adultPresentation, preferredTitle } from '../../lib/contentPreferences.js'
 
 const RECENT_KEY = 'anirecord:recent-searches'
 const emptyResults = { media: [], characters: [], staff: [] }
@@ -14,6 +16,7 @@ function recentSearches() {
 }
 
 export default function GlobalSearch({ open, onClose }) {
+  const { adultContentMode, titleLanguage } = useSelector((state) => state.profile)
   const inputRef = useRef(null)
   const dialogRef = useModalFocus(open)
   const requestRef = useRef(null)
@@ -39,7 +42,7 @@ export default function GlobalSearch({ open, onClose }) {
     const timer = window.setTimeout(async () => {
       setStatus('loading')
       try {
-        const { data } = await apiClient.get('/anilist/global-search', { params: { query: normalized }, signal: controller.signal })
+        const { data } = await apiClient.get('/anilist/global-search', { params: { query: normalized, includeAdult: adultContentMode !== 'HIDE' }, signal: controller.signal })
         setResults(data)
         setStatus('succeeded')
       } catch (error) {
@@ -47,7 +50,7 @@ export default function GlobalSearch({ open, onClose }) {
       }
     }, 220)
     return () => { window.clearTimeout(timer); controller.abort() }
-  }, [query])
+  }, [adultContentMode, query])
   const remember = () => {
     const value = query.trim()
     if (value.length < 2) return
@@ -76,7 +79,7 @@ export default function GlobalSearch({ open, onClose }) {
       {effectiveStatus === 'loading' && <div className="global-search-loading" aria-label="Buscando"><i /><i /><i /></div>}
       {effectiveStatus === 'failed' && <div className="global-search-message">No pudimos buscar ahora. Revisá tu conexión e intentá de nuevo.</div>}
       {effectiveStatus === 'succeeded' && !total && <div className="global-search-message">No encontramos resultados para “{query.trim()}”.</div>}
-      {effectiveStatus === 'succeeded' && total > 0 && <div className="global-search-results">{groups.map(([label, items, href]) => items.length > 0 && <section key={label}><h3>{label}</h3><div>{items.map((item) => <Link key={`${item.kind}-${item.anilistId}`} to={href(item)} onClick={closeResult}><span className="global-search-image">{item.image ? <img src={item.image} alt="" /> : <UserRound />}</span><span><strong>{item.title}</strong><small>{item.subtitle?.replaceAll('_', ' ') || item.kind}</small></span></Link>)}</div></section>)}</div>}
+      {effectiveStatus === 'succeeded' && total > 0 && <div className="global-search-results">{groups.map(([label, items, href]) => items.length > 0 && <section key={label}><h3>{label}</h3><div>{items.map((item) => { const blurred = item.kind === 'ANIME' || item.kind === 'MANGA' ? adultPresentation(item, adultContentMode) === 'blur' : false; return <Link className={blurred ? 'adult-search-result' : ''} key={`${item.kind}-${item.anilistId}`} to={href(item)} onClick={closeResult}><span className="global-search-image">{item.image ? <img src={item.image} alt="" /> : <UserRound />}</span><span><strong>{blurred ? 'Contenido adulto' : preferredTitle(item, titleLanguage)}</strong><small>{item.subtitle?.replaceAll('_', ' ') || item.kind}</small></span></Link> })}</div></section>)}</div>}
       <footer><span><kbd>⌘/Ctrl</kbd><kbd>K</kbd> para abrir</span><span><kbd>Esc</kbd> para cerrar</span></footer>
     </motion.section>
   </motion.div>}</AnimatePresence>

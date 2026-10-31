@@ -180,6 +180,8 @@ public class LibraryImportWriter {
     private void copyExternalMedia(AniListMediaResponse source, Media target) {
         target.setAnilistId(source.anilistId()); target.setMediaType(source.mediaType()); target.setMediaFormat(source.mediaFormat());
         target.setCountryOfOrigin(source.countryOfOrigin()); target.setTitle(source.title()); target.setRomajiTitle(source.romajiTitle());
+        target.setEnglishTitle(source.englishTitle()); target.setNativeTitle(source.nativeTitle());
+        target.setAdultContent(Boolean.TRUE.equals(source.adultContent()));
         target.setCoverImage(source.coverImage()); target.setBannerImage(source.bannerImage()); target.setSynopsis(source.synopsis());
         target.setGenres(source.genres() == null ? null : String.join("|", source.genres()));
         target.setTags(source.tags() == null ? null : source.tags().stream().map(tag -> tag.name()).collect(Collectors.joining("|")));

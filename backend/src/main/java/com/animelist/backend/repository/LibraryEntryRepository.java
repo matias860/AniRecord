@@ -27,7 +27,8 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
                 entry.id, media.anilistId, media.mediaType, media.mediaFormat, media.countryOfOrigin, media.title, media.romajiTitle,
                 media.coverImage, media.genres, media.tags, media.totalUnits, media.releaseStatus, media.releaseSeason,
                 media.releaseYear, entry.progress, entry.personalScore, entry.rewatchCount,
-                entry.trackingStatus, entry.startedAt, entry.completedAt, entry.createdAt, entry.updatedAt)
+                entry.trackingStatus, entry.startedAt, entry.completedAt, entry.createdAt, entry.updatedAt,
+                media.englishTitle, media.nativeTitle, media.adultContent)
             from LibraryEntry entry join entry.media media
             where entry.user.id = :userId
               and (:mediaType is null or media.mediaType = :mediaType)
@@ -52,7 +53,8 @@ public interface LibraryEntryRepository extends JpaRepository<LibraryEntry, Long
                 entry.id, media.anilistId, media.mediaType, media.mediaFormat, media.countryOfOrigin, media.title, media.romajiTitle,
                 media.coverImage, media.genres, media.tags, media.totalUnits, media.releaseStatus, media.releaseSeason,
                 media.releaseYear, entry.progress, entry.personalScore, entry.rewatchCount,
-                entry.trackingStatus, entry.startedAt, entry.completedAt, entry.createdAt, entry.updatedAt)
+                entry.trackingStatus, entry.startedAt, entry.completedAt, entry.createdAt, entry.updatedAt,
+                media.englishTitle, media.nativeTitle, media.adultContent)
             from LibraryEntry entry join entry.media media
             where entry.id = :entryId and entry.user.id = :userId
             """)

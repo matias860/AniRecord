@@ -1,7 +1,7 @@
 import { safeDarkColor, safeAccentColor, accentTextColor } from '../lib/themeContrast.js'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, Camera, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, LogOut, Palette, RotateCcw, Save, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
+import { BookOpen, Camera, ChevronLeft, ChevronRight, Clapperboard, FileImage, Heart, Languages, LogOut, Palette, RotateCcw, Save, ShieldCheck, Sparkles, Star, Trophy, Upload, UserRound } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { prepareImageForCrop } from '../lib/profileImage.js'
@@ -18,7 +18,7 @@ const ImageCropModal = lazy(() => import('../components/profile/ImageCropModal.j
 const AniListExportPanel = lazy(() => import('../components/profile/AniListExportPanel.jsx'))
 const ThemeColorPicker = lazy(() => import('../components/profile/ThemeColorPicker.jsx'))
 const PwaSettingsPanel = lazy(() => import('../components/profile/PwaSettingsPanel.jsx'))
-const draftKeys = ['displayName', 'bio', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled']
+const draftKeys = ['displayName', 'bio', 'backgroundColor', 'surfaceColor', 'accentColor', 'dotsEnabled', 'adultContentMode', 'titleLanguage']
 const defaultTheme = { backgroundColor: '#0a0c14', surfaceColor: '#171b29', accentColor: '#a88bff', dotsEnabled: true }
 const profileDraft = (profile) => Object.fromEntries(draftKeys.map((key) => [key, profile[key]]))
 
@@ -99,12 +99,21 @@ export default function ProfileView() {
           <div className="profile-file-grid"><ProfileFileField type="avatar" label="Avatar" hint="Recorte cuadrado · WebP 512 × 512" value={profile.avatarUrl} custom={profile.customAvatar} aniListFallback={profile.anilistAvatarUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /><ProfileFileField type="banner" label="Banner" hint="Recorte panorámico · WebP 1600 × 500" value={profile.bannerUrl} custom={profile.customBanner} aniListFallback={profile.anilistBannerUrl} busy={profile.assetStatus === 'uploading'} dispatch={dispatch} /></div>
           <ViewportSection className="color-options profile-color-options"><Suspense fallback={<div className="profile-color-loading" aria-label="Cargando colores" />}><ThemeColorPicker dark label="Color de fondo" value={draft.backgroundColor} onChange={(backgroundColor) => update({ backgroundColor })} /><ThemeColorPicker label="Tarjetas y rectángulos" value={draft.surfaceColor} onChange={(surfaceColor) => update({ surfaceColor })} /><ThemeColorPicker label="Color de acento" value={draft.accentColor} onChange={(accentColor) => update({ accentColor })} /></Suspense></ViewportSection>
           <p className="theme-contrast-hint">Los fondos se ajustan automáticamente para mantener legibles los textos.</p><label className="dot-toggle"><input type="checkbox" checked={draft.dotsEnabled} onChange={(e) => update({ dotsEnabled: e.target.checked })} /><span><b>Dot Background</b><small>Mostrar una trama sutil de puntos en el fondo.</small></span></label>
+          <div className="content-preferences" aria-labelledby="content-preferences-title">
+            <div className="content-preferences-heading"><span className="eyebrow">Descubrimiento</span><h3 id="content-preferences-title">Contenido y títulos</h3><p>Elegí cómo querés explorar AniRecord. Estas opciones se aplican a toda la página.</p></div>
+            <PreferenceChoice icon={<ShieldCheck />} label="Contenido adulto" description="Las obras que ya guardaste nunca desaparecen de tu biblioteca." value={draft.adultContentMode} onChange={(adultContentMode) => update({ adultContentMode })} options={[['HIDE', 'Ocultar'], ['BLUR', 'Difuminar'], ['SHOW', 'Mostrar']]} />
+            <PreferenceChoice icon={<Languages />} label="Idioma de títulos" description="Si una traducción no existe, se usa automáticamente la mejor alternativa disponible." value={draft.titleLanguage} onChange={(titleLanguage) => update({ titleLanguage })} options={[['AUTO', 'Automático'], ['ENGLISH', 'Inglés'], ['ROMAJI', 'Romaji'], ['NATIVE', 'Original']]} />
+          </div>
           <div className="profile-actions"><span>{dirty ? 'Hay cambios sin guardar' : 'Cambios guardados'}</span><button className="primary-button" disabled={profile.status === 'saving' || !dirty} onClick={() => dispatch(saveProfile(draft))}><Save /> {profile.status === 'saving' ? 'Guardando...' : 'Guardar perfil'}</button></div>
         </section>
       </div>
       <section className="profile-mobile-session"><div><span className="eyebrow">Cuenta</span><strong>Sesión de AniRecord</strong><small>Cerrá la sesión de este dispositivo.</small></div><button type="button" onClick={signOut}><LogOut /> Cerrar sesión</button></section>
     </>
   )
+}
+
+function PreferenceChoice({ icon, label, description, value, onChange, options }) {
+  return <fieldset className="preference-choice"><legend><span>{icon}</span><span><strong>{label}</strong><small>{description}</small></span></legend><div>{options.map(([optionValue, optionLabel]) => <button type="button" key={optionValue} className={value === optionValue ? 'active' : ''} aria-pressed={value === optionValue} onClick={() => onChange(optionValue)}>{optionLabel}</button>)}</div></fieldset>
 }
 
 function ViewportSection({ children, className = '' }) {

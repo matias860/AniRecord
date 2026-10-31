@@ -11,6 +11,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import com.animelist.backend.enums.AccountType;
+import com.animelist.backend.enums.AdultContentMode;
+import com.animelist.backend.enums.TitleLanguage;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import lombok.Getter;
@@ -53,6 +55,12 @@ public class AppUser {
     private String accentColor = "#a88bff";
     @Column(name = "dots_enabled", nullable = false)
     private Boolean dotsEnabled = true;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "adult_content_mode", nullable = false, length = 8)
+    private AdultContentMode adultContentMode = AdultContentMode.HIDE;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "title_language", nullable = false, length = 8)
+    private TitleLanguage titleLanguage = TitleLanguage.AUTO;
     @Column(name = "last_anilist_sync_at")
     private LocalDateTime lastAniListSyncAt;
     @Column(name = "notifications_initialized_at")

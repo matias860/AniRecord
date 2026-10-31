@@ -55,6 +55,9 @@ public class MediaMetadataService {
         boolean changed = false;
         changed |= replace(target::getTitle, target::setTitle, source.title());
         changed |= replace(target::getRomajiTitle, target::setRomajiTitle, source.romajiTitle());
+        changed |= replace(target::getEnglishTitle, target::setEnglishTitle, source.englishTitle());
+        changed |= replace(target::getNativeTitle, target::setNativeTitle, source.nativeTitle());
+        changed |= replace(target::getAdultContent, target::setAdultContent, Boolean.TRUE.equals(source.adultContent()));
         changed |= replace(target::getCoverImage, target::setCoverImage, source.coverImage());
         changed |= replace(target::getBannerImage, target::setBannerImage, source.bannerImage());
         changed |= replace(target::getSynopsis, target::setSynopsis, source.synopsis());

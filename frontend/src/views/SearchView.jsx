@@ -9,9 +9,10 @@ import { searchMedia } from '../features/search/searchSlice.js'
 export default function SearchView() {
   const dispatch = useDispatch()
   const search = useSelector((state) => state.search)
+  const adultContentMode = useSelector((state) => state.profile.adultContentMode)
   const [query, setQuery] = useState(search.query)
   const [type, setType] = useState(search.type)
-  const submit = (event) => { event.preventDefault(); if (query.trim().length >= 2) dispatch(searchMedia({ query: query.trim(), type })) }
+  const submit = (event) => { event.preventDefault(); if (query.trim().length >= 2) dispatch(searchMedia({ query: query.trim(), type, includeAdult: adultContentMode !== 'HIDE' })) }
   return (
     <>
       <section className="search-hero"><Sparkles /><span className="eyebrow">Catálogo de AniList</span><h1>Encuentra tu próxima historia</h1><p>Busca cualquier anime o manga y agrégalo a tu biblioteca.</p>

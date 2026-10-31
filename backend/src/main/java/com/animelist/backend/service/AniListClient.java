@@ -23,6 +23,7 @@ import com.animelist.backend.dto.anilist.StaffDetailResponse;
 import com.animelist.backend.dto.anilist.VoiceActorResponse;
 import com.animelist.backend.dto.anilist.GlobalSearchItemResponse;
 import com.animelist.backend.dto.anilist.GlobalSearchResponse;
+import com.animelist.backend.dto.anilist.SimilarMediaResponse;
 import com.animelist.backend.enums.MediaType;
 import com.animelist.backend.enums.PersonType;
 import com.animelist.backend.enums.ReleaseSeason;
@@ -77,7 +78,7 @@ public class AniListClient {
             query AssistantMediaBatch($ids: [Int!]!, $perPage: Int!) {
               Page(page: 1, perPage: $perPage) {
                 media(id_in: $ids) {
-                  id type format countryOfOrigin
+                  id type format countryOfOrigin isAdult
                   title { romaji english native }
                   coverImage { large }
                   genres
@@ -107,6 +108,7 @@ public class AniListClient {
                   type
                   format
                   countryOfOrigin
+                  isAdult
                   title { romaji english native }
                   coverImage { large }
                   bannerImage
@@ -131,7 +133,7 @@ public class AniListClient {
             query GlobalSearch($search: String!, $perGroup: Int!) {
               mediaPage: Page(page: 1, perPage: $perGroup) {
                 media(search: $search, sort: SEARCH_MATCH) {
-                  id type format title { romaji english native } coverImage { large }
+                  id type format isAdult title { romaji english native } coverImage { large }
                 }
               }
               characterPage: Page(page: 1, perPage: $perGroup) {
@@ -154,6 +156,7 @@ public class AniListClient {
                 type
                 format
                 countryOfOrigin
+                isAdult
                 title { romaji english native }
                 coverImage { extraLarge large }
                 bannerImage
@@ -230,6 +233,33 @@ public class AniListClient {
             }
             """;
 
+    private static final String SIMILAR_MEDIA_QUERY = """
+            query SimilarMedia($id: Int!) {
+              Media(id: $id) {
+                id type
+                title { romaji english native }
+                genres
+                tags { name rank isMediaSpoiler }
+                relations { edges { node { id } } }
+                recommendations(page: 1, perPage: 25, sort: RATING_DESC) {
+                  nodes {
+                    rating
+                    mediaRecommendation {
+                      id type format countryOfOrigin isAdult
+                      title { romaji english native }
+                      coverImage { large }
+                      genres
+                      startDate { year }
+                      episodes chapters volumes status season seasonYear
+                      tags { name rank description category isMediaSpoiler }
+                      relations { edges { relationType(version: 2) node { id } } }
+                    }
+                  }
+                }
+              }
+            }
+            """;
+
     private static final String AIRING_QUERY = """
             query LibraryAiring($ids: [Int], $perPage: Int!) {
               Page(page: 1, perPage: $perPage) {
@@ -238,6 +268,7 @@ public class AniListClient {
                   type
                   format
                   countryOfOrigin
+                  isAdult
                   title { romaji english native }
                   coverImage { large }
                   nextAiringEpisode { episode airingAt timeUntilAiring }
@@ -255,6 +286,7 @@ public class AniListClient {
                   type
                   format
                   countryOfOrigin
+                  isAdult
                   title { romaji english native }
                   coverImage { large }
                   genres
@@ -282,6 +314,7 @@ public class AniListClient {
               type
               format
               countryOfOrigin
+              isAdult
               title { romaji english native }
               coverImage { large }
               genres
@@ -317,6 +350,7 @@ public class AniListClient {
               type
               format
               countryOfOrigin
+              isAdult
               title { romaji english native }
               coverImage { large }
               genres
@@ -344,6 +378,7 @@ public class AniListClient {
                 type
                 format
                 countryOfOrigin
+                isAdult
                 title { romaji english native }
                 coverImage { large }
                 bannerImage
@@ -394,6 +429,7 @@ public class AniListClient {
                 type
                 format
                 countryOfOrigin
+                isAdult
                 title { romaji english native }
                 coverImage { large }
                 bannerImage
@@ -550,7 +586,11 @@ public class AniListClient {
                         asString(item.get("type")),
                         selectTitle(asMap(item.get("title"))),
                         asString(item.get("format")),
-                        asString(asMap(item.get("coverImage")).get("large"))))
+                        asString(asMap(item.get("coverImage")).get("large")),
+                        asString(asMap(item.get("title")).get("english")),
+                        asString(asMap(item.get("title")).get("romaji")),
+                        asString(asMap(item.get("title")).get("native")),
+                        Boolean.TRUE.equals(item.get("isAdult"))))
                 .toList();
         List<GlobalSearchItemResponse> characters = asList(asMap(data.get("characterPage")).get("characters")).stream()
                 .map(this::asMap)
@@ -586,6 +626,88 @@ public class AniListClient {
         media.put("characters", Map.of("edges", characterEdges));
         return mapMedia(media, true, true, true);
     }
+
+    @Cacheable(value = "mediaRecommendations", key = "#anilistId + ':' + #includeAdult")
+    public List<SimilarMediaResponse> getSimilarMedia(Integer anilistId, boolean includeAdult) {
+        Map<String, Object> source = asMap(execute(SIMILAR_MEDIA_QUERY, Map.of("id", anilistId)).get("Media"));
+        if (source.isEmpty()) throw new AniListClientException("AniList no encontró la obra solicitada");
+        MediaType sourceType = enumValue(MediaType.class, asString(source.get("type")));
+        String sourceTitle = selectTitle(asMap(source.get("title")));
+        java.util.Set<Integer> relatedIds = asList(asMap(source.get("relations")).get("edges")).stream()
+                .map(this::asMap).map(edge -> asInteger(asMap(edge.get("node")).get("id")))
+                .filter(java.util.Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        java.util.Set<String> sourceGenres = asList(source.get("genres")).stream().map(String::valueOf)
+                .map(value -> value.toLowerCase(java.util.Locale.ROOT)).collect(java.util.stream.Collectors.toSet());
+        java.util.Map<String, Integer> sourceTags = asList(source.get("tags")).stream().map(this::asMap)
+                .filter(tag -> !Boolean.TRUE.equals(tag.get("isMediaSpoiler")))
+                .filter(tag -> asInteger(tag.get("rank")) != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        tag -> asString(tag.get("name")).toLowerCase(java.util.Locale.ROOT),
+                        tag -> asInteger(tag.get("rank")), Math::max));
+
+        return asList(asMap(source.get("recommendations")).get("nodes")).stream()
+                .map(this::asMap)
+                .map(node -> new SimilarCandidate(node, asMap(node.get("mediaRecommendation"))))
+                .filter(candidate -> !candidate.media().isEmpty())
+                .filter(candidate -> includeAdult || !Boolean.TRUE.equals(candidate.media().get("isAdult")))
+                .filter(candidate -> enumValue(MediaType.class, asString(candidate.media().get("type"))) == sourceType)
+                .filter(candidate -> !relatedIds.contains(asInteger(candidate.media().get("id"))))
+                .filter(candidate -> !candidateLinksTo(candidate.media(), anilistId))
+                .filter(candidate -> !sameFranchiseTitle(sourceTitle, selectTitle(asMap(candidate.media().get("title")))))
+                .map(candidate -> toSimilarResponse(candidate, sourceGenres, sourceTags))
+                .sorted(java.util.Comparator
+                        .comparingInt(SimilarScored::score).reversed()
+                        .thenComparing(item -> item.response().media().title(), java.util.Comparator.nullsLast(String::compareToIgnoreCase)))
+                .map(SimilarScored::response)
+                .limit(8)
+                .toList();
+    }
+
+    private SimilarScored toSimilarResponse(SimilarCandidate candidate, java.util.Set<String> sourceGenres,
+            java.util.Map<String, Integer> sourceTags) {
+        AniListMediaResponse media = mapMedia(candidate.media(), true);
+        java.util.List<String> sharedGenres = media.genres().stream()
+                .filter(genre -> sourceGenres.contains(genre.toLowerCase(java.util.Locale.ROOT))).toList();
+        java.util.List<MediaTagResponse> sharedTags = media.tags().stream()
+                .filter(tag -> sourceTags.containsKey(tag.name().toLowerCase(java.util.Locale.ROOT)))
+                .sorted(java.util.Comparator.comparingInt((MediaTagResponse tag) ->
+                        Math.min(tag.rank() == null ? 0 : tag.rank(), sourceTags.get(tag.name().toLowerCase(java.util.Locale.ROOT)))).reversed())
+                .toList();
+        String reason;
+        if (!sharedTags.isEmpty()) reason = "Comparte " + sharedTags.stream().limit(2).map(MediaTagResponse::name)
+                .collect(java.util.stream.Collectors.joining(" y ")) + ".";
+        else if (!sharedGenres.isEmpty()) reason = "Coincide en " + sharedGenres.stream().limit(2)
+                .collect(java.util.stream.Collectors.joining(" y ")) + ".";
+        else reason = "La comunidad de AniList la recomienda como una alternativa afín.";
+        int votes = Math.max(0, asInteger(candidate.node().get("rating")) == null ? 0 : asInteger(candidate.node().get("rating")));
+        int overlap = sharedGenres.size() * 12 + sharedTags.stream().limit(3)
+                .mapToInt(tag -> Math.min(tag.rank() == null ? 0 : tag.rank(), sourceTags.get(tag.name().toLowerCase(java.util.Locale.ROOT))) / 5).sum();
+        return new SimilarScored(new SimilarMediaResponse(media, reason, votes), votes + overlap);
+    }
+
+    private boolean candidateLinksTo(Map<String, Object> candidate, Integer sourceId) {
+        return asList(asMap(candidate.get("relations")).get("edges")).stream().map(this::asMap)
+                .map(edge -> asInteger(asMap(edge.get("node")).get("id")))
+                .anyMatch(sourceId::equals);
+    }
+
+    private boolean sameFranchiseTitle(String left, String right) {
+        String a = franchiseKey(left);
+        String b = franchiseKey(right);
+        return a.length() >= 5 && a.equals(b);
+    }
+
+    private String franchiseKey(String value) {
+        if (value == null) return "";
+        return java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "").toLowerCase(java.util.Locale.ROOT)
+                .replaceAll("\\b(?:season|part|cour|the final|movie|ova|ona)\\b", " ")
+                .replaceAll("\\b(?:ii|iii|iv|v|vi|2nd|3rd|[0-9]+)\\b", " ")
+                .replaceAll("[^a-z0-9]+", " ").trim().replaceAll("\\s+", " ");
+    }
+
+    private record SimilarCandidate(Map<String, Object> node, Map<String, Object> media) {}
+    private record SimilarScored(SimilarMediaResponse response, int score) {}
 
     @Cacheable(value = "mediaDetails", key = "'library:' + #anilistId")
     public AniListMediaResponse getMediaForLibrary(Integer anilistId) {
@@ -696,11 +818,21 @@ public class AniListClient {
             MediaType type, int page, int perPage, String search, Integer year,
             ReleaseSeason season, List<String> genres, List<String> tags, ReleaseStatus status, String country, String format, String sort
     ) {
+        return browse(type, page, perPage, search, year, season, genres, tags, status, country, format, sort, false);
+    }
+
+    @Cacheable("catalog")
+    public AniListSearchResponse browse(
+            MediaType type, int page, int perPage, String search, Integer year,
+            ReleaseSeason season, List<String> genres, List<String> tags, ReleaseStatus status,
+            String country, String format, String sort, boolean includeAdult
+    ) {
         Map<String, Object> variables = new LinkedHashMap<>();
         StringBuilder declarations = new StringBuilder(
                 "$type: MediaType!, $page: Int!, $perPage: Int!, $sort: [MediaSort]"
         );
-        StringBuilder arguments = new StringBuilder("type: $type, sort: $sort, isAdult: false");
+        StringBuilder arguments = new StringBuilder("type: $type, sort: $sort");
+        if (!includeAdult) arguments.append(", isAdult: false");
         variables.put("type", type.name());
         variables.put("page", page);
         variables.put("perPage", perPage);
@@ -1130,7 +1262,10 @@ public class AniListClient {
                 asList(media.get("genres")).stream().map(String::valueOf).toList(),
                 mapTags(media.get("tags"), includeAllTags ? Integer.MAX_VALUE : 5, includeSpoilerTags),
                 asInteger(asMap(media.get("endDate")).get("year")),
-                mapInsights(mediaFormat, media)
+                mapInsights(mediaFormat, media),
+                asString(titles.get("english")),
+                asString(titles.get("native")),
+                Boolean.TRUE.equals(media.get("isAdult"))
         );
     }
 

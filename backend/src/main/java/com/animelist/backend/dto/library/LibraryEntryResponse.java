@@ -34,6 +34,9 @@ public record LibraryEntryResponse(
         LocalDate startedAt,
         LocalDate completedAt,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String englishTitle,
+        String nativeTitle,
+        Boolean adultContent
 ) {
 }
