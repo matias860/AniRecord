@@ -5,8 +5,10 @@ export default function useModalFocus(active = true) {
   useEffect(() => {
     const dialog = ref.current
     if (!active || !dialog) return undefined
-    const previousOverflow = document.body.style.overflow
+    const previousBodyOverflow = document.body.style.overflow
+    const previousRootOverflow = document.documentElement.style.overflow
     document.body.style.overflow = 'hidden'
+    document.documentElement.style.overflow = 'hidden'
     const previous = document.activeElement
     const inertNodes = new Map()
     const roots = () => [dialog, ...(dialog.classList.contains('top-nine-composer') ? document.querySelectorAll('.top-nine-picker') : [])]
@@ -43,7 +45,8 @@ export default function useModalFocus(active = true) {
     document.addEventListener('focusin', contain)
     document.addEventListener('keydown', tab)
     return () => {
-      document.body.style.overflow = previousOverflow
+      document.body.style.overflow = previousBodyOverflow
+      document.documentElement.style.overflow = previousRootOverflow
       cancelAnimationFrame(frame)
       observer.disconnect()
       document.removeEventListener('focusin', contain)
