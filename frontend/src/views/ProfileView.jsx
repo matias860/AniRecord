@@ -113,7 +113,7 @@ export default function ProfileView() {
 }
 
 function PreferenceChoice({ icon, label, description, value, onChange, options }) {
-  return <fieldset className="preference-choice"><legend><span>{icon}</span><span><strong>{label}</strong><small>{description}</small></span></legend><div>{options.map(([optionValue, optionLabel]) => <button type="button" key={optionValue} className={value === optionValue ? 'active' : ''} aria-pressed={value === optionValue} onClick={() => onChange(optionValue)}>{optionLabel}</button>)}</div></fieldset>
+  return <section className="preference-choice" aria-label={label}><div className="preference-choice-heading"><span className="preference-choice-icon">{icon}</span><span><strong>{label}</strong><small>{description}</small></span></div><div className="preference-choice-options" role="group" aria-label={`Opciones de ${label}`}>{options.map(([optionValue, optionLabel]) => <button type="button" key={optionValue} className={value === optionValue ? 'active' : ''} aria-pressed={value === optionValue} onClick={() => onChange(optionValue)}>{optionLabel}</button>)}</div></section>
 }
 
 function ViewportSection({ children, className = '' }) {
