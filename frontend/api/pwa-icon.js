@@ -4,7 +4,7 @@ const A = 'M511.636 1320H854.029L1387.847 0H1016.788L927.333 245.122H440.09L349.
 const R = 'M64.182 1320H632.424Q750 1320 841.212 1270.591Q932.424 1221.182 984.484 1129.136Q1036.545 1037.091 1036.545 910.061Q1036.545 783.909 993.772 705.106Q951 626.303 891.181 587.061Q831.363 547.818 780.666 538.152L1098.727 0H708.364L430.182 511.303H412.666V0H64.182ZM412.666 748.818H506.97Q571.728 748.818 625.379 780Q679.031 811.182 679.031 898.637Q679.031 986.091 626.698 1016.91Q574.364 1047.728 509.606 1047.728H412.666Z'
 const color = (value, fallback) => /^[0-9a-f]{6}$/i.test(value || '') ? `#${value}` : fallback
 
-export default function handler(request) {
+export function GET(request) {
   const params = new URL(request.url).searchParams
   const size = [96, 128, 180, 192, 512].includes(Number(params.get('size'))) ? Number(params.get('size')) : 512
   const accent = color(params.get('accent'), '#9b72ff')

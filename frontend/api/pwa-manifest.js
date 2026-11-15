@@ -1,7 +1,7 @@
 const ICON_VERSION = '3'
 const color = (value, fallback) => /^[0-9a-f]{6}$/i.test(value || '') ? value.toLowerCase() : fallback
 
-export default function handler(request) {
+export function GET(request) {
   const params = new URL(request.url).searchParams
   const accent = color(params.get('accent'), '9b72ff')
   const background = color(params.get('background'), '080a12')

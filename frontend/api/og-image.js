@@ -1,6 +1,6 @@
 import { aniListImageData, escapeXml, pngResponse, safeText, wrapText } from '../server/imageUtils.js'
 
-export default async function handler(request) {
+export async function GET(request) {
   const params = new URL(request.url).searchParams
   const title = safeText(params.get('title'), 110) || 'AniRecord'
   const type = safeText(params.get('type'), 30) || 'Anime y manga'

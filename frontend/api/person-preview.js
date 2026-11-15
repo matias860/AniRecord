@@ -32,7 +32,7 @@ const STAFF_QUERY = `
   }
 `
 
-export default async function handler(request) {
+export async function GET(request) {
   const url = new URL(request.url)
   const id = Number(url.searchParams.get('id'))
   const requestedKind = url.searchParams.get('kind')
