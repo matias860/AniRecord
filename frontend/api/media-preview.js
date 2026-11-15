@@ -3,8 +3,6 @@ const SITE_NAME = 'AniRecord'
 const SITE_ORIGIN = 'https://anirecord.com.ar'
 const OG_VERSION = '20260901'
 
-export const config = { runtime: 'edge' }
-
 const MEDIA_QUERY = `
   query ShareMedia($id: Int!) {
     Media(id: $id) {

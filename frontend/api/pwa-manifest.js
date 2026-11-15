@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' }
-
 const ICON_VERSION = '3'
 const color = (value, fallback) => /^[0-9a-f]{6}$/i.test(value || '') ? value.toLowerCase() : fallback
 

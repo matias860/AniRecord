@@ -1,10 +1,7 @@
-import { ImageResponse } from '@vercel/og'
-import { createElement as h } from 'react'
+import { pngResponse } from '../server/imageUtils.js'
 
-export const config = { runtime: 'edge' }
-
-const A = 'M511.6363525390625 1320H854.0291748046875L1387.8470458984375 0H1016.7877197265625L927.3330078125 245.1217041015625H440.090087890625L349.51416015625 0H-22.545166015625ZM556.3927001953125 548.1510009765625H811.151611328125L685.2115478515625 902.1832275390625H682.2115478515625Z'
-const R = 'M64.18212890625 1320H632.423828125Q749.99951171875 1320 841.2116088867188 1270.5909423828125Q932.4237060546875 1221.181884765625 984.4843139648438 1129.136474609375Q1036.544921875 1037.091064453125 1036.544921875 910.060791015625Q1036.544921875 783.9093017578125 993.7721557617188 705.1062622070312Q950.9993896484375 626.30322265625 891.18115234375 587.060791015625Q831.3629150390625 547.818359375 780.6658935546875 538.1517333984375L1098.7265625 0H708.3642578125L430.1822509765625 511.3033447265625H412.665771484375V0H64.18212890625ZM412.665771484375 748.8177490234375H506.9697265625Q571.7276611328125 748.8177490234375 625.3793334960938 779.999755859375Q679.031005859375 811.1817626953125 679.031005859375 898.6365966796875Q679.031005859375 986.0914306640625 626.697509765625 1016.9097900390625Q574.364013671875 1047.7281494140625 509.6060791015625 1047.7281494140625H412.665771484375Z'
+const A = 'M511.636 1320H854.029L1387.847 0H1016.788L927.333 245.122H440.09L349.514 0H-22.545ZM556.393 548.151H811.152L685.212 902.183H682.212Z'
+const R = 'M64.182 1320H632.424Q750 1320 841.212 1270.591Q932.424 1221.182 984.484 1129.136Q1036.545 1037.091 1036.545 910.061Q1036.545 783.909 993.772 705.106Q951 626.303 891.181 587.061Q831.363 547.818 780.666 538.152L1098.727 0H708.364L430.182 511.303H412.666V0H64.182ZM412.666 748.818H506.97Q571.728 748.818 625.379 780Q679.031 811.182 679.031 898.637Q679.031 986.091 626.698 1016.91Q574.364 1047.728 509.606 1047.728H412.666Z'
 const color = (value, fallback) => /^[0-9a-f]{6}$/i.test(value || '') ? `#${value}` : fallback
 
 export default function handler(request) {
@@ -12,14 +9,7 @@ export default function handler(request) {
   const size = [96, 128, 180, 192, 512].includes(Number(params.get('size'))) ? Number(params.get('size')) : 512
   const accent = color(params.get('accent'), '#9b72ff')
   const background = color(params.get('background'), '#080a12')
-  const rounded = params.get('shape') === 'rounded'
-  return new ImageResponse(
-    h('div', { style: { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderRadius: rounded ? '22%' : 0, background: `linear-gradient(145deg,${accent},${background} 88%)` } },
-      h('svg', { width: '100%', height: '100%', viewBox: '0 0 512 512', fill: '#fff' },
-        h('path', { d: A, transform: 'translate(61 370) scale(.153664 -.153664)' }),
-        h('path', { d: R, transform: 'translate(264.913 370) scale(.153664 -.153664)' }),
-      ),
-    ),
-    { width: size, height: size, headers: { 'cache-control': 'public, max-age=604800, immutable' } },
-  )
+  const radius = params.get('shape') === 'rounded' ? 112 : 0
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 512 512"><defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="${accent}"/><stop offset=".88" stop-color="${background}"/></linearGradient><clipPath id="shape"><rect width="512" height="512" rx="${radius}"/></clipPath></defs><g clip-path="url(#shape)"><rect width="512" height="512" fill="url(#bg)"/><g fill="#fff"><path d="${A}" transform="translate(61 370) scale(.153664 -.153664)"/><path d="${R}" transform="translate(264.913 370) scale(.153664 -.153664)"/></g></g></svg>`
+  return pngResponse(svg, 'public, max-age=604800, immutable')
 }
