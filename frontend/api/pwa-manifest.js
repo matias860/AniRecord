@@ -27,5 +27,8 @@ export function GET(request) {
     icons: [icon(192), icon(512)],
     related_applications: [{ platform: 'webapp', url: manifestUrl, id: '/' }],
     prefer_related_applications: false,
-  }, { headers: { 'cache-control': 'private, no-store', 'content-type': 'application/manifest+json' } })
+  }, { headers: {
+    'cache-control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+    'content-type': 'application/manifest+json',
+  } })
 }
