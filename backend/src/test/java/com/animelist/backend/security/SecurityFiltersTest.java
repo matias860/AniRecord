@@ -30,6 +30,28 @@ class SecurityFiltersTest {
         assertEquals(200, response.getStatus());
     }
 
+    @Test void rejectsCrossSiteBrowserWritesEvenWithTheApplicationHeader() throws Exception {
+        var request = new MockHttpServletRequest("POST", "/api/library/1/progress/increment");
+        request.addHeader(CsrfRequestFilter.HEADER, "1");
+        request.addHeader("Sec-Fetch-Site", "cross-site");
+        var response = new MockHttpServletResponse();
+
+        new CsrfRequestFilter().doFilter(request, response, new MockFilterChain());
+
+        assertEquals(403, response.getStatus());
+    }
+
+    @Test void addsDefensiveHeadersAndPreventsApiCaching() throws Exception {
+        var request = new MockHttpServletRequest("GET", "/api/auth/status");
+        var response = new MockHttpServletResponse();
+
+        new SecurityHeadersFilter().doFilter(request, response, new MockFilterChain());
+
+        assertEquals("nosniff", response.getHeader("X-Content-Type-Options"));
+        assertEquals("DENY", response.getHeader("X-Frame-Options"));
+        assertEquals("private, no-store, max-age=0", response.getHeader("Cache-Control"));
+    }
+
     @Test void limitsRepeatedAuthenticationAttempts() throws Exception {
         var filter = new RateLimitFilter();
         MockHttpServletResponse last = null;

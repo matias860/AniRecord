@@ -18,8 +18,10 @@ public class CsrfRequestFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+        String fetchSite = request.getHeader("Sec-Fetch-Site");
+        boolean crossSiteBrowserRequest = fetchSite != null && fetchSite.equalsIgnoreCase("cross-site");
         if (request.getRequestURI().startsWith("/api/") && !SAFE.contains(request.getMethod())
-                && !"1".equals(request.getHeader(HEADER))) {
+                && (!"1".equals(request.getHeader(HEADER)) || crossSiteBrowserRequest)) {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
             response.getWriter().write("{\"status\":403,\"message\":\"Solicitud de origen no válida\",\"errors\":{}}");

@@ -29,7 +29,9 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addMapping("/api/**")
                 .allowedOrigins(frontendUrls)
                 .allowedMethods("GET", "POST", "PATCH", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
+                .allowedHeaders("Accept", "Content-Type", "X-Anime-List-Request")
+                .exposedHeaders("Retry-After")
+                .allowCredentials(true)
+                .maxAge(3600);
     }
 }

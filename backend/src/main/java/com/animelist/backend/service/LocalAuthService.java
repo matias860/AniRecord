@@ -19,10 +19,12 @@ public class LocalAuthService {
     private final AppUserRepository users;
     private final AppSessionRepository sessions;
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(12);
+    private final String dummyPasswordHash;
 
     public LocalAuthService(AppUserRepository users, AppSessionRepository sessions) {
         this.users = users;
         this.sessions = sessions;
+        this.dummyPasswordHash = encoder.encode(TokenSecurity.randomToken());
     }
 
     @Transactional
@@ -53,8 +55,10 @@ public class LocalAuthService {
     public LoginResult login(LocalLoginRequest request) {
         AppUser user = users.findByLocalUsernameIgnoreCase(request.username().trim())
                 .filter(candidate -> candidate.getAccountType() == AccountType.LOCAL)
-                .orElseThrow(() -> new UnauthorizedException("Usuario o contraseña incorrectos"));
-        if (!encoder.matches(request.password(), user.getPasswordHash())) {
+                .orElse(null);
+        String passwordHash = user == null || user.getPasswordHash() == null ? dummyPasswordHash : user.getPasswordHash();
+        boolean passwordMatches = encoder.matches(request.password(), passwordHash);
+        if (user == null || !passwordMatches) {
             throw new UnauthorizedException("Usuario o contraseña incorrectos");
         }
         return result(user, newSession(user));
