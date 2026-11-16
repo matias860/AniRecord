@@ -25,7 +25,10 @@ for (const name of domains) {
     })
     domain = retried.result
   }
-  console.log(`${name}: ${domain.status}`)
+  const errors = [domain.validation_data?.error_message, domain.verification_data?.error_message]
+    .filter(Boolean)
+    .join('; ')
+  console.log(`${name}: ${domain.status}${errors ? ` (${errors})` : ''}`)
 }
 
 async function cloudflare(url, options = {}) {
