@@ -18,7 +18,16 @@ for (const name of domains) {
       body: JSON.stringify({ name }),
     })
     domain = created.result
-  } else if (['pending', 'error'].includes(domain.status)) {
+  } else if (domain.status === 'error') {
+    await cloudflare(`${endpoint}/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    })
+    const recreated = await cloudflare(endpoint, {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    })
+    domain = recreated.result
+  } else if (domain.status === 'pending') {
     const retried = await cloudflare(`${endpoint}/${encodeURIComponent(name)}`, {
       method: 'PATCH',
       body: '{}',
