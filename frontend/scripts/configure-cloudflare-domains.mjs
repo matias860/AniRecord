@@ -18,6 +18,12 @@ for (const name of domains) {
       body: JSON.stringify({ name }),
     })
     domain = created.result
+  } else if (['pending', 'error'].includes(domain.status)) {
+    const retried = await cloudflare(`${endpoint}/${encodeURIComponent(name)}`, {
+      method: 'PATCH',
+      body: '{}',
+    })
+    domain = retried.result
   }
   console.log(`${name}: ${domain.status}`)
 }
