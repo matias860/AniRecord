@@ -7,6 +7,12 @@ on:
       - 'frontend/**'
       - '.github/workflows/cloudflare-pages.yml'
   workflow_dispatch:
+    inputs:
+      configure_domains:
+        description: Attach the production custom domains after DNS delegation
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -47,3 +53,13 @@ jobs:
           workingDirectory: frontend
           command: pages deploy dist --project-name=anirecord --branch=main
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attach production domains
+        if: github.event_name == 'workflow_dispatch' && inputs.configure_domains
+        working-directory: frontend
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 90a1f845b76eeb52896a4f405b509930
+          CLOUDFLARE_PAGES_PROJECT: anirecord
+          CLOUDFLARE_PAGES_DOMAINS: anirecord.com.ar,www.anirecord.com.ar
+        run: node scripts/configure-cloudflare-domains.mjs
