@@ -38,6 +38,12 @@ for (const name of domains) {
     .filter(Boolean)
     .join('; ')
   console.log(`${name}: ${domain.status}${errors ? ` (${errors})` : ''}`)
+  console.log(JSON.stringify({
+    name,
+    zone_tag: domain.zone_tag ?? null,
+    validation: domain.validation_data ?? null,
+    verification: domain.verification_data ?? null,
+  }))
 }
 
 async function cloudflare(url, options = {}) {
