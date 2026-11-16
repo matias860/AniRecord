@@ -24,4 +24,8 @@ Disallow: /
 
 User-agent: *
 Disallow: /api/
+Allow: /api/media-preview
+Allow: /api/person-preview
+Allow: /api/og-image
+Allow: /api/og-person-image
 Allow: /

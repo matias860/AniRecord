@@ -14,6 +14,9 @@ backend/target/
 frontend/node_modules/
 database/node_modules/
 frontend/dist/
+frontend/.wrangler/
+frontend/.codex-artifacts/
+frontend/test-results/
 
 # IntelliJ
 .idea/

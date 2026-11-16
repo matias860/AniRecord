@@ -14,7 +14,7 @@ self.addEventListener('message', (event) => {
 const offlineNavigation = (options) => createHandlerBoundToURL('/index.html')(options)
 registerRoute(new NavigationRoute(async (options) => {
   try {
-    // Return every HTTP response, including Vercel's security checkpoint.
+    // Return every HTTP response, including a hosting security checkpoint.
     // Only a network failure may fall back to the precached app shell.
     return await fetch(options.request, { cache: 'no-store' })
   } catch {

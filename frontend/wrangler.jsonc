@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "anirecord",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-11-16",
+  "vars": {
+    "BACKEND_ORIGIN": "https://p01--anime-list--244mm2wyvsvc.code.run"
+  }
+}

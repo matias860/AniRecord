@@ -11,8 +11,11 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Optional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -20,10 +23,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class RateLimitFilter extends OncePerRequestFilter {
     private static final int MAX_WINDOWS = 20_000;
+    private final String proxySecret;
     private final Cache<String, Window> windows = Caffeine.newBuilder()
             .maximumSize(MAX_WINDOWS)
             .expireAfterAccess(Duration.ofHours(1))
             .build();
+
+    public RateLimitFilter(@Value("${app.proxy-secret:}") String proxySecret) {
+        this.proxySecret = proxySecret == null ? "" : proxySecret;
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
@@ -73,12 +81,24 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     private String clientAddress(HttpServletRequest request) {
-        if (request.getHeader("X-Vercel-Id") == null) return request.getRemoteAddr();
-        String forwarded = request.getHeader("X-Vercel-Forwarded-For");
-        if (forwarded == null || forwarded.isBlank()) forwarded = request.getHeader("X-Forwarded-For");
+        String forwarded = null;
+        if (trustedCloudflareProxy(request)) {
+            forwarded = request.getHeader("X-Forwarded-For");
+        } else if (request.getHeader("X-Vercel-Id") != null) {
+            forwarded = request.getHeader("X-Vercel-Forwarded-For");
+            if (forwarded == null || forwarded.isBlank()) forwarded = request.getHeader("X-Forwarded-For");
+        }
         if (forwarded == null || forwarded.isBlank() || forwarded.length() > 512) return request.getRemoteAddr();
         String client = forwarded.split(",", 2)[0].trim();
         return validAddress(client) ? client : request.getRemoteAddr();
+    }
+
+    private boolean trustedCloudflareProxy(HttpServletRequest request) {
+        String provided = request.getHeader("X-AniRecord-Proxy");
+        if (proxySecret.isBlank() || provided == null) return false;
+        return MessageDigest.isEqual(
+                proxySecret.getBytes(StandardCharsets.UTF_8),
+                provided.getBytes(StandardCharsets.UTF_8));
     }
 
     private boolean validAddress(String value) {

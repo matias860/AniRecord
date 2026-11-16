@@ -53,7 +53,7 @@ class SecurityFiltersTest {
     }
 
     @Test void limitsRepeatedAuthenticationAttempts() throws Exception {
-        var filter = new RateLimitFilter();
+        var filter = new RateLimitFilter("");
         MockHttpServletResponse last = null;
         for (int attempt = 0; attempt < 13; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
@@ -65,7 +65,7 @@ class SecurityFiltersTest {
     }
 
     @Test void limitsRepeatedProfileUploadsPerSession() throws Exception {
-        var filter = new RateLimitFilter();
+        var filter = new RateLimitFilter("");
         MockHttpServletResponse last = null;
         for (int attempt = 0; attempt < 13; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/profile/assets/avatar");
@@ -78,7 +78,7 @@ class SecurityFiltersTest {
     }
 
     @Test void usesTheVercelClientAddressBeforeAdditionalProxyHops() throws Exception {
-        var filter = new RateLimitFilter();
+        var filter = new RateLimitFilter("");
         MockHttpServletResponse last = null;
         for (int attempt = 0; attempt < 13; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
@@ -91,7 +91,7 @@ class SecurityFiltersTest {
     }
 
     @Test void ignoresForwardedAddressesOutsideTheVercelProxy() throws Exception {
-        var filter = new RateLimitFilter();
+        var filter = new RateLimitFilter("");
         MockHttpServletResponse last = null;
         for (int attempt = 0; attempt < 13; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
@@ -104,12 +104,40 @@ class SecurityFiltersTest {
     }
 
     @Test void anArbitrarySessionCookieDoesNotRaiseTheIpLimit() throws Exception {
-        var filter = new RateLimitFilter();
+        var filter = new RateLimitFilter("");
         MockHttpServletResponse last = null;
         for (int attempt = 0; attempt < 13; attempt++) {
             var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
             request.setRemoteAddr("192.0.2.30");
             request.setCookies(new Cookie(CurrentUserService.COOKIE, String.format("%064d", attempt)));
+            last = new MockHttpServletResponse();
+            filter.doFilter(request, last, new MockFilterChain());
+        }
+        assertEquals(429, last.getStatus());
+    }
+
+    @Test void usesCloudflareClientAddressesOnlyWithTheSharedProxySecret() throws Exception {
+        var filter = new RateLimitFilter("trusted-secret");
+        MockHttpServletResponse last = null;
+        for (int attempt = 0; attempt < 13; attempt++) {
+            var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
+            request.setRemoteAddr("192.0.2.50");
+            request.addHeader("X-AniRecord-Proxy", "trusted-secret");
+            request.addHeader("X-Forwarded-For", "198.51.100." + attempt);
+            last = new MockHttpServletResponse();
+            filter.doFilter(request, last, new MockFilterChain());
+        }
+        assertEquals(200, last.getStatus());
+    }
+
+    @Test void ignoresCloudflareClientAddressesWithAnInvalidProxySecret() throws Exception {
+        var filter = new RateLimitFilter("trusted-secret");
+        MockHttpServletResponse last = null;
+        for (int attempt = 0; attempt < 13; attempt++) {
+            var request = new MockHttpServletRequest("POST", "/api/auth/local-login");
+            request.setRemoteAddr("192.0.2.60");
+            request.addHeader("X-AniRecord-Proxy", "forged-secret");
+            request.addHeader("X-Forwarded-For", "198.51.100." + attempt);
             last = new MockHttpServletResponse();
             filter.doFilter(request, last, new MockFilterChain());
         }
