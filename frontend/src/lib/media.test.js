@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { cleanAniListText, formatRuntime, normalizeMediaId, parseAniListText, watchTimeSummary } from './media.js'
+import { cleanAniListText, formatRuntime, getAiringProgressState, getCurrentAiredEpisode, normalizeMediaId, parseAniListText, watchTimeSummary } from './media.js'
 
 test('normalizes route and API media identifiers to the same numeric cache key', () => {
   assert.equal(normalizeMediaId('123'), 123)
@@ -24,6 +24,31 @@ test('preserves character biography spoiler boundaries and links', () => {
 
 test('plain text cleaning keeps its previous behavior for spoiler markup', () => {
   assert.equal(cleanAniListText('Antes ~!secreto!~ después'), 'Antes secreto después')
+})
+
+test('derives the last aired episode from AniList next-airing data', () => {
+  assert.equal(getCurrentAiredEpisode({ episode: 12 }), 11)
+  assert.equal(getCurrentAiredEpisode({ episode: 1 }), 0)
+  assert.equal(getCurrentAiredEpisode(null), null)
+  assert.equal(getCurrentAiredEpisode({ episode: 'invalid' }), null)
+})
+
+test('describes pending, caught-up, premiere and unknown airing states', () => {
+  const releasing = { mediaType: 'ANIME', releaseStatus: 'RELEASING', currentAiredEpisode: 11 }
+  assert.deepEqual(getAiringProgressState(releasing, 5), {
+    label: 'En emisión · EP. 11', currentEpisode: 11, pending: true, caughtUp: false, awaitingNext: false,
+  })
+  assert.deepEqual(getAiringProgressState(releasing, 11), {
+    label: 'Al día · EP. 11', currentEpisode: 11, pending: false, caughtUp: true, awaitingNext: true,
+  })
+  assert.deepEqual(getAiringProgressState({ ...releasing, currentAiredEpisode: 0 }, 0), {
+    label: 'Estrena próximamente', currentEpisode: 0, pending: false, caughtUp: false, awaitingNext: true,
+  })
+  assert.deepEqual(getAiringProgressState({ mediaType: 'ANIME', releaseStatus: 'RELEASING' }, 4), {
+    label: 'Emisión', currentEpisode: null, pending: false, caughtUp: false, awaitingNext: false,
+  })
+  assert.equal(getAiringProgressState({ ...releasing, currentAiredEpisode: null }, 4).label, 'Emisión')
+  assert.equal(getAiringProgressState({ mediaType: 'ANIME', releaseStatus: 'FINISHED' }, 4), null)
 })
 
 test('formats useful episode, total and remaining watch times', () => {

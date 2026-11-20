@@ -50,6 +50,34 @@ const parseAniListLinks = (text, spoiler) => {
 
 export const isUnreleasedAnime = (media) => media.mediaType === 'ANIME' && media.releaseStatus === 'NOT_YET_RELEASED'
 
+export const getCurrentAiredEpisode = (nextAiringEpisode) => {
+  const nextEpisode = Number(nextAiringEpisode?.episode)
+  return Number.isInteger(nextEpisode) && nextEpisode > 0 ? nextEpisode - 1 : null
+}
+
+export const getAiringProgressState = (media, progress = 0) => {
+  if (media.mediaType !== 'ANIME' || media.releaseStatus !== 'RELEASING') return null
+  if (media.currentAiredEpisode == null) {
+    return { label: 'Emisión', currentEpisode: null, pending: false, caughtUp: false, awaitingNext: false }
+  }
+  const currentEpisode = Number(media.currentAiredEpisode)
+  if (!Number.isInteger(currentEpisode) || currentEpisode < 0) {
+    return { label: 'Emisión', currentEpisode: null, pending: false, caughtUp: false, awaitingNext: false }
+  }
+  if (currentEpisode === 0) {
+    return { label: 'Estrena próximamente', currentEpisode, pending: false, caughtUp: false, awaitingNext: true }
+  }
+  const safeProgress = Math.max(0, Number(progress) || 0)
+  const caughtUp = safeProgress >= currentEpisode
+  return {
+    label: caughtUp ? `Al día · EP. ${currentEpisode}` : `En emisión · EP. ${currentEpisode}`,
+    currentEpisode,
+    pending: currentEpisode > safeProgress,
+    caughtUp,
+    awaitingNext: caughtUp,
+  }
+}
+
 export const normalizeMediaId = (value) => {
   const id = Number(value)
   return Number.isInteger(id) && id > 0 ? id : null

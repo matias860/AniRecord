@@ -16,6 +16,7 @@ import { fetchWeeklyRecommendations } from '../features/recommendations/recommen
 import { fetchCurrentTopNine } from '../features/topNine/topNineSlice.js'
 import { requestLogin } from '../lib/authNavigation.js'
 import { acknowledgeSyncPrompt } from '../features/auth/authSlice.js'
+import { getCurrentAiredEpisode } from '../lib/media.js'
 
 const seasonNames = ['WINTER', 'SPRING', 'SUMMER', 'FALL']
 const seasonLabels = { WINTER: 'Invierno', SPRING: 'Primavera', SUMMER: 'Verano', FALL: 'Otoño' }
@@ -214,14 +215,15 @@ export default function HomeView() {
     }
   }, [dispatch, home.seasonCache, home.seasonErrors, home.seasonStatus, seasonSectionReady, selectedSeasonKey, selectedSeasonName, selectedSeasonYear])
 
-  const { airingWithCurrentProgress, allReading, allWatching, completed, inProgress, pendingEpisodeIds } = useMemo(() => {
+  const { airingByAniListId, airingWithCurrentProgress, allReading, allWatching, completed, inProgress, pendingEpisodeIds } = useMemo(() => {
     const libraryByAniListId = new Map(library.items.map((item) => [item.anilistId, item]))
     const airing = home.airing.map((entry) => ({
       ...entry,
       currentProgress: libraryByAniListId.get(entry.anilistId)?.progress ?? entry.currentProgress,
     }))
+    const airingById = new Map(airing.map((entry) => [entry.anilistId, entry]))
     const pending = new Set(airing
-      .filter((entry) => entry.nextAiringEpisode.episode - 1 > entry.currentProgress)
+      .filter((entry) => (getCurrentAiredEpisode(entry.nextAiringEpisode) ?? 0) > entry.currentProgress)
       .map((entry) => entry.anilistId))
     const byRecentProgress = (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt) || b.progress - a.progress
     const byWatchingPriority = (a, b) => {
@@ -244,6 +246,7 @@ export default function HomeView() {
     watchingEntries.sort(byWatchingPriority)
     readingEntries.sort(byRecentProgress)
     return {
+      airingByAniListId: airingById,
       airingWithCurrentProgress: airing,
       allReading: readingEntries,
       allWatching: watchingEntries,
@@ -260,7 +263,14 @@ export default function HomeView() {
   const ownRecommendation = recommendations.items.find((item) => item.recommenderId === auth.userId)
   const showRecommendationCta = recommendations.status === 'succeeded' && !ownRecommendation
   const showNewTopNine = auth.authenticated && topNine.status === 'succeeded' && topNine.prompt && !topNine.mine
-  const watchingWithPending = watching.map((entry) => ({ ...entry, episodePending: pendingEpisodeIds.has(entry.anilistId) }))
+  const watchingWithPending = watching.map((entry) => {
+    const airing = airingByAniListId.get(entry.anilistId)
+    return {
+      ...entry,
+      currentAiredEpisode: getCurrentAiredEpisode(airing?.nextAiringEpisode),
+      episodePending: pendingEpisodeIds.has(entry.anilistId),
+    }
+  })
   const scheduleOptions = [0, 1, 2, 3].map((offset) => {
       const item = seasonAtOffset(offset)
       return { value: String(offset), label: `${seasonLabels[item.season]} ${item.year}` }

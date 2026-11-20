@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import { memo, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { getProgressPercent, STATUS_LABELS, isUnreleasedAnime, normalizeMediaId } from '../../lib/media.js'
+import { getAiringProgressState, getProgressPercent, STATUS_LABELS, isUnreleasedAnime, normalizeMediaId } from '../../lib/media.js'
 import MediaTags from './MediaTags.jsx'
 import { usePrefetch } from '../../api/anirecordApi.js'
 import { preloadRoute } from '../../lib/routeModules.js'
@@ -26,8 +26,11 @@ function MediaCard({ media, onIncrement }) {
     if (mediaId != null && !navigator.connection?.saveData) prefetchDetail(mediaId)
   }
   const isLiveAnime = media.mediaType === 'ANIME' && media.releaseStatus === 'RELEASING'
-  const progressLabel = media.mediaType === 'ANIME' ? 'Episodios' : media.mediaFormat === 'NOVEL' ? 'Tomos' : 'Capítulos'
+  const airingState = getAiringProgressState(media, progress)
+  const progressLabel = media.mediaType === 'ANIME' ? 'Tu progreso' : media.mediaFormat === 'NOVEL' ? 'Tomos' : 'Capítulos'
   const totalLabel = media.totalUnits ?? (media.mediaType === 'MANGA' ? (progress > 0 ? `${progress}+` : 'En publicación') : '?')
+  const canIncrement = onIncrement && media.trackingStatus !== 'COMPLETED' && !isUnreleasedAnime(media) && !airingState?.awaitingNext
+  const nextProgress = progress + 1
   if (presentation === 'hide') return null
   return (
     <article className={`media-card ${presentation === 'blur' ? 'adult-media-blurred' : ''}`}>
@@ -42,7 +45,7 @@ function MediaCard({ media, onIncrement }) {
         }} alt={`Portada de ${displayTitle}`} width="230" height="345" loading="lazy" decoding="async" />
         {media.trackingStatus && <span className="status-badge">{STATUS_LABELS[media.trackingStatus]}</span>}
         {media.personalScore != null && <span className="score-badge"><Star /> {media.personalScore}</span>}
-        {isLiveAnime && <span className="airing-badge"><i /> Emisión</span>}
+        {isLiveAnime && <span className={`airing-badge ${airingState?.caughtUp ? 'is-caught-up' : ''}`}><i /><span>{airingState?.label ?? 'Emisión'}</span></span>}
       </Link>{presentation === 'blur' && <button type="button" className="adult-reveal" onClick={() => setAdultRevealed(true)}><Eye /> Mostrar</button>}</div>
       <div className="media-card-body">
         <Link to={`/media/${media.anilistId}`} onPointerEnter={preloadDetailRoute} onFocus={preloadDetailRoute} onClick={prepareDetailNow} className="media-title">{presentation === 'blur' ? 'Contenido adulto' : displayTitle}</Link>
@@ -51,8 +54,11 @@ function MediaCard({ media, onIncrement }) {
           <>
             <div className="progress-copy"><span>{progressLabel}</span><b><span className="progress-number"><AnimatePresence initial={false} mode="popLayout"><motion.span key={progress} initial={{ y: -9, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 9, opacity: 0 }} transition={{ duration: .2, ease: 'easeOut' }}>{progress}</motion.span></AnimatePresence></span> / {totalLabel}</b></div>
             <div className="progress-track"><span style={{ width: `${getProgressPercent(progress, media.totalUnits)}%` }} /></div>
-            {onIncrement && media.trackingStatus !== 'COMPLETED' && !isUnreleasedAnime(media) && (
-              <button className="quick-add" onClick={() => onIncrement(media.id)}><Plus size={15} /> Marcar siguiente</button>
+            {airingState?.awaitingNext && onIncrement && media.trackingStatus !== 'COMPLETED' && (
+              <button className="quick-add awaiting-next" disabled>{airingState.currentEpisode === 0 ? 'Esperando estreno' : `Esperando episodio ${nextProgress}`}</button>
+            )}
+            {canIncrement && (
+              <button className="quick-add" onClick={() => onIncrement(media.id)}><Plus size={15} /> {media.mediaType === 'ANIME' ? `Marcar episodio ${nextProgress}` : 'Marcar siguiente'}</button>
             )}
           </>
         )}
